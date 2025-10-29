@@ -1821,14 +1821,14 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       "pointer-events-none absolute top-0 bottom-0 w-[2.5px]",
       columnResizeGuide.active ? "bg-blue-500/90" : "bg-blue-400/70"
     ),
-    style: { left: `${columnResizeGuide.left}px` }
+    style: { left: `${columnResizeGuide.left - 1.25}px` }
   }) : null;
   const rowResizeGuideLine = rowResizeGuide ? h("div", {
     className: mergeClasses(
       "pointer-events-none absolute left-0 right-0 h-[2.5px]",
       rowResizeGuide.active ? "bg-blue-500/90" : "bg-blue-400/70"
     ),
-    style: { top: `${rowResizeGuide.top}px` }
+    style: { top: `${rowResizeGuide.top - 1.25}px` }
   }) : null;
 
   const header = h("div",
@@ -2222,6 +2222,34 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       h("span", { className: "flex-1 text-left" }, label)
     );
 
+    const primaryOptions = [
+      makeOption("Edit field", FaPencilAlt, () => setHeaderEditing(columnIndex)),
+      makeOption("Duplicate field", FaClone, () => duplicateColumn(columnIndex)),
+      makeOption("Insert left", FaArrowLeft, () => insertColumnAtIndex(columnIndex)),
+      makeOption("Insert right", FaArrowRight, () => insertColumnAtIndex(columnIndex + 1)),
+      makeOption("Copy field URL", FaLink, () => copyFieldUrlToClipboard(columnIndex)),
+      makeOption("Edit field description", FaInfoCircle, () => promptColumnDescription(columnIndex)),
+      makeOption("Edit field permissions", FaLock, () => promptColumnPermissions(columnIndex))
+    ];
+
+    const typeSection = [
+      h("div", { key: "type-heading", className: "px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-neutral-500" }, "Change type"),
+      ...ALL_TYPES.map((opt) =>
+        h("button", {
+          key: `type-${opt.value}`,
+          type: "button",
+          className: "flex items-center gap-3 px-3 py-1.5 text-sm rounded-lg hover:bg-blue-50 text-zinc-700 dark:text-zinc-200 dark:hover:bg-neutral-800",
+          onClick: () => {
+            changeColumnType(columnIndex, opt.value);
+            headerMenu.close();
+          }
+        },
+          renderColumnIcon(opt.value),
+          h("span", { className: "flex-1 text-left" }, opt.label)
+        )
+      )
+    ];
+
     const checkboxOptions = column.type === "checkbox"
       ? [
           makeOption("Sort ☐ → ☑", FaSortAmountUp, () => sortCheckboxColumn(columnIndex, "uncheckedFirst")),
@@ -2229,28 +2257,36 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         ]
       : [];
 
-    const groups = [
-      [
-        makeOption("Edit field", FaPencilAlt, () => setHeaderEditing(columnIndex)),
-        makeOption("Duplicate field", FaClone, () => duplicateColumn(columnIndex)),
-        makeOption("Insert left", FaArrowLeft, () => insertColumnAtIndex(columnIndex)),
-        makeOption("Insert right", FaArrowRight, () => insertColumnAtIndex(columnIndex + 1)),
-        makeOption("Copy field URL", FaLink, () => copyFieldUrlToClipboard(columnIndex)),
-        makeOption("Edit field description", FaInfoCircle, () => promptColumnDescription(columnIndex)),
-        makeOption("Edit field permissions", FaLock, () => promptColumnPermissions(columnIndex))
-      ],
-      checkboxOptions,
-      [
-        makeOption("Filter by this field", FaFilter, () => {
-          setSearchTerm(String(column.name ?? ""));
-          setSearchOpen(true);
-        }),
-        makeOption("Group by this field", FaLayerGroup, () => console.info("Group by field not yet implemented.")),
-        makeOption("Show dependencies", FaSlidersH, () => console.info("Field dependencies not yet implemented.")),
-        makeOption("Hide field", FaEyeSlash, () => console.info("Hide field not yet implemented.")),
-        makeOption("Delete field", FaTrash, () => removeColumnsByIndex([columnIndex]))
-      ]
+    const advancedOptions = [
+      makeOption("Filter by this field", FaFilter, () => {
+        setSearchTerm(String(column.name ?? ""));
+        setSearchOpen(true);
+      }),
+      makeOption("Group by this field", FaLayerGroup, () => console.info("Group by field not yet implemented.")),
+      makeOption("Show dependencies", FaSlidersH, () => console.info("Field dependencies not yet implemented.")),
+      makeOption("Hide field", FaEyeSlash, () => console.info("Hide field not yet implemented.")),
+      makeOption("Delete field", FaTrash, () => removeColumnsByIndex([columnIndex]))
     ];
+
+    const sections: React.ReactNode[] = [];
+    const pushSection = (key: string, nodes: React.ReactNode[]) => {
+      if (!nodes.length) return;
+      if (sections.length) {
+        sections.push(h("div", { key: `${key}-divider`, className: "border-t border-zinc-200 dark:border-neutral-700 my-1" }));
+      }
+      sections.push(...nodes.map((node, idx) =>
+        React.isValidElement(node) && !node.key
+          ? React.cloneElement(node, { key: `${key}-${idx}` })
+          : node
+      ));
+    };
+
+    pushSection("primary", primaryOptions);
+    pushSection("types", typeSection);
+    if (checkboxOptions.length) {
+      pushSection("checkbox", checkboxOptions);
+    }
+    pushSection("advanced", advancedOptions);
 
     return h("div", {
       className: mergeClasses(
@@ -2259,15 +2295,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       ),
       style: { left: `${x}px`, top: `${y}px` },
       onMouseLeave: () => headerMenu.close()
-    },
-      ...groups
-        .filter((section) => section.length)
-        .map((section, idx) => [
-          idx > 0 ? h("div", { key: `divider-${idx}`, className: "border-t border-zinc-200 dark:border-neutral-700 my-1" }) : null,
-          ...section.map((item, itemIdx) => React.cloneElement(item, { key: `opt-${idx}-${itemIdx}` }))
-        ])
-        .flat()
-    );
+    }, ...sections);
   })();
 
   const cellContextMenu = cellMenu.menu && (() => {
