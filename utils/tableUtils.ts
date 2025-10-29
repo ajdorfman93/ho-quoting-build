@@ -133,6 +133,14 @@ type CellStyle = {
 
 const STYLE_FIELD = "__styles";
 
+type HiddenColumnEntry<T> = {
+  column: ColumnSpec<T>;
+  index: number;
+  values: any[];
+  styles: Array<CellStyle | null>;
+  width: number;
+};
+
 type ViewDefinition = {
   id: string;
   name: string;
@@ -567,6 +575,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const [detailsModal, setDetailsModal] = React.useState<{ rowIndex: number } | null>(null);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [hiddenColumns, setHiddenColumns] = React.useState<HiddenColumnEntry<T>[]>([]);
   const [columnResizeHover, setColumnResizeHover] = React.useState<number | null>(null);
   const [columnResizeGuide, setColumnResizeGuide] = React.useState<{ index: number; left: number; active: boolean } | null>(null);
   const [rowResizeHover, setRowResizeHover] = React.useState<number | null>(null);
@@ -2166,7 +2175,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           className: "absolute -left-8 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full border bg-white dark:bg-neutral-900 flex items-center justify-center text-sm",
           onClick: () => setDetailsModal({ rowIndex: r }),
           title: "Expand details"
-        }, "＋"),
+        }, "+"),
       );
     }),
     columnPlaceholderBody,
@@ -2503,13 +2512,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       onClick: (ev: React.MouseEvent) => ev.stopPropagation()
     },
       h("div", { className: "mb-4 flex items-center justify-between gap-3" },
-        h("h2", { className: "text-lg font-semibold text-blue-600 dark:text-blue-300" }, `Details — ${modalTitle}`),
+        h("h2", { className: "text-lg font-semibold text-blue-600 dark:text-blue-300" }, `Details - ${modalTitle}`),
         h("button", {
           className: "inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white text-sm hover:bg-blue-50 dark:bg-neutral-900 dark:hover:bg-neutral-800",
           onClick: () => setDetailsModal(null),
           title: "Close details",
           type: "button"
-        }, "×")
+        }, "x")
       ),
       h("div", { className: "prose max-w-none text-sm dark:prose-invert" }, modalDetailsContent ?? h("div", null, "No details available."))
     )
