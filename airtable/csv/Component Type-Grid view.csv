@@ -1,0 +1,49 @@
+﻿Type Name,Type,Functional Group,Subgroup,Priority,Components
+Hinges,Hinges,Hang,Hinges & Pivots,1,"""Hardware: Hager, Hinges, ECBB 1100 4.5x4.5, US10B"""
+Spring Hinge,Spring Hinge,Hang,Hinges & Pivots,1,
+Pivot Hinge,Pivot Hinge,Hang,Hinges & Pivots,1,
+HW Hinges,HW Hinges,Hang,Hinges & Pivots,1,
+SS Hinges,SS Hinges,Hang,Hinges & Pivots,1,
+Barn Door Track,Barn Door Track,Hang,Sliding Systems,1,
+Storeroom Lock,Storeroom Lock,Secure,Locks,2,
+Office Lock,Office Lock,Secure,Locks,2,
+Classroom Lock,Classroom Lock,Secure,Locks,2,
+Passage Lock,Passage Lock,Secure,Locks,2,
+Privacy Lock,Privacy Lock,Secure,Locks,2,
+Communicating Lock,Communicating Lock,Secure,Locks,2,
+Single Dummy,Single Dummy,Secure,Locks,2,
+Double Dummy,Double Dummy,Secure,Locks,2,
+Deadlock,Deadlock,Secure,Bolts & Latches,2,
+Deadbolt,Deadbolt,Secure,Bolts & Latches,2,
+Flush Bolt,Flush Bolt,Secure,Bolts & Latches,2,"""Hardware: Hager, Flush Bolt, 293D, US32D"""
+Fire Bolt,Fire Bolt,Secure,Bolts & Latches,2,
+Exit Device,Exit Device,Secure,Exit Devices,2,"""Hardware: Hager, Exit Device Lever, 45CE REV 2 WTN NC, US26D"",""Hardware: Hager, Exit Device, 4501 LBR FR 36x84 EO w/BOLT, US26D"",""Hardware: Hager, Exit Device, 4501 LBR 36x96, US32D"""
+Rim Exit Device,Rim Exit Device,Secure,Exit Devices,2,
+SVR Exit Device,SVR Exit Device,Secure,Exit Devices,2,
+CVR Exit Device,CVR Exit Device,Secure,Exit Devices,2,
+Card Reader,Card Reader,Secure,Access Control,2,
+Strike,Strike,Secure,Strikes & Catches,2,"""Hardware: Hager, Strike, 381A 2 LS, N/A"""
+Closer,Closer,Control,Closers,3,"""Hardware: Hager, Closer, 5100 PAR ADJ 1-6 BLK BF HDHOS, BLK"",""Hardware: Hager, Closer, 5100 PAR ADJ 1-6 ALM HDCS BF, ALM"""
+Wall Stop,Wall Stop,Control,Stops & Bumpers,3,"""Hardware: Hager, Wall Stop, 236W, US32D"""
+Floor Stop,Floor Stop,Control,Stops & Bumpers,3,
+Overhead Stop,Overhead Stop,Control,Stops & Bumpers,3,
+Hinge Pine Stop,Hinge Pine Stop,Control,Stops & Bumpers,3,
+Roller Bumper,Roller Bumper,Control,Stops & Bumpers,3,
+Silencer,Silencer,Control,Silencers,3,
+Threshold,Threshold,Protect,Bottoms & Seals,4,
+Door Bottom,Door Bottom,Protect,Bottoms & Seals,4,
+Door Sweep,Door Sweep,Protect,Bottoms & Seals,4,
+Door Shoe,Door Shoe,Protect,Bottoms & Seals,4,
+Smoke Seal,Smoke Seal,Protect,Bottoms & Seals,4,
+Drip Cap,Drip Cap,Protect,Bottoms & Seals,4,
+Kick Plate,Kick Plate,Protect,Plates & Guards,4,
+Push Plate,Push Plate,Protect,Plates & Guards,4,"""Hardware: Hager, Push Plate, 30S 4x16, US26D"""
+Door Pull,Door Pull,Protect,Pulls & Handles,4,
+Door Push/Pull,Door Push/Pull,Protect,Pulls & Handles,4,"""Hardware: Hager, Door Push/Pull, 13J, US32D"""
+Flush Pull,Flush Pull,Protect,Pulls & Handles,4,
+Pull,Pull,Protect,Pulls & Handles,4,
+Ball Catch,Ball Catch,Accessories,Accessories,5,
+Privacy Door Latch,Privacy Door Latch,Accessories,Accessories,5,
+Screw Pack,Screw Pack,Accessories,Accessories,5,
+Screws,Screws,Accessories,Accessories,5,
+,,,,,
