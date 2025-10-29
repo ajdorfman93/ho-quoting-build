@@ -651,7 +651,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       const height = ROW_HEIGHT_PRESETS[rowHeightPresetRef.current];
       setRowHeights((prev) => rows.map((_r, i) => prev[i] ?? height));
     }
-  }, [rows.length, rowHeights.length]);
+  }, [rows, rowHeights.length]);
   React.useEffect(() => {
     const target = wrapHeaders ? Math.max(initialHeaderHeight, 64) : initialHeaderHeight;
     setHeaderHeight((prev) => {
@@ -2144,6 +2144,176 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   }, [colorConfig, columns, rows, getCellValue]);
 
   const visibleRowIndexes = filteredRowIndexes;
+  const isRowReorderLocked = Boolean(sortConfig || groupConfig);
+
+  const menuButtonClass = (active: boolean) =>
+    mergeClasses(
+      "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs uppercase tracking-wide text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800",
+      active && "border-blue-500 text-blue-600 bg-blue-500/10 dark:text-blue-300"
+    );
+
+  const ensureFilterColumn = React.useCallback(() => {
+    if (!columns.length) {
+      setFilterDraftColumn("");
+      return;
+    }
+    setFilterDraftColumn((prev) => {
+      if (prev && columns.some((col) => String(col.key) === prev)) return prev;
+      const first = columns[0];
+      return String(first?.key ?? "column_0");
+    });
+  }, [columns]);
+
+  React.useEffect(() => {
+    ensureFilterColumn();
+    setActiveFilters((prev) =>
+      prev.filter((filter) => columns.some((col) => String(col.key) === filter.columnKey))
+    );
+    if (sortConfig && !columns.some((col) => String(col.key) === sortConfig.columnKey)) {
+      setSortConfig(null);
+    }
+    if (groupConfig && !columns.some((col) => String(col.key) === groupConfig.columnKey)) {
+      setGroupConfig(null);
+    }
+    if (colorConfig && !columns.some((col) => String(col.key) === colorConfig.columnKey)) {
+      setColorConfig(null);
+    }
+  }, [columns, ensureFilterColumn, sortConfig, groupConfig, colorConfig]);
+
+  const toggleFieldsMenu = () => {
+    if (fieldsMenuOpen) {
+      setFieldsMenuOpen(false);
+    } else {
+      closeAllMenus();
+      setFieldsMenuOpen(true);
+    }
+  };
+
+  const toggleFilterMenu = () => {
+    if (filterMenuOpen) {
+      setFilterMenuOpen(false);
+    } else {
+      closeAllMenus();
+      ensureFilterColumn();
+      setFilterMenuOpen(true);
+    }
+  };
+
+  const toggleGroupMenu = () => {
+    if (groupMenuOpen) {
+      setGroupMenuOpen(false);
+    } else {
+      closeAllMenus();
+      setGroupMenuOpen(true);
+    }
+  };
+
+  const toggleSortMenu = () => {
+    if (sortMenuOpen) {
+      setSortMenuOpen(false);
+    } else {
+      closeAllMenus();
+      setSortMenuOpen(true);
+    }
+  };
+
+  const toggleColorMenu = () => {
+    if (colorMenuOpen) {
+      setColorMenuOpen(false);
+    } else {
+      closeAllMenus();
+      setColorMenuOpen(true);
+    }
+  };
+
+  const toggleRowHeightMenu = () => {
+    if (rowHeightMenuOpen) {
+      setRowHeightMenuOpen(false);
+    } else {
+      closeAllMenus();
+      setRowHeightMenuOpen(true);
+    }
+  };
+
+  const handleHideColumnClick = (idx: number) => {
+    if (columns.length <= 1) return;
+    hideColumn(idx);
+  };
+
+  const hasActiveFilters = activeFilters.some((filter) => filter.term.trim().length > 0);
+
+  const handleFilterApply = () => {
+    if (!filterDraftColumn) {
+      setFilterMenuOpen(false);
+      return;
+    }
+    const trimmed = filterDraftValue.trim();
+    setActiveFilters((prev) => {
+      const rest = prev.filter((filter) => filter.columnKey !== filterDraftColumn);
+      if (!trimmed) return rest;
+      return [...rest, { columnKey: filterDraftColumn, operator: filterDraftOperator, term: trimmed }];
+    });
+    setFilterMenuOpen(false);
+  };
+
+  const handleFilterRemove = (columnKey: string) => {
+    setActiveFilters((prev) => prev.filter((filter) => filter.columnKey !== columnKey));
+  };
+
+  const clearFilters = () => {
+    setActiveFilters([]);
+    setFilterMenuOpen(false);
+  };
+
+  const handleSortApply = (columnKey: string, direction: "asc" | "desc") => {
+    setSortConfig({ columnKey, direction });
+    closeAllMenus();
+  };
+
+  const clearSort = () => {
+    setSortConfig(null);
+    setSortMenuOpen(false);
+  };
+
+  const handleGroupApply = (columnKey: string) => {
+    setGroupConfig({ columnKey });
+    setSortConfig((prev) => {
+      if (prev && prev.columnKey === columnKey) return prev;
+      return { columnKey, direction: "asc" };
+    });
+    closeAllMenus();
+  };
+
+  const clearGroup = () => {
+    setGroupConfig(null);
+    setGroupMenuOpen(false);
+  };
+
+  const handleColorApply = (columnKey: string) => {
+    setColorConfig({ columnKey });
+    closeAllMenus();
+  };
+
+  const clearColor = () => {
+    setColorConfig(null);
+    setColorMenuOpen(false);
+  };
+
+  const handleRowHeightSelect = (preset: RowHeightPreset) => {
+    applyRowHeightPreset(preset);
+    setRowHeightMenuOpen(false);
+  };
+
+  const toggleWrapHeaders = () => setWrapHeaders((prev) => !prev);
+
+  const rowHeightOptions: Array<{ id: RowHeightPreset; label: string; description: string }> = [
+    { id: "short", label: "Short", description: "Compact rows" },
+    { id: "medium", label: "Medium", description: "More space for notes" },
+    { id: "tall", label: "Tall", description: "Comfortable multiline view" },
+    { id: "extraTall", label: "Extra Tall", description: "Show full details at a glance" }
+  ];
+  const rowHeightLabel = rowHeightOptions.find((option) => option.id === rowHeightPreset)?.label ?? "Short";
+  const rowHeightButtonActive = rowHeightMenuOpen || rowHeightPreset !== "short" || wrapHeaders;
 
   const visibleRowOffsets = React.useMemo(() => {
     const offsets: number[] = [0];
@@ -2541,6 +2711,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const rowElements = renderedRowIndexes.map((r) => {
     const row = rows[r];
     if (!row) return null;
+    const rowAccentColor = rowColorMap.get(r) ?? null;
+    const groupLabel = groupHeaders.get(r) ?? null;
     const isDraggingRow = rowDragHover && rowDragHover.from === r;
     const isRowEdgeActive = rowResizeHover === r || (rowResizeGuide && rowResizeGuide.index === r);
     const isRowResizing = !!(rowResizeGuide?.active && rowResizeGuide.index === r);
@@ -2548,6 +2720,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       height: `${rowHeights[r]}px`,
       transform: isDraggingRow ? "scale(0.995)" : undefined
     };
+    if (rowAccentColor) {
+      const accent = `${rowAccentColor}4D`;
+      rowStyle.boxShadow = [rowStyle.boxShadow, `inset 3px 0 0 ${rowAccentColor}`, `0 0 0 1px ${accent}`].filter(Boolean).join(", ");
+    }
+    if (groupLabel) {
+      rowStyle.borderTop = "1px solid rgba(148,163,184,0.35)";
+    }
     if (isRowEdgeActive) {
       const color = isRowResizing ? "rgba(37,99,235,0.9)" : "rgba(59,130,246,0.65)";
       rowStyle.boxShadow = [rowStyle.boxShadow, `inset 0 -2.5px 0 0 ${color}`].filter(Boolean).join(", ");
@@ -2555,16 +2734,29 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const rowChildren: React.ReactNode[] = [
       h("button", {
         key: `drag-${r}`,
-        className: "absolute -left-16 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border bg-white dark:bg-neutral-900 flex items-center justify-center text-zinc-400 hover:text-zinc-600",
-        draggable: true,
-        onDragStart: (e: React.DragEvent) => { e.stopPropagation(); startRowDrag(r, e); },
+        type: "button",
+        className: mergeClasses(
+          "absolute -left-16 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border bg-white dark:bg-neutral-900 flex items-center justify-center text-zinc-400 hover:text-zinc-600",
+          isRowReorderLocked && "cursor-not-allowed opacity-40"
+        ),
+        draggable: !isRowReorderLocked,
+        disabled: isRowReorderLocked,
+        onDragStart: (e: React.DragEvent) => {
+          if (isRowReorderLocked) {
+            e.preventDefault();
+            return;
+          }
+          e.stopPropagation();
+          startRowDrag(r, e);
+        },
         onDragEnd: () => endRowDrag(),
-        title: "Drag to reorder row"
+        title: isRowReorderLocked ? "Reorder disabled while sorted or grouped" : "Drag to reorder row"
       }, h(FaGripVertical, { className: "h-4 w-4" }))
     ];
     if (columnSpacerLeft > 0) {
       rowChildren.push(h("div", { key: `row-${r}-left-spacer`, style: { flex: "0 0 auto", width: `${columnSpacerLeft}px`, height: "100%" } }));
     }
+    const firstBodyColumnIndex = (bodyColumnIndices.length ? bodyColumnIndices : columns.map((_col, idx) => idx))[0] ?? 0;
     (bodyColumnIndices.length ? bodyColumnIndices : columns.map((_col, idx) => idx)).forEach((c) => {
       const col = columns[c];
       if (!col) return;
@@ -2665,6 +2857,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           style: { justifyContent },
           onMouseLeave: () => setRatingPreview((prev) => (prev && prev.r === r && prev.c === c ? null : prev))
         }, ...buttons);
+      }
+      if (!isEditingCell && groupLabel && c === firstBodyColumnIndex) {
+        contentNode = h("div", { className: "flex flex-col gap-1" },
+          h("span", { className: "text-[10px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-neutral-400" }, groupLabel),
+          contentNode
+        );
       }
       rowChildren.push(h("div", {
         key: colKey(col, c),
@@ -3017,6 +3215,265 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     secondaryViews.length ? h("div", { className: "flex flex-col gap-1" }, ...secondaryViews.map(renderViewButton)) : null
   ) : null;
 
+  const hideFieldsActive = fieldsMenuOpen || hiddenColumns.length > 0;
+  const filterButtonLabel = hasActiveFilters ? `Filtered (${activeFilters.length})` : "Filter";
+  const sortButtonLabel = sortConfig ? "Sorted by 1 field" : "Sort";
+  const groupButtonLabel = groupConfig ? "Grouped" : "Group";
+  const colorButtonLabel = colorConfig ? "Color applied" : "Color";
+  const colorableColumns = columns.filter((col) => col.type === "singleSelect" || col.type === "multipleSelect");
+
+  const fieldsMenu = fieldsMenuOpen ? h("div", {
+    ref: fieldsMenuRef,
+    className: "absolute left-0 top-full z-40 mt-2 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+    role: "menu",
+    "aria-label": "Field visibility"
+  },
+    h("p", { className: "px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Visible fields"),
+    h("div", { className: "space-y-1" },
+      ...columns.map((col, idx) =>
+        h("button", {
+          key: `visible-field-${idx}`,
+          type: "button",
+          className: "flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800",
+          onClick: () => handleHideColumnClick(idx)
+        },
+          h("span", { className: "flex items-center gap-2" },
+            h(FaCheck, { className: "h-3 w-3 text-blue-500" }),
+            String(col.name ?? `Field ${idx + 1}`)
+          ),
+          h(FaEyeSlash, { className: "h-3 w-3 text-zinc-400" })
+        )
+      )
+    ),
+    hiddenColumns.length ? h("div", { className: "mt-3 border-t border-zinc-200 pt-3 dark:border-neutral-800" },
+      h("p", { className: "px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Hidden fields"),
+      h("div", { className: "space-y-1" },
+        ...hiddenColumns.map((entry, hiddenIdx) =>
+          h("button", {
+            key: `hidden-field-${hiddenIdx}`,
+            type: "button",
+            className: "flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800",
+            onClick: () => restoreHiddenColumn(hiddenIdx)
+          },
+            h("span", { className: "flex items-center gap-2" },
+              h(FaEye, { className: "h-3 w-3 text-emerald-500" }),
+              String(entry.column.name ?? `Field ${hiddenIdx + 1}`)
+            ),
+            "Show"
+          )
+        )
+      )
+    ) : null
+  ) : null;
+
+  const filterMenu = filterMenuOpen ? h("div", {
+    ref: filterMenuRef,
+    className: "absolute left-0 top-full z-40 mt-2 w-72 rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+    role: "menu",
+    "aria-label": "Filter rows"
+  },
+    h("p", { className: "pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Filter rows"),
+    h("label", { className: "mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" },
+      "Field",
+      h("select", {
+        value: filterDraftColumn,
+        onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setFilterDraftColumn(e.target.value),
+        className: "mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+      },
+        ...columns.map((col, idx) =>
+          h("option", { key: `filter-field-${idx}`, value: String(col.key ?? idx) }, String(col.name ?? `Field ${idx + 1}`))
+        )
+      )
+    ),
+    h("label", { className: "mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" },
+      "Operator",
+      h("select", {
+        value: filterDraftOperator,
+        onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setFilterDraftOperator(e.target.value as "contains" | "equals"),
+        className: "mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+      },
+        h("option", { value: "contains" }, "Contains"),
+        h("option", { value: "equals" }, "Equals")
+      )
+    ),
+    h("label", { className: "mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" },
+      "Value",
+      h("input", {
+        value: filterDraftValue,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) => setFilterDraftValue(e.target.value),
+        className: "mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
+        placeholder: "Enter value"
+      })
+    ),
+    hasActiveFilters ? h("div", { className: "mt-2 space-y-1" },
+      ...activeFilters.map((filter) => {
+        const columnName = columns.find((col) => String(col.key) === filter.columnKey)?.name ?? filter.columnKey;
+        const comparator = filter.operator === "equals" ? "=" : "contains";
+        return h("div", {
+          key: `active-filter-${filter.columnKey}`,
+          className: "flex items-center justify-between rounded-lg bg-zinc-100 px-3 py-1.5 text-xs text-zinc-600 dark:bg-neutral-800 dark:text-neutral-200"
+        },
+          h("span", null, `${columnName} ${comparator} "${filter.term}"`),
+          h("button", {
+            type: "button",
+            className: "ml-2 text-xs text-zinc-400 hover:text-rose-500",
+            onClick: () => handleFilterRemove(filter.columnKey)
+          }, "×")
+        );
+      })
+    ) : null,
+    h("div", { className: "mt-3 flex items-center justify-between" },
+      h("button", {
+        type: "button",
+        className: "rounded-md border border-blue-500 px-3 py-1 text-xs font-semibold text-blue-600 transition hover:bg-blue-500/10 dark:text-blue-300",
+        onClick: handleFilterApply
+      }, "Apply"),
+      hasActiveFilters ? h("button", {
+        type: "button",
+        className: "rounded-md border border-zinc-300 px-3 py-1 text-xs text-zinc-500 transition hover:border-rose-500 hover:text-rose-500 dark:border-neutral-700 dark:text-neutral-300",
+        onClick: clearFilters
+      }, "Clear filters") : null
+    )
+  ) : null;
+
+  const sortMenu = sortMenuOpen ? h("div", {
+    ref: sortMenuRef,
+    className: "absolute left-0 top-full z-40 mt-2 w-72 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+    role: "menu",
+    "aria-label": "Sort rows"
+  },
+    h("p", { className: "px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Sort by"),
+    h("div", { className: "space-y-1" },
+      ...columns.map((col, idx) =>
+        h("div", {
+          key: `sort-${idx}`,
+          className: "flex items-center justify-between rounded-lg px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800"
+        },
+          h("span", { className: "truncate" }, String(col.name ?? `Field ${idx + 1}`)),
+          h("div", { className: "flex items-center gap-1" },
+            h("button", {
+              type: "button",
+              className: mergeClasses(
+                "rounded-md border px-2 py-1 text-xs",
+                sortConfig?.columnKey === String(col.key) && sortConfig?.direction === "asc"
+                  ? "border-blue-500 text-blue-600 dark:text-blue-300"
+                  : "border-zinc-300 text-zinc-500 dark:border-neutral-700 dark:text-neutral-300"
+              ),
+              onClick: () => handleSortApply(String(col.key ?? idx), "asc")
+            }, "A → Z"),
+            h("button", {
+              type: "button",
+              className: mergeClasses(
+                "rounded-md border px-2 py-1 text-xs",
+                sortConfig?.columnKey === String(col.key) && sortConfig?.direction === "desc"
+                  ? "border-blue-500 text-blue-600 dark:text-blue-300"
+                  : "border-zinc-300 text-zinc-500 dark:border-neutral-700 dark:text-neutral-300"
+              ),
+              onClick: () => handleSortApply(String(col.key ?? idx), "desc")
+            }, "Z → A")
+          )
+        )
+      )
+    ),
+    sortConfig ? h("button", {
+      type: "button",
+      className: "mt-3 w-full rounded-md border border-zinc-300 px-3 py-1 text-xs text-zinc-500 transition hover:border-rose-500 hover:text-rose-500 dark:border-neutral-700 dark:text-neutral-300",
+      onClick: clearSort
+    }, "Clear sort") : null
+  ) : null;
+
+  const groupMenu = groupMenuOpen ? h("div", {
+    ref: groupMenuRef,
+    className: "absolute left-0 top-full z-40 mt-2 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+    role: "menu",
+    "aria-label": "Group rows"
+  },
+    h("p", { className: "px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Group by"),
+    h("div", { className: "space-y-1" },
+      ...columns.map((col, idx) =>
+        h("button", {
+          key: `group-${idx}`,
+          type: "button",
+          className: mergeClasses(
+            "w-full rounded-lg px-3 py-1.5 text-left text-sm text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800",
+            groupConfig?.columnKey === String(col.key ?? idx) && "border border-blue-500 text-blue-600 bg-blue-500/10 dark:text-blue-300"
+          ),
+          onClick: () => handleGroupApply(String(col.key ?? idx))
+        }, String(col.name ?? `Field ${idx + 1}`))
+      )
+    ),
+    groupConfig ? h("button", {
+      type: "button",
+      className: "mt-3 w-full rounded-md border border-zinc-300 px-3 py-1 text-xs text-zinc-500 transition hover:border-rose-500 hover:text-rose-500 dark:border-neutral-700 dark:text-neutral-300",
+      onClick: clearGroup
+    }, "Remove grouping") : null
+  ) : null;
+
+  const colorMenu = colorMenuOpen ? h("div", {
+    ref: colorMenuRef,
+    className: "absolute left-0 top-full z-40 mt-2 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+    role: "menu",
+    "aria-label": "Color rows"
+  },
+    h("p", { className: "px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Color by field"),
+    colorableColumns.length
+      ? h("div", { className: "space-y-1" },
+        ...colorableColumns.map((col, idx) =>
+          h("button", {
+            key: `color-${idx}`,
+            type: "button",
+            className: mergeClasses(
+              "w-full rounded-lg px-3 py-1.5 text-left text-sm text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800",
+              colorConfig?.columnKey === String(col.key ?? idx) && "border border-blue-500 text-blue-600 bg-blue-500/10 dark:text-blue-300"
+            ),
+            onClick: () => handleColorApply(String(col.key ?? idx))
+          }, String(col.name ?? `Field ${idx + 1}`))
+        )
+      )
+      : h("p", { className: "rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-500 dark:bg-neutral-900 dark:text-neutral-400" }, "No select fields available"),
+    colorConfig ? h("button", {
+      type: "button",
+      className: "mt-3 w-full rounded-md border border-zinc-300 px-3 py-1 text-xs text-zinc-500 transition hover:border-rose-500 hover:text-rose-500 dark:border-neutral-700 dark:text-neutral-300",
+      onClick: clearColor
+    }, "Clear color") : null
+  ) : null;
+
+  const rowHeightMenu = rowHeightMenuOpen ? h("div", {
+    ref: rowHeightMenuRef,
+    className: "absolute right-0 top-full z-40 mt-2 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+    role: "menu",
+    "aria-label": "Row height"
+  },
+    h("p", { className: "px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Select a row height"),
+    h("div", { className: "space-y-1" },
+      ...rowHeightOptions.map((option) =>
+        h("button", {
+          key: option.id,
+          type: "button",
+          className: mergeClasses(
+            "flex w-full flex-col rounded-lg px-3 py-2 text-left text-sm text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800",
+            rowHeightPreset === option.id && "border border-blue-500 text-blue-600 bg-blue-500/10 dark:text-blue-300"
+          ),
+          onClick: () => handleRowHeightSelect(option.id)
+        },
+          h("span", { className: "font-medium" }, option.label),
+          h("span", { className: "text-xs text-zinc-500 dark:text-neutral-400" }, option.description)
+        )
+      )
+    ),
+    h("div", { className: "mt-3 flex items-center justify-between border-t border-zinc-200 pt-3 text-xs text-zinc-500 dark:border-neutral-800 dark:text-neutral-300" },
+      h("span", null, "Wrap headers"),
+      h("button", {
+        type: "button",
+        className: mergeClasses(
+          "rounded-md border px-2 py-1 text-xs transition",
+          wrapHeaders ? "border-blue-500 text-blue-600 dark:text-blue-300" : "border-zinc-300 text-zinc-500 dark:border-neutral-700 dark:text-neutral-300"
+        ),
+        onClick: toggleWrapHeaders
+      }, wrapHeaders ? "On" : "Off")
+    )
+  ) : null;
+
   /* Toolbar (undo/redo, duplicate/delete rows, search) */
   const toolbar = h("div", {
     className: mergeClasses(cx("toolbar",""), "flex items-center gap-2 py-2")
@@ -3061,6 +3518,140 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         h(FaChevronDown, { className: mergeClasses("h-3 w-3 transition-transform", viewsDropdownOpen && "rotate-180") })
       ),
       viewsDropdownElement
+    )
+  );
+
+  /* Toolbar (view controls, duplicate/delete rows, search) */
+  const toolbar = h("div", {
+    className: mergeClasses(cx("toolbar",""), "flex flex-wrap items-center gap-3 py-2")
+  },
+    h("div", { className: "flex flex-wrap items-center gap-2" },
+      h("div", { className: "relative" },
+        h("button", {
+          ref: fieldsButtonRef,
+          type: "button",
+          className: menuButtonClass(hideFieldsActive),
+          onClick: toggleFieldsMenu,
+          "aria-haspopup": "menu",
+          "aria-expanded": fieldsMenuOpen ? "true" : "false"
+        },
+          h(FaEyeSlash, { className: "h-3.5 w-3.5" }),
+          h("span", null, "Hide fields")
+        ),
+        fieldsMenu
+      ),
+      h("div", { className: "relative" },
+        h("button", {
+          ref: filterButtonRef,
+          type: "button",
+          className: menuButtonClass(filterMenuOpen || hasActiveFilters),
+          onClick: toggleFilterMenu,
+          "aria-haspopup": "menu",
+          "aria-expanded": filterMenuOpen ? "true" : "false"
+        },
+          h(FaFilter, { className: "h-3.5 w-3.5" }),
+          h("span", null, filterButtonLabel)
+        ),
+        filterMenu
+      ),
+      h("div", { className: "relative" },
+        h("button", {
+          ref: groupButtonRef,
+          type: "button",
+          className: menuButtonClass(groupMenuOpen || !!groupConfig),
+          onClick: toggleGroupMenu,
+          "aria-haspopup": "menu",
+          "aria-expanded": groupMenuOpen ? "true" : "false"
+        },
+          h(FaLayerGroup, { className: "h-3.5 w-3.5" }),
+          h("span", null, groupButtonLabel)
+        ),
+        groupMenu
+      ),
+      h("div", { className: "relative" },
+        h("button", {
+          ref: sortButtonRef,
+          type: "button",
+          className: menuButtonClass(sortMenuOpen || !!sortConfig),
+          onClick: toggleSortMenu,
+          "aria-haspopup": "menu",
+          "aria-expanded": sortMenuOpen ? "true" : "false"
+        },
+          h(FaSortAmountDown, { className: "h-3.5 w-3.5" }),
+          h("span", null, sortButtonLabel)
+        ),
+        sortMenu
+      ),
+      h("div", { className: "relative" },
+        h("button", {
+          ref: colorButtonRef,
+          type: "button",
+          className: menuButtonClass(colorMenuOpen || !!colorConfig),
+          onClick: toggleColorMenu,
+          "aria-haspopup": "menu",
+          "aria-expanded": colorMenuOpen ? "true" : "false"
+        },
+          h(FaPalette, { className: "h-3.5 w-3.5" }),
+          h("span", null, colorButtonLabel)
+        ),
+        colorMenu
+      ),
+      h("div", { className: "relative" },
+        h("button", {
+          ref: rowHeightButtonRef,
+          type: "button",
+          className: menuButtonClass(rowHeightButtonActive),
+          onClick: toggleRowHeightMenu,
+          "aria-haspopup": "menu",
+          "aria-expanded": rowHeightMenuOpen ? "true" : "false"
+        },
+          h(FaTextHeight, { className: "h-3.5 w-3.5" }),
+          h("span", null,
+            "Row height:",
+            h("span", { className: "ml-1 font-semibold" }, rowHeightLabel)
+          )
+        ),
+        rowHeightMenu
+      )
+    ),
+    h("div", { className: "ml-auto flex flex-wrap items-center gap-2" },
+      h("button", {
+        className: "rounded-full border px-3 py-1 text-sm disabled:opacity-40",
+        onClick: () => undo(),
+        disabled: !canUndo
+      }, "Undo"),
+      h("button", {
+        className: "rounded-full border px-3 py-1 text-sm disabled:opacity-40",
+        onClick: () => redo(),
+        disabled: !canRedo
+      }, "Redo"),
+      h("button", {
+        className: "rounded-full border px-3 py-1 text-sm",
+        onClick: duplicateSelectedRows
+      }, "Duplicate rows"),
+      h("button", {
+        className: "rounded-full border px-3 py-1 text-sm",
+        onClick: deleteSelectedRows
+      }, "Delete rows"),
+      h("button", {
+        className: "rounded-full border px-3 py-1 text-sm",
+        onClick: () => setSearchOpen((v) => !v)
+      }, "Search"),
+      h("div", { className: "relative" },
+        h("button", {
+          ref: viewsTriggerRef,
+          type: "button",
+          className: "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition hover:bg-zinc-100 dark:hover:bg-neutral-800",
+          onClick: () => setViewsDropdownOpen((open) => !open),
+          "aria-haspopup": "menu",
+          "aria-expanded": viewsDropdownOpen ? "true" : "false",
+          "aria-controls": viewsDropdownOpen ? viewsDropdownId : undefined
+        },
+          "Create new...",
+          h(FaChevronDown, { className: mergeClasses("h-3 w-3 transition-transform", viewsDropdownOpen && "rotate-180") })
+        ),
+        viewsDropdownElement
+      )
     )
   );
 
@@ -3240,6 +3831,8 @@ function uniqueColumnKey(cols: ColumnSpec[], base: string) {
   while (keys.has(k)) { i += 1; k = `${base}_${i}`; }
   return k;
 }
+
+
 
 
 
