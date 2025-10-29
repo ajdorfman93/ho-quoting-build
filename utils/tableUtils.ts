@@ -18,6 +18,7 @@ import {
   FaColumns,
   FaDollarSign,
   FaEnvelope,
+  FaEye,
   FaEyeSlash,
   FaFilter,
   FaFont,
@@ -1112,6 +1113,74 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     } catch {
       /* noop */
     }
+  }
+
+  function hideColumn(idx: number) {
+    const col = columns[idx];
+    if (!col) return;
+    const key = String(col.key);
+    const capturedValues = rows.map((row) => deepClone((row as any)[key]));
+    const capturedStyles = rows.map((_row, rIdx) => getCellStyle(rIdx, idx));
+    const width = clamp(colWidths[idx] ?? col.width ?? 160, minColumnWidth, 800);
+    setHiddenColumns((prev) => [...prev, {
+      column: deepClone(col),
+      index: idx,
+      values: capturedValues,
+      styles: capturedStyles,
+      width
+    }]);
+    const nextCols = columns.filter((_c, i) => i !== idx);
+    const nextRows = rows.map((row) => {
+      const nextRow: any = { ...row };
+      dropColumnStyles(nextRow, key);
+      delete nextRow[key];
+      return nextRow as T;
+    });
+    const nextWidths = colWidths.filter((_w, i) => i !== idx);
+    setColumns(nextCols);
+    setRows(nextRows);
+    latestRowsRef.current = nextRows;
+    setColWidths(nextWidths);
+    commit(nextRows, nextCols);
+  }
+
+  function restoreHiddenColumn(hiddenIdx: number) {
+    setHiddenColumns((prev) => {
+      const entry = prev[hiddenIdx];
+      if (!entry) return prev;
+      const insertIndex = clamp(entry.index, 0, columns.length);
+      const columnKey = String(entry.column.key);
+      const nextCols = columns.slice();
+      nextCols.splice(insertIndex, 0, deepClone(entry.column));
+      const nextRows = rows.map((row, rIdx) => {
+        const nextRow: any = { ...row };
+        nextRow[columnKey] = deepClone(entry.values[rIdx]);
+        if (entry.styles[rIdx]) {
+          const styles = { ...((nextRow[STYLE_FIELD] as Record<string, CellStyle>) ?? {}) };
+          styles[columnKey] = { ...entry.styles[rIdx]! };
+          nextRow[STYLE_FIELD] = styles;
+        } else if (nextRow[STYLE_FIELD]) {
+          const styles = { ...(nextRow[STYLE_FIELD] as Record<string, CellStyle>) };
+          delete styles[columnKey];
+          if (Object.keys(styles).length) {
+            nextRow[STYLE_FIELD] = styles;
+          } else {
+            delete nextRow[STYLE_FIELD];
+          }
+        }
+        return nextRow as T;
+      });
+      setColumns(nextCols);
+      setRows(nextRows);
+      latestRowsRef.current = nextRows;
+      setColWidths((prevWidths) => {
+        const next = prevWidths.slice();
+        next.splice(insertIndex, 0, clamp(entry.width, minColumnWidth, 800));
+        return next;
+      });
+      commit(nextRows, nextCols);
+      return prev.filter((_item, i) => i !== hiddenIdx);
+    });
   }
 
   function dropColumnStyles(row: any, key: string) {
