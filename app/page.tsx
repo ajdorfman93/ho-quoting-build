@@ -17,7 +17,6 @@ import {
   mergeClasses
 } from "../utils/tableUtils";
 
-import InteractiveGridDemo from "./components/InteractiveGridDemo";
 interface ProjectSummary {
   name: string;
   status: "Planning" | "Active" | "Review";
@@ -386,14 +385,6 @@ const STATUS_FILTER_OPTIONS: ReadonlyArray<"all" | TeamMember["status"]> = [
   "on-leave",
   "training"
 ];
-
-export default function Page() {
-  return (
-    <main className="p-6">
-      <InteractiveGridDemo />
-    </main>
-  );
-}
 
 const PAGE_SIZE_OPTIONS = [5, 10, 15];
 
