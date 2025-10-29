@@ -652,19 +652,18 @@ function FloatingMenuSurface({
   ]);
 
   React.useEffect(() => {
+    const element = menuRef.current;
     return () => {
-      const el = menuRef.current;
-      if (el) {
-        el.style.maxHeight = "";
-        el.style.overflowY = "";
+      if (element) {
+        element.style.maxHeight = "";
+        element.style.overflowY = "";
       }
     };
   }, []);
 
+  // eslint-disable-next-line react-hooks/refs
   return h("div", {
-    ref: (node: HTMLDivElement | null) => {
-      menuRef.current = node;
-    },
+    ref: menuRef,
     className,
     style: {
       ...style,
@@ -815,6 +814,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const [ratingPreview, setRatingPreview] = React.useState<{ r: number; c: number; value: number } | null>(null);
   const [columnDragHover, setColumnDragHover] = React.useState<{ from: number; to: number } | null>(null);
   const [rowDragHover, setRowDragHover] = React.useState<{ from: number; to: number } | null>(null);
+  const viewsDropdownPlacement = useAutoDropdownPlacement(viewsDropdownOpen, viewsTriggerRef, viewsDropdownRef, { offset: 8 });
+  const fieldsMenuPlacement = useAutoDropdownPlacement(fieldsMenuOpen, fieldsButtonRef, fieldsMenuRef, { offset: 8 });
+  const filterMenuPlacement = useAutoDropdownPlacement(filterMenuOpen, filterButtonRef, filterMenuRef, { offset: 8 });
+  const groupMenuPlacement = useAutoDropdownPlacement(groupMenuOpen, groupButtonRef, groupMenuRef, { offset: 8 });
+  const sortMenuPlacement = useAutoDropdownPlacement(sortMenuOpen, sortButtonRef, sortMenuRef, { offset: 8 });
+  const colorMenuPlacement = useAutoDropdownPlacement(colorMenuOpen, colorButtonRef, colorMenuRef, { offset: 8 });
+  const rowHeightMenuPlacement = useAutoDropdownPlacement(rowHeightMenuOpen, rowHeightButtonRef, rowHeightMenuRef, { offset: 8 });
 
   // sync from history index changes
   React.useEffect(() => {
@@ -2947,7 +2953,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
                 headerMenu.openAt({
                   x: rect.left + rect.width / 2,
                   y: rect.bottom + 6,
-                  columnIndex: c
+                  columnIndex: c,
+                  anchorRect: rect,
+                  anchorElement: target,
+                  align: "center",
+                  side: "bottom",
+                  offset: 6
                 });
               };
               if (delay > 0) {
@@ -3549,8 +3560,14 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const viewsDropdownElement = viewsDropdownOpen ? h("div", {
     id: viewsDropdownId,
     ref: viewsDropdownRef,
-    className: "absolute right-0 top-full z-40 mt-2 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+    className: mergeClasses(
+      "absolute right-0 z-40 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+      viewsDropdownPlacement === "top"
+        ? "bottom-full mb-2 origin-bottom-right"
+        : "top-full mt-2 origin-top-right"
+    ),
     role: "menu",
+    "data-placement": viewsDropdownPlacement,
     "aria-label": "Table views"
   },
     h("p", { className: "px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Table views"),
@@ -3691,8 +3708,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   const fieldsMenu = fieldsMenuOpen ? h("div", {
     ref: fieldsMenuRef,
-    className: "absolute left-0 top-full z-40 mt-2 w-80 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+    className: mergeClasses(
+      "absolute left-0 z-40 w-80 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+      fieldsMenuPlacement === "top" ? "bottom-full mb-2 origin-bottom-left" : "top-full mt-2 origin-top-left"
+    ),
     role: "menu",
+    "data-placement": fieldsMenuPlacement,
     "aria-label": "Field visibility"
   },
     h("div", { className: "pb-3 space-y-2" },
@@ -3741,8 +3762,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   const filterMenu = filterMenuOpen ? h("div", {
     ref: filterMenuRef,
-    className: "absolute left-0 top-full z-40 mt-2 w-72 rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+    className: mergeClasses(
+      "absolute left-0 z-40 w-72 rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+      filterMenuPlacement === "top" ? "bottom-full mb-2 origin-bottom-left" : "top-full mt-2 origin-top-left"
+    ),
     role: "menu",
+    "data-placement": filterMenuPlacement,
     "aria-label": "Filter rows"
   },
     h("p", { className: "pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Filter rows"),
@@ -3811,8 +3836,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   const sortMenu = sortMenuOpen ? h("div", {
     ref: sortMenuRef,
-    className: "absolute left-0 top-full z-40 mt-2 w-72 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+    className: mergeClasses(
+      "absolute left-0 z-40 w-72 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+      sortMenuPlacement === "top" ? "bottom-full mb-2 origin-bottom-left" : "top-full mt-2 origin-top-left"
+    ),
     role: "menu",
+    "data-placement": sortMenuPlacement,
     "aria-label": "Sort rows"
   },
     h("p", { className: "px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Sort by"),
@@ -3857,8 +3886,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   const groupMenu = groupMenuOpen ? h("div", {
     ref: groupMenuRef,
-    className: "absolute left-0 top-full z-40 mt-2 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+    className: mergeClasses(
+      "absolute left-0 z-40 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+      groupMenuPlacement === "top" ? "bottom-full mb-2 origin-bottom-left" : "top-full mt-2 origin-top-left"
+    ),
     role: "menu",
+    "data-placement": groupMenuPlacement,
     "aria-label": "Group rows"
   },
     h("p", { className: "px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Group by"),
@@ -3884,8 +3917,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   const colorMenu = colorMenuOpen ? h("div", {
     ref: colorMenuRef,
-    className: "absolute left-0 top-full z-40 mt-2 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+    className: mergeClasses(
+      "absolute left-0 z-40 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+      colorMenuPlacement === "top" ? "bottom-full mb-2 origin-bottom-left" : "top-full mt-2 origin-top-left"
+    ),
     role: "menu",
+    "data-placement": colorMenuPlacement,
     "aria-label": "Color rows"
   },
     h("p", { className: "px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Color by field"),
@@ -3913,8 +3950,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   const rowHeightMenu = rowHeightMenuOpen ? h("div", {
     ref: rowHeightMenuRef,
-    className: "absolute right-0 top-full z-40 mt-2 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+    className: mergeClasses(
+      "absolute right-0 z-40 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+      rowHeightMenuPlacement === "top" ? "bottom-full mb-2 origin-bottom-right" : "top-full mt-2 origin-top-right"
+    ),
     role: "menu",
+    "data-placement": rowHeightMenuPlacement,
     "aria-label": "Row height"
   },
     h("p", { className: "px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Select a row height"),

@@ -4,6 +4,7 @@
   --background: #ffffff;
   --foreground: #171717;
   --radius-sm: 50%;
+  --text-sm: 0.675rem;
 }
 
 @theme inline {
