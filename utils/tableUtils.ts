@@ -978,6 +978,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   }
 
   function selectionToMatrix(sel: Selection): string[][] {
+    if (!sel) return [];
     const matrix: string[][] = [];
     for (let r = sel.r0; r <= sel.r1; r++) {
       const row: string[] = [];
