@@ -1245,6 +1245,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     mode: "single" | "multiple";
     search: string;
   } | null>(null);
+  const [selectDropdownAnchor, setSelectDropdownAnchor] = React.useState<{
+    element: HTMLElement | null;
+    rect: DOMRect | null;
+  } | null>(null);
   const [headerEditing, setHeaderEditing] = React.useState<number | null>(null);
   const [detailsModal, setDetailsModal] = React.useState<{ rowIndex: number } | null>(null);
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -1260,6 +1264,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   const gridRef = React.useRef<HTMLDivElement | null>(null);
   const editorRef = React.useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const headerContextMenuRef = React.useRef<HTMLDivElement | null>(null);
+  const cellContextMenuRef = React.useRef<HTMLDivElement | null>(null);
   const tableContainerRef = React.useRef<HTMLDivElement | null>(null);
   const colWidthsRef = React.useRef(colWidths);
   const rowHeightsRef = React.useRef(rowHeights);
