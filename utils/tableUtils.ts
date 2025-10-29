@@ -1397,6 +1397,16 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         closeCellMenu();
       }
 
+      const insideConfirmSurface = Boolean(target.closest("[data-modal-surface='confirm']"));
+      if (confirmAction && !insideConfirmSurface) {
+        cancelDeletion();
+      }
+
+      const insideDetailsSurface = Boolean(target.closest("[data-modal-surface='details']"));
+      if (detailsModal && !insideDetailsSurface) {
+        setDetailsModal(null);
+      }
+
       const insideCellEditor = editorRef.current ? editorRef.current.contains(target) : false;
 
       if (selectDropdown) {
@@ -1412,7 +1422,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     };
     window.addEventListener("pointerdown", handlePointerDown, true);
     return () => window.removeEventListener("pointerdown", handlePointerDown, true);
-  }, [editing, selectDropdown, headerMenuState, closeHeaderMenu, cellMenuState, closeCellMenu, commitEdit]);
+  }, [editing, selectDropdown, headerMenuState, closeHeaderMenu, cellMenuState, closeCellMenu, confirmAction, cancelDeletion, detailsModal, setDetailsModal, commitEdit]);
 
   function getCellValue(r: number, c: number) {
     const row = rows[r];
@@ -2602,8 +2612,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           if (Array.isArray(value)) {
             value.forEach((entry) => registerOption(entry));
           } else if (typeof value === "string") {
-            value
-              .split(",")
+            String(value)
+              .split(/[,;\n|]+/)
               .map((part) => part.trim())
               .filter(Boolean)
               .forEach((part) => registerOption(part));
@@ -4132,6 +4142,16 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
             .map(cloneOption)
         : [];
 
+      const optionMap = new Map<string, SelectOption>();
+      const registerOption = (option: SelectOption) => {
+        const cloned = cloneOption(option);
+        const key = optionIdentifier(cloned) || cloned.id || cloned.label;
+        optionMap.set(key, cloned);
+      };
+      availableOptions.forEach(registerOption);
+      selectedValues.forEach(registerOption);
+      const menuOptions = Array.from(optionMap.values());
+
       const toggleOption = (option: SelectOption) => {
         const identifier = optionIdentifier(option);
         const currentIdentifiers = new Set(selectedValues.map((opt) => optionIdentifier(opt)));
@@ -4160,7 +4180,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         "data-select-dropdown": "true"
       },
         h(MultipleSelectDropdown, {
-          options: availableOptions,
+          options: menuOptions,
           selectedValues,
           searchTerm: search,
           onSearchChange: updateSelectDropdownSearch,
@@ -4174,6 +4194,18 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
     const cellValue = getCellValue(r, c);
     const currentValue = resolveOptionMeta(column, cellValue);
+
+    const optionMap = new Map<string, SelectOption>();
+    const registerOption = (option: SelectOption) => {
+      const cloned = cloneOption(option);
+      const key = optionIdentifier(cloned) || cloned.id || cloned.label;
+      optionMap.set(key, cloned);
+    };
+    availableOptions.forEach(registerOption);
+    if (currentValue) {
+      registerOption(currentValue);
+    }
+    const menuOptions = Array.from(optionMap.values());
 
     const handleSelect = (option: SelectOption | null) => {
       const normalized = option ? cloneOption(option) : null;
@@ -4193,7 +4225,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       "data-select-dropdown": "true"
     },
       h(SingleSelectDropdown, {
-        options: availableOptions,
+        options: menuOptions,
         currentValue: currentValue ? cloneOption(currentValue) : null,
         searchTerm: search,
         onSearchChange: updateSelectDropdownSearch,
@@ -5036,11 +5068,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     className: "fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-6",
     onClick: cancelDeletion,
     role: "alertdialog",
-    "aria-modal": "true"
+    "aria-modal": "true",
+    "data-modal-overlay": "confirm"
   },
     h("div", {
       className: "relative w-full max-w-md rounded-2xl border border-red-200 bg-white p-5 shadow-2xl dark:border-red-900/70 dark:bg-neutral-950",
-      onClick: (ev: React.MouseEvent) => ev.stopPropagation()
+      onClick: (ev: React.MouseEvent) => ev.stopPropagation(),
+      "data-modal-surface": "confirm"
     },
       h("h2", { className: "text-lg font-semibold text-red-600 dark:text-red-300" }, confirmAction.type === "deleteRows" ? "Delete rows?" : "Delete fields?"),
       (() => {
@@ -5089,11 +5123,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     className: "fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6",
     onClick: () => setDetailsModal(null),
     role: "dialog",
-    "aria-modal": "true"
+    "aria-modal": "true",
+    "data-modal-overlay": "details"
   },
     h("div", {
       className: "relative max-h-[90vh] w-full max-w-3xl overflow-auto rounded-2xl border border-blue-200 bg-white p-6 shadow-2xl dark:border-neutral-700 dark:bg-neutral-950",
-      onClick: (ev: React.MouseEvent) => ev.stopPropagation()
+      onClick: (ev: React.MouseEvent) => ev.stopPropagation(),
+      "data-modal-surface": "details"
     },
       h("div", { className: "mb-4 flex items-center justify-between gap-2" },
         h("h2", { className: "text-lg font-semibold text-blue-600 dark:text-blue-300" }, `Details - ${modalTitle}`),
