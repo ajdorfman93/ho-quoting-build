@@ -944,12 +944,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   }, [columns, colWidths.length, minColumnWidth]);
   React.useEffect(() => { colWidthsRef.current = colWidths; }, [colWidths]);
   React.useEffect(() => { rowHeightsRef.current = rowHeights; }, [rowHeights]);
-  React.useEffect(() => () => {
-    if (headerMenuHoverTimer.current != null) {
-      window.clearTimeout(headerMenuHoverTimer.current);
-      headerMenuHoverTimer.current = null;
-    }
-  }, []);
 
   /* selection & editing */
   const [selection, setSelection] = React.useState<Selection>(null);
@@ -973,7 +967,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const tableContainerRef = React.useRef<HTMLDivElement | null>(null);
   const colWidthsRef = React.useRef(colWidths);
   const rowHeightsRef = React.useRef(rowHeights);
-  const headerMenuHoverTimer = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     if (typeof loadingMoreRows === "boolean") {
@@ -2207,7 +2200,93 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   function changeColumnType(idx: number, type: ColumnType) {
     const next = deepClone(columns);
-    const prepared = normalizeColumnForType(next[idx], type);
+    const current = next[idx];
+    const columnKey = current?.key as string;
+
+    let derivedOptions: SelectOption[] = [];
+    if (columnKey && (type === "singleSelect" || type === "multipleSelect")) {
+      const seen = new Set<string>();
+      const registerOption = (raw: unknown) => {
+        if (raw == null) return;
+        let id = "";
+        let label = "";
+        if (typeof raw === "string") {
+          label = raw.trim();
+          id = label;
+        } else if (typeof raw === "object") {
+          const opt = raw as SelectOption;
+          label = typeof opt.label === "string" ? opt.label.trim() : "";
+          const rawId = typeof opt.id === "string" ? opt.id.trim() : opt.id != null ? String(opt.id).trim() : "";
+          id = rawId || label;
+          if (!label && id) {
+            label = id;
+          }
+        } else {
+          label = String(raw).trim();
+          id = label;
+        }
+        if (!label && !id) return;
+        const finalId = id || label;
+        const finalLabel = label || id;
+        const key = finalId.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        derivedOptions.push({ id: finalId, label: finalLabel });
+      };
+
+      rows.forEach((row) => {
+        const value = (row as any)[columnKey];
+        if (value == null || value === "") return;
+        if (type === "multipleSelect") {
+          if (Array.isArray(value)) {
+            value.forEach((entry) => registerOption(entry));
+          } else if (typeof value === "string") {
+            value
+              .split(",")
+              .map((part) => part.trim())
+              .filter(Boolean)
+              .forEach((part) => registerOption(part));
+          } else {
+            registerOption(value);
+          }
+        } else {
+          if (Array.isArray(value) && value.length > 0) {
+            registerOption(value[0]);
+          } else {
+            registerOption(value);
+          }
+        }
+      });
+    }
+
+    const prepared = normalizeColumnForType(current, type);
+
+    if (derivedOptions.length && (type === "singleSelect" || type === "multipleSelect")) {
+      const configKey = type === "singleSelect" ? "singleSelect" : "multipleSelect";
+      const existingOptions = prepared.config?.[configKey]?.options ?? [];
+      const merged: SelectOption[] = [];
+      const seen = new Set<string>();
+      const pushOption = (option: SelectOption) => {
+        if (!option) return;
+        const rawId = option.id ?? option.label ?? "";
+        const id = typeof rawId === "string" ? rawId.trim() : String(rawId).trim();
+        const label = typeof option.label === "string" ? option.label.trim() : String(option.label ?? id).trim();
+        if (!label && !id) return;
+        const finalId = id || label;
+        const finalLabel = label || finalId;
+        const key = finalId.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        merged.push({ id: finalId, label: finalLabel });
+      };
+      existingOptions.forEach(pushOption);
+      derivedOptions.forEach(pushOption);
+      prepared.config = {
+        ...(prepared.config ?? {}),
+        [configKey]: { options: merged }
+      };
+    }
+
     next[idx] = prepared;
 
     // Initialize cell values if needed
@@ -3110,56 +3189,31 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           })
         : (() => {
             const icon = renderColumnIcon(col.type);
-            const openFromTarget = (target: HTMLElement, delay = 0) => {
+            const openFromTarget = (target: HTMLElement) => {
               if (!target) return;
-              if (headerMenuHoverTimer.current != null) {
-                window.clearTimeout(headerMenuHoverTimer.current);
-                headerMenuHoverTimer.current = null;
-              }
-              const trigger = () => {
-                const rect = target.getBoundingClientRect();
-                headerMenu.openAt({
-                  x: rect.left + rect.width / 2,
-                  y: rect.bottom + 6,
-                  columnIndex: c,
-                  anchorRect: rect,
-                  anchorElement: target,
-                  align: "center",
-                  side: "bottom",
-                  offset: 6
-                });
-              };
-              if (delay > 0) {
-                headerMenuHoverTimer.current = window.setTimeout(() => {
-                  trigger();
-                  headerMenuHoverTimer.current = null;
-                }, delay);
-              } else {
-                trigger();
-              }
+              const rect = target.getBoundingClientRect();
+              headerMenu.openAt({
+                x: rect.left + rect.width / 2,
+                y: rect.bottom + 6,
+                columnIndex: c,
+                anchorRect: rect,
+                anchorElement: target,
+                align: "center",
+                side: "bottom",
+                offset: 6
+              });
             };
-            const cancelHoverOpen = () => {
-              if (headerMenuHoverTimer.current != null) {
-                window.clearTimeout(headerMenuHoverTimer.current);
-                headerMenuHoverTimer.current = null;
-              }
-            };
-            return h("div", { className: "flex items-center gap-2 truncate" },
+            return h("div", { className: "group flex w-full items-center gap-2 truncate" },
               icon,
               h("span", { className: "flex-1 truncate text-zinc-700 dark:text-zinc-200 font-medium" }, String(col.name)),
               h("button", {
                 type: "button",
-                className: "inline-flex h-6 w-6 items-center justify-center rounded hover:bg-blue-100 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-neutral-700",
+                className: "ml-auto inline-flex h-6 w-6 items-center justify-center rounded opacity-0 transition-opacity hover:bg-blue-100 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-neutral-700 pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 focus-visible:opacity-100",
                 onClick: (ev: React.MouseEvent<HTMLButtonElement>) => {
                   ev.stopPropagation();
                   ev.preventDefault();
                   openFromTarget(ev.currentTarget);
                 },
-                onMouseEnter: (ev: React.MouseEvent<HTMLButtonElement>) => {
-                  ev.stopPropagation();
-                  openFromTarget(ev.currentTarget, 120);
-                },
-                onMouseLeave: () => cancelHoverOpen(),
                 "aria-haspopup": "menu",
                 "aria-expanded": headerMenu.menu?.columnIndex === c ? "true" : "false",
                 title: "Column options",
