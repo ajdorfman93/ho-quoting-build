@@ -1104,6 +1104,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const editOriginalRef = React.useRef<any>(null);
   const headerMenu = useContextMenu();
   const cellMenu = useCellContextMenu();
+  const updateSelectDropdownSearch = React.useCallback((value: string) => {
+    setSelectDropdown((prev) => (prev ? { ...prev, search: value } : prev));
+  }, []);
   const formatClipboardRef = React.useRef<CellStyle | null>(null);
   const [ratingPreview, setRatingPreview] = React.useState<{ r: number; c: number; value: number } | null>(null);
   const [columnDragHover, setColumnDragHover] = React.useState<{ from: number; to: number } | null>(null);
@@ -1264,11 +1267,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   const gridRef = React.useRef<HTMLDivElement | null>(null);
   const editorRef = React.useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
-  const headerContextMenuRef = React.useRef<HTMLDivElement | null>(null);
-  const cellContextMenuRef = React.useRef<HTMLDivElement | null>(null);
   const tableContainerRef = React.useRef<HTMLDivElement | null>(null);
   const colWidthsRef = React.useRef(colWidths);
   const rowHeightsRef = React.useRef(rowHeights);
+  const lastSelectDropdownElementRef = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
     if (typeof loadingMoreRows === "boolean") {
@@ -1311,6 +1313,28 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     };
   }, []);
 
+  React.useLayoutEffect(() => {
+    if (!selectDropdown) {
+      setSelectDropdownAnchor(null);
+      lastSelectDropdownElementRef.current = null;
+      return;
+    }
+    const container = gridRef.current;
+    if (!container) return;
+    const selector = `[data-r="${selectDropdown.r}"][data-c="${selectDropdown.c}"]`;
+    const cell = container.querySelector(selector) as HTMLElement | null;
+    if (!cell) {
+      setSelectDropdownAnchor(null);
+      return;
+    }
+    if (lastSelectDropdownElementRef.current !== cell && typeof cell.scrollIntoView === "function") {
+      cell.scrollIntoView({ block: "nearest", inline: "nearest" });
+      lastSelectDropdownElementRef.current = cell;
+    }
+    const rect = cell.getBoundingClientRect();
+    setSelectDropdownAnchor({ element: cell, rect });
+  }, [selectDropdown, viewport.scrollLeft, viewport.scrollTop, colWidths, rowHeights]);
+
   const handleScroll = React.useCallback(() => {
     const el = tableContainerRef.current;
     if (!el) return;
@@ -1349,6 +1373,46 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     }
     setRowResizeGuide({ index, top, active, cursor });
   }, [rowResizeGuide]);
+
+  const headerMenuState = headerMenu.menu;
+  const closeHeaderMenu = headerMenu.close;
+  const cellMenuState = cellMenu.menu;
+  const closeCellMenu = cellMenu.close;
+
+  React.useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+
+      const insideSelectDropdown = Boolean(target.closest("[data-select-dropdown]"));
+      const insideHeaderContextMenu = Boolean(target.closest("[data-header-context-menu]"));
+      const headerAnchor = headerMenuState?.anchorElement ?? null;
+      const insideHeaderAnchor = headerAnchor ? headerAnchor.contains(target) : false;
+      if (headerMenuState && !(insideHeaderContextMenu || insideHeaderAnchor)) {
+        closeHeaderMenu();
+      }
+
+      const insideCellContextMenu = Boolean(target.closest("[data-cell-context-menu]"));
+      if (cellMenuState && !insideCellContextMenu) {
+        closeCellMenu();
+      }
+
+      const insideCellEditor = editorRef.current ? editorRef.current.contains(target) : false;
+
+      if (selectDropdown) {
+        if (!insideSelectDropdown) {
+          commitEdit();
+        }
+        return;
+      }
+
+      if (editing && !insideCellEditor) {
+        commitEdit();
+      }
+    };
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    return () => window.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [editing, selectDropdown, headerMenuState, closeHeaderMenu, cellMenuState, closeCellMenu, commitEdit]);
 
   function getCellValue(r: number, c: number) {
     const row = rows[r];
@@ -4040,6 +4104,105 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     loadMoreButton
   );
 
+  const selectDropdownElement = selectDropdown ? (() => {
+    const { r, c, mode, search } = selectDropdown;
+    const column = columns[c];
+    if (!column) return null;
+    const anchorElement = selectDropdownAnchor?.element ?? null;
+    const anchorRect = selectDropdownAnchor?.rect ?? null;
+    if (!anchorElement && !anchorRect) return null;
+    const dropdownMinWidth = Math.max(220, anchorRect?.width ?? 220);
+    const availableOptions =
+      mode === "multiple"
+        ? column.config?.multipleSelect?.options ?? []
+        : column.config?.singleSelect?.options ?? [];
+
+    const cloneOption = (option: SelectOption): SelectOption => ({
+      id: String(option.id ?? option.label ?? ""),
+      label: String(option.label ?? option.id ?? ""),
+      ...(option.color ? { color: option.color } : {})
+    });
+
+    if (mode === "multiple") {
+      const cellValue = getCellValue(r, c);
+      const selectedValues = Array.isArray(cellValue)
+        ? cellValue
+            .map((entry) => resolveOptionMeta(column, entry))
+            .filter((opt): opt is SelectOption => Boolean(opt))
+            .map(cloneOption)
+        : [];
+
+      const toggleOption = (option: SelectOption) => {
+        const identifier = optionIdentifier(option);
+        const currentIdentifiers = new Set(selectedValues.map((opt) => optionIdentifier(opt)));
+        let nextSelected: SelectOption[];
+        if (currentIdentifiers.has(identifier)) {
+          nextSelected = selectedValues.filter((opt) => optionIdentifier(opt) !== identifier);
+        } else {
+          nextSelected = [...selectedValues, cloneOption(option)];
+        }
+        setCellValue(r, c, nextSelected.map((opt) => ({ ...opt })));
+      };
+
+      const clearSelection = () => {
+        setCellValue(r, c, []);
+      };
+
+      return h(FloatingMenuSurface, {
+        key: "select-dropdown",
+        className: "fixed z-50 rounded-xl border border-zinc-200 bg-white p-0 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900",
+        anchorElement: anchorElement ?? undefined,
+        anchorRect: anchorElement ? undefined : anchorRect ?? undefined,
+        align: "start",
+        side: "bottom",
+        offset: 6,
+        style: { minWidth: `${dropdownMinWidth}px`, maxWidth: "360px" },
+        "data-select-dropdown": "true"
+      },
+        h(MultipleSelectDropdown, {
+          options: availableOptions,
+          selectedValues,
+          searchTerm: search,
+          onSearchChange: updateSelectDropdownSearch,
+          onToggle: toggleOption,
+          onClear: clearSelection,
+          onDone: () => commitEdit(),
+          onCancel: () => cancelEdit()
+        })
+      );
+    }
+
+    const cellValue = getCellValue(r, c);
+    const currentValue = resolveOptionMeta(column, cellValue);
+
+    const handleSelect = (option: SelectOption | null) => {
+      const normalized = option ? cloneOption(option) : null;
+      setCellValue(r, c, normalized);
+      commitEdit();
+    };
+
+    return h(FloatingMenuSurface, {
+      key: "select-dropdown",
+      className: "fixed z-50 rounded-xl border border-zinc-200 bg-white p-0 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900",
+      anchorElement: anchorElement ?? undefined,
+      anchorRect: anchorElement ? undefined : anchorRect ?? undefined,
+      align: "start",
+      side: "bottom",
+      offset: 6,
+      style: { minWidth: `${dropdownMinWidth}px`, maxWidth: "320px" },
+      "data-select-dropdown": "true"
+    },
+      h(SingleSelectDropdown, {
+        options: availableOptions,
+        currentValue: currentValue ? cloneOption(currentValue) : null,
+        searchTerm: search,
+        onSearchChange: updateSelectDropdownSearch,
+        onSelect: handleSelect,
+        onCancel: () => cancelEdit()
+      })
+    );
+  })() : null;
+
   /* Context menu UI */
   const headerContextMenu = headerMenu.menu && (() => {
     const {
@@ -4168,7 +4331,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       side,
       offset,
       point: { x, y },
-      onMouseLeave: () => headerMenu.close()
+      onMouseLeave: () => headerMenu.close(),
+      "data-header-context-menu": "true"
     }, ...sections);
   })();
 
@@ -4193,7 +4357,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       className: "fixed z-50 rounded-lg border bg-white dark:bg-neutral-900 shadow-xl p-2 text-sm min-w-[220px]",
       point: { x: cellMenu.menu!.x, y: cellMenu.menu!.y },
       offset: 8,
-      onMouseLeave: () => cellMenu.close()
+      onMouseLeave: () => cellMenu.close(),
+      "data-cell-context-menu": "true"
     },
       h("div", { className: "flex flex-col gap-1" },
         h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: async () => { await cutSelectionRange(sel); cellMenu.close(); } }, "Cut"),
@@ -4863,7 +5028,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     header,
     body,
     columnResizeGuideLine,
-    rowResizeGuideLine
+    rowResizeGuideLine,
+    selectDropdownElement
   );
 
   const confirmModalElement = confirmAction ? h("div", {
