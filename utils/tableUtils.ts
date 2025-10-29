@@ -299,6 +299,20 @@ export interface InteractiveTableProps<T extends Record<string, any> = any> {
  * ---------------------------------------------------------*/
 
 const h = React.createElement;
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
+type DropdownPlacement = "top" | "bottom";
+
+interface FloatingAnchorPosition {
+  x: number;
+  y: number;
+  columnIndex: number;
+  anchorRect?: DOMRect | DOMRectReadOnly | null;
+  anchorElement?: HTMLElement | null;
+  align?: "start" | "center" | "end";
+  side?: DropdownPlacement;
+  offset?: number;
+}
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
@@ -413,21 +427,254 @@ function useHistory<T extends Record<string, any>>(initial: HistoryEntry<T>) {
  * ---------------------------------------------------------*/
 
 function useContextMenu() {
-  const [menu, setMenu] = React.useState<null | {
-    x: number; y: number;
-    columnIndex: number;
-  }>(null);
+  const [menu, setMenu] = React.useState<FloatingAnchorPosition | null>(null);
 
   const open = (e: React.MouseEvent, columnIndex: number) => {
     e.preventDefault();
-    setMenu({ x: e.clientX, y: e.clientY, columnIndex });
+    const target = e.currentTarget as HTMLElement | null;
+    const rect = target?.getBoundingClientRect?.() ?? null;
+    setMenu({
+      x: e.clientX,
+      y: e.clientY,
+      columnIndex,
+      anchorRect: rect,
+      anchorElement: target,
+      align: "start",
+      side: "bottom",
+      offset: 8
+    });
   };
-  const openAt = (coords: { x: number; y: number; columnIndex: number }) => {
-    setMenu(coords);
+  const openAt = (coords: FloatingAnchorPosition) => {
+    setMenu({ ...coords, offset: coords.offset ?? 8 });
   };
   const close = () => setMenu(null);
 
   return { menu, open, openAt, close };
+}
+
+function useAutoDropdownPlacement(
+  isOpen: boolean,
+  triggerRef: React.RefObject<HTMLElement | null>,
+  menuRef: React.RefObject<HTMLElement | null>,
+  options?: { defaultPlacement?: DropdownPlacement; offset?: number }
+) {
+  const { defaultPlacement = "bottom", offset = 8 } = options ?? {};
+  const [placement, setPlacement] = React.useState<DropdownPlacement>(defaultPlacement);
+
+  useIsomorphicLayoutEffect(() => {
+    if (!isOpen) return;
+    if (typeof window === "undefined") return;
+
+    const update = () => {
+      const trigger = triggerRef.current;
+      const menu = menuRef.current;
+      if (!trigger || !menu) return;
+      const triggerRect = trigger.getBoundingClientRect();
+      const menuRect = menu.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - triggerRect.bottom;
+      const spaceAbove = triggerRect.top;
+      let nextPlacement: DropdownPlacement = defaultPlacement;
+
+      if (defaultPlacement === "bottom") {
+        nextPlacement =
+          spaceBelow >= menuRect.height + offset || spaceBelow >= spaceAbove
+            ? "bottom"
+            : "top";
+      } else {
+        nextPlacement =
+          spaceAbove >= menuRect.height + offset || spaceAbove >= spaceBelow
+            ? "top"
+            : "bottom";
+      }
+
+      setPlacement((prev) => (prev === nextPlacement ? prev : nextPlacement));
+
+      const availableSpace = nextPlacement === "bottom" ? spaceBelow : spaceAbove;
+      if (availableSpace < menuRect.height + offset) {
+        const maxHeight = Math.max(availableSpace - offset, 160);
+        menu.style.maxHeight = `${Math.max(120, maxHeight)}px`;
+        menu.style.overflowY = "auto";
+      } else {
+        menu.style.maxHeight = "";
+        menu.style.overflowY = "";
+      }
+    };
+
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [isOpen, triggerRef, menuRef, defaultPlacement, offset]);
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      setPlacement(defaultPlacement);
+      const menu = menuRef.current;
+      if (menu) {
+        menu.style.maxHeight = "";
+        menu.style.overflowY = "";
+      }
+    }
+  }, [isOpen, defaultPlacement, menuRef]);
+
+  return placement;
+}
+
+interface FloatingMenuSurfaceProps extends React.HTMLAttributes<HTMLDivElement> {
+  anchorElement?: HTMLElement | null;
+  anchorRect?: DOMRect | DOMRectReadOnly | null;
+  align?: "start" | "center" | "end";
+  side?: DropdownPlacement;
+  offset?: number;
+  point?: { x: number; y: number };
+}
+
+function FloatingMenuSurface({
+  anchorElement,
+  anchorRect,
+  align = "start",
+  side = "bottom",
+  offset = 8,
+  point,
+  className,
+  style,
+  children,
+  ...rest
+}: FloatingMenuSurfaceProps) {
+  const menuRef = React.useRef<HTMLDivElement | null>(null);
+  const [coords, setCoords] = React.useState<{ left: number; top: number }>({
+    left: point?.x ?? 0,
+    top: point?.y ?? 0
+  });
+  const [placement, setPlacement] = React.useState<DropdownPlacement>(side);
+
+  useIsomorphicLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    const updatePosition = () => {
+      const el = menuRef.current;
+      if (!el) return;
+      const offsetValue = offset ?? 8;
+      const resolvedAnchorRect =
+        anchorElement?.getBoundingClientRect?.() ?? anchorRect ?? null;
+      const rect = el.getBoundingClientRect();
+      let left = point?.x ?? coords.left;
+      let top = point?.y ?? coords.top;
+      let nextPlacement: DropdownPlacement = side ?? "bottom";
+
+      if (resolvedAnchorRect) {
+        const alignValue = align ?? "start";
+        if (alignValue === "center") {
+          left = resolvedAnchorRect.left + resolvedAnchorRect.width / 2 - rect.width / 2;
+        } else if (alignValue === "end") {
+          left = resolvedAnchorRect.right - rect.width;
+        } else {
+          left = resolvedAnchorRect.left;
+        }
+
+        const spaceBelow = window.innerHeight - resolvedAnchorRect.bottom;
+        const spaceAbove = resolvedAnchorRect.top;
+
+        if ((side ?? "bottom") === "bottom") {
+          nextPlacement =
+            spaceBelow >= rect.height + offsetValue || spaceBelow >= spaceAbove
+              ? "bottom"
+              : "top";
+        } else {
+          nextPlacement =
+            spaceAbove >= rect.height + offsetValue || spaceAbove >= spaceBelow
+              ? "top"
+              : "bottom";
+        }
+
+        top =
+          nextPlacement === "bottom"
+            ? resolvedAnchorRect.bottom + offsetValue
+            : resolvedAnchorRect.top - rect.height - offsetValue;
+
+        const availableVertical =
+          nextPlacement === "bottom" ? spaceBelow : spaceAbove;
+        if (availableVertical < rect.height + offsetValue) {
+          const maxHeight = Math.max(availableVertical - offsetValue, 160);
+          el.style.maxHeight = `${Math.max(120, maxHeight)}px`;
+          el.style.overflowY = "auto";
+        } else {
+          el.style.maxHeight = "";
+          el.style.overflowY = "";
+        }
+      } else if (point) {
+        const maxLeft = window.innerWidth - rect.width - offsetValue;
+        const maxTop = window.innerHeight - rect.height - offsetValue;
+        left = clamp(point.x, offsetValue, Math.max(offsetValue, maxLeft));
+        top = clamp(point.y, offsetValue, Math.max(offsetValue, maxTop));
+        el.style.maxHeight = "";
+        el.style.overflowY = "";
+      }
+
+      left = clamp(
+        left,
+        offsetValue,
+        Math.max(offsetValue, window.innerWidth - rect.width - offsetValue)
+      );
+      top = clamp(
+        top,
+        offsetValue,
+        Math.max(offsetValue, window.innerHeight - rect.height - offsetValue)
+      );
+
+      setCoords((prev) =>
+        Math.abs(prev.left - left) > 0.5 || Math.abs(prev.top - top) > 0.5
+          ? { left, top }
+          : prev
+      );
+      setPlacement((prev) => (prev === nextPlacement ? prev : nextPlacement));
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [
+    anchorElement,
+    anchorRect,
+    align,
+    side,
+    offset,
+    point?.x,
+    point?.y,
+    children
+  ]);
+
+  React.useEffect(() => {
+    return () => {
+      const el = menuRef.current;
+      if (el) {
+        el.style.maxHeight = "";
+        el.style.overflowY = "";
+      }
+    };
+  }, []);
+
+  return h("div", {
+    ref: (node: HTMLDivElement | null) => {
+      menuRef.current = node;
+    },
+    className,
+    style: {
+      ...style,
+      position: "fixed",
+      left: `${coords.left}px`,
+      top: `${coords.top}px`
+    },
+    "data-placement": placement,
+    ...rest
+  }, children);
 }
 
 function useCellContextMenu() {
@@ -3062,7 +3309,16 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   /* Context menu UI */
   const headerContextMenu = headerMenu.menu && (() => {
-    const { columnIndex, x, y } = headerMenu.menu;
+    const {
+      columnIndex,
+      x,
+      y,
+      anchorElement,
+      anchorRect,
+      align,
+      side,
+      offset
+    } = headerMenu.menu;
     const column = columns[columnIndex];
     if (!column) return null;
     const optionClass = (disabled?: boolean) => mergeClasses(
@@ -3168,12 +3424,17 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     }
     pushSection("advanced", advancedOptions);
 
-    return h("div", {
+    return h(FloatingMenuSurface, {
       className: mergeClasses(
         cx("contextMenu", ""),
         "fixed z-50 min-w-[240px] rounded-xl border bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
       ),
-      style: { left: `${x}px`, top: `${y}px` },
+      anchorElement,
+      anchorRect,
+      align,
+      side,
+      offset,
+      point: { x, y },
       onMouseLeave: () => headerMenu.close()
     }, ...sections);
   })();
@@ -3195,9 +3456,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         ? "bg-blue-100 border-blue-300 text-blue-600 dark:bg-blue-500/20 dark:text-blue-200 dark:border-blue-500/40"
         : "border-zinc-200 hover:bg-zinc-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
     );
-    return h("div", {
+    return h(FloatingMenuSurface, {
       className: "fixed z-50 rounded-lg border bg-white dark:bg-neutral-900 shadow-xl p-2 text-sm min-w-[220px]",
-      style: { left: `${cellMenu.menu!.x}px`, top: `${cellMenu.menu!.y}px` },
+      point: { x: cellMenu.menu!.x, y: cellMenu.menu!.y },
+      offset: 8,
       onMouseLeave: () => cellMenu.close()
     },
       h("div", { className: "flex flex-col gap-1" },
