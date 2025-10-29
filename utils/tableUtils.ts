@@ -5,30 +5,42 @@ import {
   FaAlignCenter,
   FaAlignLeft,
   FaAlignRight,
+  FaArrowLeft,
+  FaArrowRight,
   FaBold,
   FaCalendarAlt,
   FaCheckSquare,
+  FaChevronDown,
   FaChevronLeft,
   FaChevronRight,
+  FaClone,
   FaClock,
   FaColumns,
   FaDollarSign,
   FaEnvelope,
+  FaEyeSlash,
+  FaFilter,
   FaFont,
   FaHeart,
   FaGripVertical,
   FaHashtag,
   FaHourglassHalf,
-  FaLayerGroup,
+  FaInfoCircle,
   FaItalic,
+  FaLayerGroup,
   FaLink,
   FaListOl,
   FaListUl,
+  FaLock,
   FaPaperclip,
+  FaPencilAlt,
   FaPercent,
   FaPhoneAlt,
   FaProjectDiagram,
   FaSearch,
+  FaSlidersH,
+  FaSortAmountDown,
+  FaSortAmountUp,
   FaStar,
   FaStream,
   FaTag,
@@ -41,6 +53,7 @@ import {
   FaHistory,
   FaUserEdit,
   FaUserPlus,
+  FaTrash,
   FaWpforms
 } from "react-icons/fa";
 import { PiFunctionFill } from "react-icons/pi";
@@ -184,6 +197,9 @@ export interface ColumnSpec<T extends Record<string, any> = any> {
   name: string;
   type: ColumnType;
   width?: number; // px
+  description?: string;
+  permissions?: string;
+  hidden?: boolean;
   /** Per-type configuration */
   config?: {
     number?: {
@@ -376,9 +392,12 @@ function useContextMenu() {
     e.preventDefault();
     setMenu({ x: e.clientX, y: e.clientY, columnIndex });
   };
+  const openAt = (coords: { x: number; y: number; columnIndex: number }) => {
+    setMenu(coords);
+  };
   const close = () => setMenu(null);
 
-  return { menu, open, close };
+  return { menu, open, openAt, close };
 }
 
 function useCellContextMenu() {
@@ -533,6 +552,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   }, [columns, colWidths.length, minColumnWidth]);
   React.useEffect(() => { colWidthsRef.current = colWidths; }, [colWidths]);
   React.useEffect(() => { rowHeightsRef.current = rowHeights; }, [rowHeights]);
+  React.useEffect(() => () => {
+    if (headerMenuHoverTimer.current != null) {
+      window.clearTimeout(headerMenuHoverTimer.current);
+      headerMenuHoverTimer.current = null;
+    }
+  }, []);
 
   /* selection & editing */
   const [selection, setSelection] = React.useState<Selection>(null);
@@ -552,6 +577,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const tableContainerRef = React.useRef<HTMLDivElement | null>(null);
   const colWidthsRef = React.useRef(colWidths);
   const rowHeightsRef = React.useRef(rowHeights);
+  const headerMenuHoverTimer = React.useRef<number | null>(null);
 
   const updateColumnGuidePosition = React.useCallback((index: number, clientX: number, active: boolean) => {
     const container = tableContainerRef.current;
@@ -1015,6 +1041,70 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     commit(nextRows, nextCols);
   }
 
+  function duplicateColumn(idx: number) {
+    const source = columns[idx];
+    if (!source) return;
+    const copy = deepClone(source);
+    copy.name = `${String(copy.name)} copy`;
+    copy.key = uniqueColumnKey(columns, String(copy.key));
+    copy.hidden = false;
+    insertColumnAtIndex(idx + 1, copy);
+  }
+
+  function promptColumnDescription(idx: number) {
+    if (typeof window === "undefined") return;
+    const col = columns[idx];
+    if (!col) return;
+    const current = col.description ?? "";
+    const value = window.prompt("Edit field description", current);
+    if (value === null) return;
+    const nextCols = deepClone(columns);
+    nextCols[idx].description = value.trim() || undefined;
+    setColumns(nextCols);
+    commit(rows, nextCols);
+  }
+
+  function promptColumnPermissions(idx: number) {
+    if (typeof window === "undefined") return;
+    const col = columns[idx];
+    if (!col) return;
+    const current = col.permissions ?? "";
+    const value = window.prompt("Edit field permissions", current || "Read/write");
+    if (value === null) return;
+    const nextCols = deepClone(columns);
+    nextCols[idx].permissions = value.trim() || undefined;
+    setColumns(nextCols);
+    commit(rows, nextCols);
+  }
+
+  async function copyFieldUrlToClipboard(idx: number) {
+    const col = columns[idx];
+    if (!col) return;
+    const key = encodeURIComponent(String(col.key));
+    let base = "https://example.com";
+    if (typeof window !== "undefined" && window.location) {
+      base = window.location.origin || base;
+    }
+    const url = `${base.replace(/\/$/, "")}/field/${key}`;
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else if (typeof document !== "undefined") {
+        const textarea = document.createElement("textarea");
+        textarea.value = url;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "absolute";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+    } catch {
+      /* noop */
+    }
+  }
+
   function dropColumnStyles(row: any, key: string) {
     if (!row?.[STYLE_FIELD]) return row;
     const styles = { ...row[STYLE_FIELD] };
@@ -1193,6 +1283,21 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     commit(next, columns);
   }
 
+  function sortCheckboxColumn(idx: number, direction: "uncheckedFirst" | "checkedFirst") {
+    const col = columns[idx];
+    if (!col || col.type !== "checkbox") return;
+    const key = col.key as keyof T;
+    const sorted = deepClone(rows).sort((a, b) => {
+      const av = !!(a as any)[key];
+      const bv = !!(b as any)[key];
+      if (av === bv) return 0;
+      return direction === "uncheckedFirst" ? (av ? 1 : -1) : (av ? -1 : 1);
+    });
+    setRows(sorted);
+    latestRowsRef.current = sorted;
+    commit(sorted, columns);
+  }
+
   /* copy / paste */
   React.useEffect(() => {
     function onCopy(e: ClipboardEvent) {
@@ -1247,6 +1352,26 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       document.removeEventListener("keydown", onKey);
     };
   }, [selection, activeCell, columns.length, applyMatrixAt, clearSelectionCells, removeRows, undo, redo, selectionToMatrix]);
+
+  React.useEffect(() => {
+    if (!detailsModal) return;
+    function onKey(ev: KeyboardEvent) {
+      if (ev.key === "Escape") {
+        setDetailsModal(null);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    const originalOverflow = typeof document !== "undefined" ? document.body.style.overflow : "";
+    if (typeof document !== "undefined") {
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      if (typeof document !== "undefined") {
+        document.body.style.overflow = originalOverflow;
+      }
+    };
+  }, [detailsModal]);
 
   async function copySelectionToClipboard(sel: Selection) {
     if (!sel || typeof navigator === "undefined" || !navigator.clipboard) return;
@@ -1760,10 +1885,59 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
                 if (e.key === "Escape") setHeaderEditing(null);
               }
             })
-          : h("div", { className: "flex items-center gap-2 truncate" },
-              renderColumnIcon(col.type),
-              h("span", { className: "truncate text-zinc-700 dark:text-zinc-200 font-medium" }, String(col.name))
-            ),
+          : (() => {
+              const icon = renderColumnIcon(col.type);
+              const openFromTarget = (target: HTMLElement, delay = 0) => {
+                if (!target) return;
+                if (headerMenuHoverTimer.current != null) {
+                  window.clearTimeout(headerMenuHoverTimer.current);
+                  headerMenuHoverTimer.current = null;
+                }
+                const trigger = () => {
+                  const rect = target.getBoundingClientRect();
+                  headerMenu.openAt({
+                    x: rect.left + rect.width / 2,
+                    y: rect.bottom + 6,
+                    columnIndex: c
+                  });
+                };
+                if (delay > 0) {
+                  headerMenuHoverTimer.current = window.setTimeout(() => {
+                    trigger();
+                    headerMenuHoverTimer.current = null;
+                  }, delay);
+                } else {
+                  trigger();
+                }
+              };
+              const cancelHoverOpen = () => {
+                if (headerMenuHoverTimer.current != null) {
+                  window.clearTimeout(headerMenuHoverTimer.current);
+                  headerMenuHoverTimer.current = null;
+                }
+              };
+              return h("div", { className: "flex items-center gap-2 truncate" },
+                icon,
+                h("span", { className: "flex-1 truncate text-zinc-700 dark:text-zinc-200 font-medium" }, String(col.name)),
+                h("button", {
+                  type: "button",
+                  className: "inline-flex h-6 w-6 items-center justify-center rounded hover:bg-blue-100 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-neutral-700",
+                  onClick: (ev: React.MouseEvent<HTMLButtonElement>) => {
+                    ev.stopPropagation();
+                    ev.preventDefault();
+                    openFromTarget(ev.currentTarget);
+                  },
+                  onMouseEnter: (ev: React.MouseEvent<HTMLButtonElement>) => {
+                    ev.stopPropagation();
+                    openFromTarget(ev.currentTarget, 120);
+                  },
+                  onMouseLeave: () => cancelHoverOpen(),
+                  "aria-haspopup": "menu",
+                  "aria-expanded": headerMenu.menu?.columnIndex === c ? "true" : "false",
+                  title: "Column options"
+                }, h(FaChevronDown, { className: "h-3.5 w-3.5" }))
+              );
+            })(),
         // header resizer
         h("div", {
           className: mergeClasses(
@@ -2019,28 +2193,82 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   );
 
   /* Context menu UI */
-  const headerContextMenu = headerMenu.menu && h("div", {
-    className: mergeClasses(cx("contextMenu",""), "fixed z-50 rounded-lg border bg-white dark:bg-neutral-900 shadow-xl p-2 text-sm"),
-    style: { left: `${headerMenu.menu.x}px`, top: `${headerMenu.menu.y}px` },
-    onMouseLeave: () => headerMenu.close()
-  },
-    h("button", { className: "block w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { deleteColumn(headerMenu.menu!.columnIndex); headerMenu.close(); } }, "Delete column"),
-    h("button", { className: "block w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { setHeaderEditing(headerMenu.menu!.columnIndex); headerMenu.close(); } }, "Rename column"),
-    h("div", { className: "border-t my-1" }),
-    h("div", { className: "px-3 py-1 text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400" }, "Change type"),
-    h("div", { className: "max-h-56 overflow-auto" },
-      ...ALL_TYPES.map((opt) =>
-        h("button", {
-          key: opt.value,
-          className: "block w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-neutral-800",
-          onClick: () => { changeColumnType(headerMenu.menu!.columnIndex, opt.value); headerMenu.close(); }
-        }, h("span", { className: "flex items-center gap-2" },
-            renderColumnIcon(opt.value),
-            h("span", null, opt.label)
-          ))
-      )
-    )
-  );
+  const headerContextMenu = headerMenu.menu && (() => {
+    const { columnIndex, x, y } = headerMenu.menu;
+    const column = columns[columnIndex];
+    if (!column) return null;
+    const optionClass = (disabled?: boolean) => mergeClasses(
+      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+      disabled
+        ? "opacity-40 cursor-not-allowed"
+        : "hover:bg-blue-50 text-zinc-700 dark:text-zinc-200 dark:hover:bg-neutral-800"
+    );
+    const makeOption = (
+      label: string,
+      Icon: React.ComponentType<{ className?: string }>,
+      handler: () => void | Promise<void>,
+      disabled = false
+    ) => h("button", {
+      key: label,
+      type: "button",
+      className: optionClass(disabled),
+      onClick: async () => {
+        if (disabled) return;
+        await handler();
+        headerMenu.close();
+      }
+    },
+      h(Icon, { className: "h-4 w-4 text-blue-500 dark:text-blue-400" }),
+      h("span", { className: "flex-1 text-left" }, label)
+    );
+
+    const checkboxOptions = column.type === "checkbox"
+      ? [
+          makeOption("Sort ☐ → ☑", FaSortAmountUp, () => sortCheckboxColumn(columnIndex, "uncheckedFirst")),
+          makeOption("Sort ☑ → ☐", FaSortAmountDown, () => sortCheckboxColumn(columnIndex, "checkedFirst"))
+        ]
+      : [];
+
+    const groups = [
+      [
+        makeOption("Edit field", FaPencilAlt, () => setHeaderEditing(columnIndex)),
+        makeOption("Duplicate field", FaClone, () => duplicateColumn(columnIndex)),
+        makeOption("Insert left", FaArrowLeft, () => insertColumnAtIndex(columnIndex)),
+        makeOption("Insert right", FaArrowRight, () => insertColumnAtIndex(columnIndex + 1)),
+        makeOption("Copy field URL", FaLink, () => copyFieldUrlToClipboard(columnIndex)),
+        makeOption("Edit field description", FaInfoCircle, () => promptColumnDescription(columnIndex)),
+        makeOption("Edit field permissions", FaLock, () => promptColumnPermissions(columnIndex))
+      ],
+      checkboxOptions,
+      [
+        makeOption("Filter by this field", FaFilter, () => {
+          setSearchTerm(String(column.name ?? ""));
+          setSearchOpen(true);
+        }),
+        makeOption("Group by this field", FaLayerGroup, () => console.info("Group by field not yet implemented.")),
+        makeOption("Show dependencies", FaSlidersH, () => console.info("Field dependencies not yet implemented.")),
+        makeOption("Hide field", FaEyeSlash, () => console.info("Hide field not yet implemented.")),
+        makeOption("Delete field", FaTrash, () => removeColumnsByIndex([columnIndex]))
+      ]
+    ];
+
+    return h("div", {
+      className: mergeClasses(
+        cx("contextMenu", ""),
+        "fixed z-50 min-w-[240px] rounded-xl border bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+      ),
+      style: { left: `${x}px`, top: `${y}px` },
+      onMouseLeave: () => headerMenu.close()
+    },
+      ...groups
+        .filter((section) => section.length)
+        .map((section, idx) => [
+          idx > 0 ? h("div", { key: `divider-${idx}`, className: "border-t border-zinc-200 dark:border-neutral-700 my-1" }) : null,
+          ...section.map((item, itemIdx) => React.cloneElement(item, { key: `opt-${idx}-${itemIdx}` }))
+        ])
+        .flat()
+    );
+  })();
 
   const cellContextMenu = cellMenu.menu && (() => {
     const sel = cellMenu.menu!.selection;
@@ -2226,6 +2454,39 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     rowResizeGuideLine
   );
 
+  const activeModalRow = detailsModal ? rows[detailsModal.rowIndex] : null;
+  const modalTitle = detailsModal && activeModalRow
+    ? String((activeModalRow as any)?.title ?? `Row ${detailsModal.rowIndex + 1}`)
+    : "";
+  const modalDetailsContent = detailsModal && renderDetails && activeModalRow
+    ? renderDetails(activeModalRow as T, detailsModal.rowIndex)
+    : detailsModal
+      ? h("div", null, "No details renderer provided.")
+      : null;
+
+  const detailsModalElement = detailsModal && activeModalRow ? h("div", {
+    className: "fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6",
+    onClick: () => setDetailsModal(null),
+    role: "dialog",
+    "aria-modal": "true"
+  },
+    h("div", {
+      className: "relative max-h-[90vh] w-full max-w-3xl overflow-auto rounded-2xl border border-blue-200 bg-white p-6 shadow-2xl dark:border-neutral-700 dark:bg-neutral-950",
+      onClick: (ev: React.MouseEvent) => ev.stopPropagation()
+    },
+      h("div", { className: "mb-4 flex items-center justify-between gap-3" },
+        h("h2", { className: "text-lg font-semibold text-blue-600 dark:text-blue-300" }, `Details — ${modalTitle}`),
+        h("button", {
+          className: "inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white text-sm hover:bg-blue-50 dark:bg-neutral-900 dark:hover:bg-neutral-800",
+          onClick: () => setDetailsModal(null),
+          title: "Close details",
+          type: "button"
+        }, "×")
+      ),
+      h("div", { className: "prose max-w-none text-sm dark:prose-invert" }, modalDetailsContent ?? h("div", null, "No details available."))
+    )
+  ) : null;
+
   /* Container */
   const mainContent = h("div",
     { className: mergeClasses(cx("container","rounded-2xl border p-3 bg-white dark:bg-neutral-950/80 flex-1")) },
@@ -2239,7 +2500,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     sidebarElement,
     mainContent,
     headerContextMenu,
-    cellContextMenu
+    cellContextMenu,
+    detailsModalElement
   );
 }
 
