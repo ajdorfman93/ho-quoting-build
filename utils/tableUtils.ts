@@ -10,6 +10,7 @@ import {
   FaBold,
   FaCalendarAlt,
   FaCheckSquare,
+  FaCheck,
   FaChevronDown,
   FaClone,
   FaClock,
@@ -42,6 +43,7 @@ import {
   FaSortAmountDown,
   FaSortAmountUp,
   FaStar,
+  FaTimes,
   FaStream,
   FaTag,
   FaTags,
@@ -213,6 +215,105 @@ export interface SelectOption {
   id: string;
   label: string;
   color?: string;
+}
+
+type RGBColor = { r: number; g: number; b: number };
+type OptionPillStyle = { backgroundColor: string; borderColor: string; color: string };
+
+const DEFAULT_OPTION_PILL_STYLE: OptionPillStyle = {
+  backgroundColor: "rgba(63,63,70,0.85)",
+  borderColor: "rgba(148,163,184,0.25)",
+  color: "#f8fafc"
+};
+
+function parseHexColor(input?: string | null): RGBColor | null {
+  if (!input) return null;
+  const hex = input.trim();
+  const match = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex);
+  if (!match) return null;
+  let value = match[1];
+  if (value.length === 3) {
+    value = value.split("").map((ch) => ch + ch).join("");
+  }
+  const int = parseInt(value, 16);
+  return {
+    r: (int >> 16) & 0xff,
+    g: (int >> 8) & 0xff,
+    b: int & 0xff
+  };
+}
+
+function mixWithWhite(base: RGBColor, amount: number): RGBColor {
+  const clampAmount = Math.max(0, Math.min(1, amount));
+  return {
+    r: Math.round(base.r + (255 - base.r) * clampAmount),
+    g: Math.round(base.g + (255 - base.g) * clampAmount),
+    b: Math.round(base.b + (255 - base.b) * clampAmount)
+  };
+}
+
+function rgbToCss(rgb: RGBColor, alpha = 1): string {
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+}
+
+function readableTextColor(background: RGBColor): string {
+  const luminance = 0.2126 * background.r + 0.7152 * background.g + 0.0722 * background.b;
+  return luminance > 150 ? "#111827" : "#f8fafc";
+}
+
+function optionPillStylesFromColor(color?: string | null): OptionPillStyle {
+  const rgb = parseHexColor(color);
+  if (!rgb) return DEFAULT_OPTION_PILL_STYLE;
+  const background = mixWithWhite(rgb, 0.65);
+  const border = mixWithWhite(rgb, 0.4);
+  return {
+    backgroundColor: rgbToCss(background),
+    borderColor: rgbToCss(border),
+    color: readableTextColor(background)
+  };
+}
+
+function resolveOptionMeta<T extends Record<string, any>>(
+  column: ColumnSpec<T>,
+  value: unknown
+): SelectOption | null {
+  if (value == null || value === "") return null;
+  const candidate =
+    typeof value === "object" && value !== null
+      ? (value as Partial<SelectOption>)
+      : null;
+  const rawId = candidate?.id ?? (typeof value === "string" ? value : undefined);
+  const rawLabel = candidate?.label ?? (typeof value === "string" ? value : undefined);
+  const id = rawId != null ? String(rawId).trim() : "";
+  const label = rawLabel != null ? String(rawLabel).trim() : id;
+
+  const available =
+    column.config?.singleSelect?.options ??
+    column.config?.multipleSelect?.options ??
+    [];
+
+  const match =
+    available.find((opt) => {
+      const optId = opt.id != null ? String(opt.id).trim() : "";
+      const optLabel = opt.label != null ? String(opt.label).trim() : "";
+      if (id && optId && optId.localeCompare(id, undefined, { sensitivity: "accent" }) === 0) return true;
+      if (label && optLabel && optLabel.localeCompare(label, undefined, { sensitivity: "accent" }) === 0) return true;
+      return false;
+    }) ?? null;
+
+  if (match) {
+    return {
+      ...match,
+      color: candidate?.color ?? match.color
+    };
+  }
+
+  if (!id && !label) return null;
+  return {
+    id: id || label || "",
+    label: label || id || "",
+    color: candidate?.color
+  };
 }
 
 export interface ColumnSpec<T extends Record<string, any> = any> {
