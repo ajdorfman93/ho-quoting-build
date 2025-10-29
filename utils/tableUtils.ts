@@ -539,7 +539,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const [activeCell, setActiveCell] = React.useState<{ r: number; c: number } | null>(null);
   const [editing, setEditing] = React.useState<{ r: number; c: number } | null>(null);
   const [headerEditing, setHeaderEditing] = React.useState<number | null>(null);
-  const [expanded, setExpanded] = React.useState<Record<number, boolean>>({});
+  const [detailsModal, setDetailsModal] = React.useState<{ rowIndex: number } | null>(null);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [columnResizeHover, setColumnResizeHover] = React.useState<number | null>(null);
@@ -1258,11 +1258,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       setActiveCell({ r, c });
     }
     cellMenu.open(e, nextSelection);
-  }
-
-  /* Expand / collapse details (with optional button) */
-  function toggleExpand(idx: number) {
-    setExpanded((prev) => ({ ...prev, [idx]: !prev[idx] }));
   }
 
   /* Column header: rename on double click */

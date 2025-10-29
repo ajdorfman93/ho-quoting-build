@@ -19,7 +19,7 @@ type Row = {
   done: boolean;
 };
 
-export interface InteractiveGridState<T> {
+export interface InteractiveGridState<T extends Record<string, unknown>> {
   rows: T[];
   columns: ColumnSpec<T>[];
 }
