@@ -1556,8 +1556,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       case "longText": {
         const valueString = String(val ?? "");
         const lineCount = Math.min(8, Math.max(1, valueString.split(/\r?\n/).length));
-?
-/).length));
         return h("textarea", {
           ...commonProps,
           className: mergeClasses(baseEditorClass, "resize-none whitespace-pre-wrap leading-snug"),
