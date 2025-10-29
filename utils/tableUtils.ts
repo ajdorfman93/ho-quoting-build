@@ -1,6 +1,40 @@
 // utils/tableUtils.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as React from "react";
+import {
+  FaAlignLeft,
+  FaCalendarAlt,
+  FaCheckSquare,
+  FaClock,
+  FaColumns,
+  FaDollarSign,
+  FaEnvelope,
+  FaFont,
+  FaGripVertical,
+  FaHashtag,
+  FaHourglassHalf,
+  FaLayerGroup,
+  FaLink,
+  FaListOl,
+  FaListUl,
+  FaPaperclip,
+  FaPercent,
+  FaPhoneAlt,
+  FaProjectDiagram,
+  FaSearch,
+  FaStar,
+  FaStream,
+  FaTag,
+  FaTags,
+  FaTh,
+  FaThLarge,
+  FaUser,
+  FaHistory,
+  FaUserEdit,
+  FaUserPlus,
+  FaWpforms
+} from "react-icons/fa";
+import { PiFunctionFill } from "react-icons/pi";
 
 /* -----------------------------------------------------------
  * 1) Existing utility exports (kept compatible with page.tsx)
@@ -65,6 +99,73 @@ export type ColumnType =
   | "createdBy"
   | "lastModifiedBy"
   | "linkToRecord";
+
+type CellStyle = {
+  background?: string;
+  color?: string;
+};
+
+const STYLE_FIELD = "__styles";
+
+type ViewDefinition = {
+  id: string;
+  name: string;
+  icon: React.ComponentType<{ className?: string }>;
+  colorClass: string;
+  group: "primary" | "secondary";
+};
+
+const VIEW_DEFINITIONS: ViewDefinition[] = [
+  { id: "grid", name: "Grid", icon: FaThLarge, colorClass: "text-blue-500", group: "primary" },
+  { id: "calendar", name: "Calendar", icon: FaCalendarAlt, colorClass: "text-orange-500", group: "primary" },
+  { id: "gallery", name: "Gallery", icon: FaTh, colorClass: "text-blue-500", group: "primary" },
+  { id: "kanban", name: "Kanban", icon: FaColumns, colorClass: "text-green-500", group: "primary" },
+  { id: "timeline", name: "Timeline", icon: FaProjectDiagram, colorClass: "text-pink-500", group: "primary" },
+  { id: "list", name: "List", icon: FaListUl, colorClass: "text-blue-500", group: "primary" },
+  { id: "gantt", name: "Gantt", icon: FaStream, colorClass: "text-teal-500", group: "primary" },
+  { id: "form", name: "Form", icon: FaWpforms, colorClass: "text-purple-500", group: "secondary" },
+  { id: "section", name: "Section", icon: FaLayerGroup, colorClass: "text-gray-500", group: "secondary" }
+];
+
+const VIEW_DEFINITION_MAP = VIEW_DEFINITIONS.reduce(
+  (acc, def) => ({ ...acc, [def.id]: def }),
+  {} as Record<ViewDefinition["id"], ViewDefinition>
+);
+
+type ViewType = ViewDefinition["id"];
+
+const columnTypeIconMap: Partial<Record<ColumnType, React.ComponentType<{ className?: string }>>> = {
+  singleLineText: FaFont,
+  longText: FaAlignLeft,
+  attachment: FaPaperclip,
+  checkbox: FaCheckSquare,
+  multipleSelect: FaTags,
+  singleSelect: FaTag,
+  user: FaUser,
+  date: FaCalendarAlt,
+  phone: FaPhoneAlt,
+  email: FaEnvelope,
+  url: FaLink,
+  number: FaHashtag,
+  currency: FaDollarSign,
+  percent: FaPercent,
+  duration: FaHourglassHalf,
+  rating: FaStar,
+  formula: PiFunctionFill,
+  rollup: FaLayerGroup,
+  count: FaListOl,
+  lookup: FaSearch,
+  createdTime: FaClock,
+  lastModifiedTime: FaHistory,
+  createdBy: FaUserPlus,
+  lastModifiedBy: FaUserEdit,
+  linkToRecord: FaLink
+};
+
+function renderColumnIcon(type: ColumnType) {
+  const Icon = columnTypeIconMap[type];
+  return Icon ? h(Icon, { className: "w-4 h-4 shrink-0 text-zinc-500 dark:text-zinc-300" }) : null;
+}
 
 export interface SelectOption {
   id: string;
