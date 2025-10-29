@@ -17,7 +17,6 @@ import {
   FaColumns,
   FaDollarSign,
   FaEnvelope,
-  FaEye,
   FaEyeSlash,
   FaFilter,
   FaFont,
@@ -3419,6 +3418,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     onCancel
   }: SingleSelectDropdownProps) {
     const searchRef = React.useRef<HTMLInputElement | null>(null);
+    const [activeIndex, setActiveIndex] = React.useState<number>(-1);
+    const currentIdentifier = currentValue ? optionIdentifier(currentValue) : null;
+
     React.useEffect(() => {
       searchRef.current?.focus();
     }, []);
@@ -3427,11 +3429,57 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       ? options.filter((option) => option.label.toLowerCase().includes(normalizedSearch))
       : options;
 
+    React.useEffect(() => {
+      if (!filteredOpts.length) {
+        setActiveIndex(-1);
+        return;
+      }
+      const matchedIndex = currentIdentifier
+        ? filteredOpts.findIndex((opt) => optionIdentifier(opt) === currentIdentifier)
+        : -1;
+      if (matchedIndex >= 0) {
+        setActiveIndex((prev) => (prev === matchedIndex ? prev : matchedIndex));
+        return;
+      }
+      setActiveIndex((prev) => {
+        if (prev >= 0 && prev < filteredOpts.length) {
+          return prev;
+        }
+        return 0;
+      });
+    }, [filteredOpts, currentIdentifier]);
+
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
         onCancel();
+        return;
+      }
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        if (!filteredOpts.length) return;
+        setActiveIndex((prev) => {
+          const next = prev < filteredOpts.length - 1 ? prev + 1 : filteredOpts.length - 1;
+          return next < 0 ? 0 : next;
+        });
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        if (!filteredOpts.length) return;
+        setActiveIndex((prev) => {
+          const next = prev > 0 ? prev - 1 : 0;
+          return next;
+        });
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const option = filteredOpts[activeIndex] ?? filteredOpts[0];
+        if (option) {
+          onSelect(option);
+        }
       }
     };
 
@@ -3444,43 +3492,35 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           onChange: (event: React.ChangeEvent<HTMLInputElement>) => onSearchChange(event.target.value),
           onKeyDown: handleKeyDown,
           className: "w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
-          placeholder: "Search options"
+          placeholder: "Find an option"
         })
       ),
-      currentValue ? h("div", { className: "flex items-center justify-between px-3 text-xs text-zinc-500 dark:text-neutral-400" },
-        h("span", null, `Selected: ${currentValue.label}`),
-        h("button", {
-          type: "button",
-          className: "font-medium text-blue-600 hover:underline dark:text-blue-300",
-          onClick: () => onSelect(null)
-        }, "Clear")
-      ) : null,
       h("div", { className: "max-h-60 overflow-y-auto py-1", role: "listbox" },
         filteredOpts.length
-          ? filteredOpts.map((option) => {
-              const isSelected = currentValue != null && optionIdentifier(currentValue) === optionIdentifier(option);
-              const swatchStyle: React.CSSProperties = option.color
-                ? { backgroundColor: option.color, borderColor: option.color }
-                : {};
+          ? filteredOpts.map((option, idx) => {
+              const identifier = optionIdentifier(option);
+              const isSelected = currentIdentifier === identifier;
+              const isActive = idx === activeIndex;
+              const pillStyle = optionPillStylesFromColor(option.color);
               return h("button", {
-                key: option.id,
+                key: option.id ?? option.label,
                 type: "button",
                 className: mergeClasses(
                   "flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors",
-                  isSelected
-                    ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-200"
-                    : "hover:bg-zinc-100 dark:hover:bg-neutral-800"
+                  isActive ? "bg-zinc-100 dark:bg-neutral-800" : "hover:bg-zinc-100 dark:hover:bg-neutral-800",
+                  isSelected && !isActive && "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-200"
                 ),
                 onClick: () => onSelect(option),
+                onMouseEnter: () => setActiveIndex(idx),
                 role: "option",
                 "aria-selected": isSelected ? "true" : "false"
               },
-                h("span", {
-                  className: "h-2.5 w-2.5 rounded-full border border-zinc-300",
-                  style: swatchStyle
-                }),
-                h("span", { className: "flex-1 text-left" }, option.label),
-                isSelected ? h(FaCheck, { className: "h-3.5 w-3.5" }) : null
+                h("span", { className: "flex-1 text-left" },
+                  h("span", {
+                    className: "inline-flex max-w-full items-center rounded-full border px-3 py-1 text-sm font-medium",
+                    style: pillStyle
+                  }, option.label)
+                )
               );
             })
           : h("div", { className: "px-3 py-2 text-sm text-zinc-400 dark:text-neutral-500" }, "No options found")
@@ -4249,21 +4289,24 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     } = headerMenu.menu;
     const column = columns[columnIndex];
     if (!column) return null;
-    const optionClass = (disabled?: boolean) => mergeClasses(
-      "flex items-center gap-2 rounded-lg px-3 py-1 text-sm transition-colors",
+    const optionClass = (disabled?: boolean, danger?: boolean) => mergeClasses(
+      "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors text-left",
       disabled
-        ? "opacity-40 cursor-not-allowed"
-        : "hover:bg-blue-50 text-zinc-700 dark:text-zinc-200 dark:hover:bg-neutral-800"
+        ? "cursor-not-allowed opacity-40"
+        : danger
+          ? "text-red-600 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10"
+          : "text-zinc-700 hover:bg-blue-50 dark:text-zinc-200 dark:hover:bg-neutral-800"
     );
     const makeOption = (
       label: string,
       Icon: React.ComponentType<{ className?: string }>,
       handler: () => void | Promise<void>,
-      disabled = false
+      disabled = false,
+      danger = false
     ) => h("button", {
       key: label,
       type: "button",
-      className: optionClass(disabled),
+      className: optionClass(disabled, danger),
       onClick: async () => {
         if (disabled) return;
         await handler();
@@ -4274,42 +4317,22 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       h("span", { className: "flex-1 text-left" }, label)
     );
 
-    const primaryOptions = [
+    const columnKey = String(column.key ?? columnIndex);
+    const divider = (key: string) =>
+      h("div", { key, className: "my-1 border-t border-zinc-200 dark:border-neutral-700" });
+
+    const options: React.ReactNode[] = [
       makeOption("Edit field", FaPencilAlt, () => setHeaderEditing(columnIndex)),
       makeOption("Duplicate field", FaClone, () => duplicateColumn(columnIndex)),
       makeOption("Insert left", FaArrowLeft, () => insertColumnAtIndex(columnIndex)),
       makeOption("Insert right", FaArrowRight, () => insertColumnAtIndex(columnIndex + 1)),
       makeOption("Copy field URL", FaLink, () => copyFieldUrlToClipboard(columnIndex)),
       makeOption("Edit field description", FaInfoCircle, () => promptColumnDescription(columnIndex)),
-      makeOption("Edit field permissions", FaLock, () => promptColumnPermissions(columnIndex))
-    ];
-
-    const typeSection = [
-      h("div", { key: "type-heading", className: "px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-neutral-500" }, "Change type"),
-      ...ALL_TYPES.map((opt) =>
-        h("button", {
-          key: `type-${opt.value}`,
-          type: "button",
-          className: "flex items-center gap-2 px-3 py-1 text-sm rounded-lg hover:bg-blue-50 text-zinc-700 dark:text-zinc-200 dark:hover:bg-neutral-800",
-          onClick: () => {
-            changeColumnType(columnIndex, opt.value);
-            headerMenu.close();
-          }
-        },
-          renderColumnIcon(opt.value),
-          h("span", { className: "flex-1 text-left" }, opt.label)
-        )
-      )
-    ];
-
-    const checkboxOptions = column.type === "checkbox"
-      ? [
-          makeOption("Sort [ ] -> [x]", FaSortAmountUp, () => sortCheckboxColumn(columnIndex, "uncheckedFirst")),
-          makeOption("Sort [x] -> [ ]", FaSortAmountDown, () => sortCheckboxColumn(columnIndex, "checkedFirst"))
-        ]
-      : [];
-
-    const advancedOptions = [
+      makeOption("Edit field permissions", FaLock, () => promptColumnPermissions(columnIndex)),
+      divider("divider-actions"),
+      makeOption("Sort First \u2192 Last", FaSortAmountDown, () => handleSortApply(columnKey, "asc")),
+      makeOption("Sort Last \u2192 First", FaSortAmountUp, () => handleSortApply(columnKey, "desc")),
+      divider("divider-data"),
       makeOption("Filter by this field", FaFilter, () => {
         setSearchTerm(String(column.name ?? ""));
         setSearchOpen(true);
@@ -4317,40 +4340,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       makeOption("Group by this field", FaLayerGroup, () => console.info("Group by field not yet implemented.")),
       makeOption("Show dependencies", FaSlidersH, () => console.info("Field dependencies not yet implemented.")),
       makeOption("Hide field", FaEyeSlash, () => hideColumn(columnIndex)),
-      makeOption("Delete field", FaTrash, () => requestRemoveColumns([columnIndex]))
+      makeOption("Delete field", FaTrash, () => requestRemoveColumns([columnIndex]), false, true)
     ];
-
-    const hiddenSection = hiddenColumns.length
-      ? [
-          h("div", { key: "hidden-heading", className: "px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-neutral-500" }, "Hidden fields"),
-          ...hiddenColumns.map((entry, hiddenIdx) =>
-            makeOption(`Show ${String(entry.column.name)}`, FaEye, () => restoreHiddenColumn(hiddenIdx))
-          )
-        ]
-      : [];
-
-    const sections: React.ReactNode[] = [];
-    const pushSection = (key: string, nodes: React.ReactNode[]) => {
-      if (!nodes.length) return;
-      if (sections.length) {
-        sections.push(h("div", { key: `${key}-divider`, className: "border-t border-zinc-200 dark:border-neutral-700 my-1" }));
-      }
-      sections.push(...nodes.map((node, idx) =>
-        React.isValidElement(node) && !node.key
-          ? React.cloneElement(node, { key: `${key}-${idx}` })
-          : node
-      ));
-    };
-
-    pushSection("primary", primaryOptions);
-    pushSection("types", typeSection);
-    if (checkboxOptions.length) {
-      pushSection("checkbox", checkboxOptions);
-    }
-    if (hiddenSection.length) {
-      pushSection("hidden", hiddenSection);
-    }
-    pushSection("advanced", advancedOptions);
 
     return h(FloatingMenuSurface, {
       className: mergeClasses(
@@ -4365,7 +4356,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       point: { x, y },
       onMouseLeave: () => headerMenu.close(),
       "data-header-context-menu": "true"
-    }, ...sections);
+    }, ...options);
   })();
 
   const cellContextMenu = cellMenu.menu && (() => {
