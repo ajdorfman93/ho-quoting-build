@@ -2362,7 +2362,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       makeOption("Group by this field", FaLayerGroup, () => console.info("Group by field not yet implemented.")),
       makeOption("Show dependencies", FaSlidersH, () => console.info("Field dependencies not yet implemented.")),
       makeOption("Hide field", FaEyeSlash, () => hideColumn(columnIndex)),
-      makeOption("Delete field", FaTrash, () => removeColumnsByIndex([columnIndex]))
+      makeOption("Delete field", FaTrash, () => requestRemoveColumns([columnIndex]))
     ];
 
     const hiddenSection = hiddenColumns.length
