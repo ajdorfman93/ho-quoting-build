@@ -18,6 +18,7 @@ import {
   FaEnvelope,
   FaEye,
   FaEyeSlash,
+  FaCheck,
   FaFilter,
   FaFont,
   FaHeart,
@@ -44,6 +45,7 @@ import {
   FaStream,
   FaTag,
   FaTags,
+  FaTextHeight,
   FaTh,
   FaThLarge,
   FaCircle,
@@ -151,6 +153,15 @@ type ViewDefinition = {
   colorClass: string;
   group: "primary" | "secondary";
 };
+
+const ROW_HEIGHT_PRESETS = {
+  short: 34,
+  medium: 52,
+  tall: 76,
+  extraTall: 104
+} as const;
+
+type RowHeightPreset = keyof typeof ROW_HEIGHT_PRESETS;
 
 const VIEW_DEFINITIONS: ViewDefinition[] = [
   { id: "grid", name: "Grid", icon: FaThLarge, colorClass: "text-blue-500", group: "primary" },
@@ -512,6 +523,37 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const viewsTriggerRef = React.useRef<HTMLButtonElement | null>(null);
   const viewsDropdownRef = React.useRef<HTMLDivElement | null>(null);
   const viewsDropdownId = React.useId();
+  const [fieldsMenuOpen, setFieldsMenuOpen] = React.useState(false);
+  const fieldsButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  const fieldsMenuRef = React.useRef<HTMLDivElement | null>(null);
+  const [filterMenuOpen, setFilterMenuOpen] = React.useState(false);
+  const filterButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  const filterMenuRef = React.useRef<HTMLDivElement | null>(null);
+  const [groupMenuOpen, setGroupMenuOpen] = React.useState(false);
+  const groupButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  const groupMenuRef = React.useRef<HTMLDivElement | null>(null);
+  const [sortMenuOpen, setSortMenuOpen] = React.useState(false);
+  const sortButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  const sortMenuRef = React.useRef<HTMLDivElement | null>(null);
+  const [colorMenuOpen, setColorMenuOpen] = React.useState(false);
+  const colorButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  const colorMenuRef = React.useRef<HTMLDivElement | null>(null);
+  const [rowHeightMenuOpen, setRowHeightMenuOpen] = React.useState(false);
+  const rowHeightButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  const rowHeightMenuRef = React.useRef<HTMLDivElement | null>(null);
+  const [rowHeightPreset, setRowHeightPreset] = React.useState<RowHeightPreset>("short");
+  const rowHeightPresetRef = React.useRef<RowHeightPreset>("short");
+  const [wrapHeaders, setWrapHeaders] = React.useState(false);
+  React.useEffect(() => {
+    rowHeightPresetRef.current = rowHeightPreset;
+  }, [rowHeightPreset]);
+  const [filterDraftColumn, setFilterDraftColumn] = React.useState<string>("");
+  const [filterDraftOperator, setFilterDraftOperator] = React.useState<"contains" | "equals">("contains");
+  const [filterDraftValue, setFilterDraftValue] = React.useState("");
+  const [activeFilters, setActiveFilters] = React.useState<Array<{ columnKey: string; operator: "contains" | "equals"; term: string }>>([]);
+  const [sortConfig, setSortConfig] = React.useState<{ columnKey: string; direction: "asc" | "desc" } | null>(null);
+  const [groupConfig, setGroupConfig] = React.useState<{ columnKey: string } | null>(null);
+  const [colorConfig, setColorConfig] = React.useState<{ columnKey: string } | null>(null);
   const columnDragRef = React.useRef<{ from: number } | null>(null);
   const rowDragRef = React.useRef<{ from: number } | null>(null);
   const editOriginalRef = React.useRef<any>(null);
