@@ -1386,9 +1386,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           type: "file",
           multiple: true,
           onChange: (e: any) => {
-            const files: Array<{ name: string; url: string }> = Array.from(e.target.files || []).map((f: File) => ({
-              name: f.name, url: URL.createObjectURL(f)
-            }));
+            const files: Array<{ name: string; url: string }> = Array.from(
+              e.target.files ?? [],
+              (f: File) => ({
+                name: f.name, url: URL.createObjectURL(f)
+              })
+            );
             setCellValue(r, c, files);
             commitEdit();
           }
