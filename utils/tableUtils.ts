@@ -1182,11 +1182,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     latestRowsRef.current = nextRows;
     setRowHeights((prev) => {
       const nextHeights = prev.slice();
+      const fallbackHeight = ROW_HEIGHT_PRESETS[rowHeightPresetRef.current] ?? minRowHeight;
       const inserts = heights && heights.length === newRows.length
         ? heights
-        : newRows.map(() => minRowHeight);
+        : newRows.map(() => fallbackHeight);
       inserts.forEach((h, offset) => {
-        nextHeights.splice(safeIndex + offset, 0, h ?? minRowHeight);
+        const heightValue = h ?? fallbackHeight;
+        nextHeights.splice(safeIndex + offset, 0, heightValue);
       });
       return nextHeights;
     });
@@ -1578,8 +1580,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         setRowHeights((prev) => {
           if (prev.length >= requiredRowCount) return prev;
           const nextHeights = prev.slice();
+          const presetHeight = ROW_HEIGHT_PRESETS[rowHeightPresetRef.current] ?? minRowHeight;
           while (nextHeights.length < requiredRowCount) {
-            nextHeights.push(minRowHeight);
+            nextHeights.push(presetHeight);
           }
           return nextHeights;
         });
