@@ -126,8 +126,10 @@
     14. on hover of a cell, show a light border around the cell to indicate it is hoverable.
     15. on hover of an edge of a column header or row, make the whole edge more blue and 2.5px to indicate it is draggable for resizing.
     16. all icons should match text height and be vertically centered.
-    17. when resizing a column or row, show a vertical or horizontal line that follows the mouse to indicate the new size.
+    17. Handle Resizer:
+    when resizing a column or row, show a 4px x 25px handle that follows the mouse to indicate the new size. this handle should slide along the edge being resized. now the whole edge lights up, but a handle would be better. a handle is a small rectangle that follows the mouse along the edge being resized. and by follow along the edge, I mean it should only move in one direction (horizontally for column resizing, vertically for row resizing).
     18. when hovering/resizing a column or row, show a vertical or horizontal bar that follows the mouse sliding along the edge to indicate edge is draggable.
+    confirm there are no duplicate lines lighting up when hovering or duplicate handles appearing when resizing.
     19. make Expand details button expand as a fullscreen popup modal instead of expanding the row height.
     20. make this list a dropdown for each column header:
         open on hover or click of a down arrow icon next to the column name.
@@ -147,3 +149,45 @@
         Show dependencies — sliders/controls icon.
         Hide field — eye with a slash icon.
         Delete field — trash can icon.
+    21. add a load more button at the bottom of the table when there are more rows to load.
+    22. implement virtual scrolling for performance with large datasets. Only render the rows and columns that are visible in the viewport.
+    23. add a confirmation modal when deleting rows or columns to prevent accidental deletions.
+    24. table snapshots isbeing covered by the table in airtable rebuild page. adjust z-indexes to ensure the snapshots dropdown appears above the table.
+    25. prompt user to set type and name when creating a new column.
+    26. the aria-label="Table views" tab should be a dropdown that only appears when the 'Create new...' button is clicked, and disappears when clicking outside of it.
+    27. when pasting data into the table, automatically create new rows if the pasted data exceeds the current number of rows.
+    28. include all tables in the airtable page. this is the list of all json files that all require a table on the airtable page: 
+        airtable\csv-json\Accentra Catalogue-Grid view.json
+        airtable\csv-json\Area Tags-Grid view.json
+        airtable\csv-json\Component Summary-Grid view.json
+        airtable\csv-json\Component Type-Grid view.json
+        airtable\csv-json\Components copy-Grid view.json
+        airtable\csv-json\Components-Grid view.json
+        airtable\csv-json\Customers-quote.json
+        airtable\csv-json\Doors Staging-Grid view.json
+        airtable\csv-json\Field Mapping-Grid view.json
+        airtable\csv-json\File Uploads-Grid view.json
+        airtable\csv-json\Group Output-Grid view.json
+        airtable\csv-json\Hardware Items-Grid view.json
+        airtable\csv-json\Hardware Set Items-Grid view.json
+        airtable\csv-json\Hardware Sets-Grid view.json
+        airtable\csv-json\Hardware Staging-Grid view.json
+        airtable\csv-json\Item Categories-Grid view.json
+        airtable\csv-json\Markup Overrides-Grid view.json
+        airtable\csv-json\Openings-Grid view.json
+        airtable\csv-json\Price Overrides-Grid view.json
+        airtable\csv-json\Projects-Grid view.json
+        airtable\csv-json\Quote Line Items-Grid view.json
+        airtable\csv-json\Staging-Grid view.json
+        airtable\csv-json\Submittals-Grid view.json
+    29. column dropdown menu is getting cut off at the bottom of the screen. make it open upwards when there is not enough space below the column header. also apply this logic to other dropdowns that may be cut off by the viewport edges.
+    30. when editing a cell near the bottom of the viewport, make sure the entire cell is visible by scrolling the table if necessary.
+    31. add the ability to drag and drop table tabs to reorder them.
+    32. add clicking the header from a column selects that entire column.
+    33. add a numbering system at the left of each row, and add clicking the number from a row selects that entire row. on
+    34. on hover the row number become a checkbox to select the row.
+    35. add select all checkbox in the top left corner of the table to select/deselect all rows.
+    36. column header dropdown menu button should float to the right and should be hidden by default and only appear when hovering over the column header. and dropdown menu should only appear when clicking the button, not on hover of the entire column header.
+    37.  all dropdowns and filters work in app/page but Grid view, Hide Fields, Filter, Group, Sort, Color and Undo do not work in app/airtable/page yet.
+    fix these issues.
+    38. when changing a column type type to single select or multiple select, preserve existing values by mapping them to new options.

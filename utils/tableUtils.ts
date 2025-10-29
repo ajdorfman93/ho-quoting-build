@@ -2959,47 +2959,163 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       }
       case "multipleSelect": {
         const opts = col.config?.multipleSelect?.options ?? [];
-        return h("div", { className: "absolute inset-0 z-20 flex items-center gap-2 px-2" },
-          h("input", {
-            className: "flex-1 rounded border px-2 py-1",
-            placeholder: "Type and press Enter to add",
-            onKeyDown: (e: any) => {
-              if (e.key === "Enter" && e.currentTarget.value.trim()) {
-                const label = e.currentTarget.value.trim();
-                const nextArr: SelectOption[] = Array.isArray(val) ? [...val] : [];
-                let found = opts.find((o) => o.label === label);
-                if (!found) found = { id: label, label };
-                nextArr.push(found);
-                setCellValue(r, c, nextArr);
-                e.currentTarget.value = "";
-              }
-            },
-            onBlur: commitEdit
-          }),
-          h("div", { className: "flex flex-wrap gap-1" },
-            ...(Array.isArray(val) ? (val as SelectOption[]).map((o, i) =>
-              h("span", {
-                key: o.id + i,
-                className: "rounded-full border px-2 py-0.5 text-xs"
-              }, o.label)
-            ) : [])
+        const selectedValues = Array.isArray(val) ? (val as SelectOption[]) : [];
+        const [searchTerm, setSearchTerm] = React.useState("");
+        const filteredOpts = opts.filter((o) => 
+          o.label.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+        const toggleOption = (option: SelectOption) => {
+          const isSelected = selectedValues.some((v) => v.id === option.id);
+          const nextArr = isSelected
+            ? selectedValues.filter((v) => v.id !== option.id)
+            : [...selectedValues, option];
+          setCellValue(r, c, nextArr);
+        };
+        
+        const removeOption = (option: SelectOption) => {
+          const nextArr = selectedValues.filter((v) => v.id !== option.id);
+          setCellValue(r, c, nextArr);
+        };
+        
+        return h("div", { 
+          className: "absolute inset-0 z-20 flex flex-col bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-2xl",
+          style: { minHeight: "280px" }
+        },
+          // Selected items display
+          selectedValues.length > 0 ? h("div", { 
+            className: "flex flex-wrap gap-1.5 px-3 py-2 border-b border-[#2a2a2a]" 
+          },
+            ...selectedValues.map((o) => {
+              const bgColor = o.color || "#4a5568";
+              return h("span", {
+                key: o.id,
+                className: "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-white",
+                style: { backgroundColor: bgColor }
+              },
+                o.label,
+                h("button", {
+                  type: "button",
+                  className: "ml-1 hover:opacity-70",
+                  onClick: (e: any) => {
+                    e.stopPropagation();
+                    removeOption(o);
+                  }
+                }, "×")
+              );
+            })
+          ) : null,
+          // Search input
+          h("div", { className: "px-3 py-2 border-b border-[#2a2a2a]" },
+            h("input", {
+              type: "text",
+              className: "w-full bg-[#0a0a0a] text-white text-sm px-3 py-1.5 rounded border border-[#3a3a3a] focus:border-[#4a9eff] focus:outline-none placeholder-gray-500",
+              placeholder: "Find an option",
+              value: searchTerm,
+              onChange: (e: any) => setSearchTerm(e.target.value),
+              autoFocus: true
+            })
+          ),
+          // Options list
+          h("div", { 
+            className: "flex-1 overflow-y-auto px-2 py-1",
+            style: { maxHeight: "200px" }
+          },
+            filteredOpts.length > 0
+              ? filteredOpts.map((o) => {
+                  const isSelected = selectedValues.some((v) => v.id === o.id);
+                  const bgColor = o.color || "#4a5568";
+                  return h("button", {
+                    key: o.id,
+                    type: "button",
+                    className: "w-full text-left px-3 py-2 rounded hover:bg-[#2a2a2a] transition-colors flex items-center gap-2",
+                    onClick: () => toggleOption(o)
+                  },
+                    h("span", {
+                      className: "inline-block rounded-md px-2 py-1 text-xs font-medium text-white",
+                      style: { backgroundColor: bgColor }
+                    }, o.label),
+                    isSelected ? h("span", { className: "ml-auto text-[#4a9eff] text-xs" }, "✓") : null
+                  );
+                })
+              : h("div", { className: "px-3 py-2 text-sm text-gray-500" }, "No options found")
+          ),
+          // Footer
+          h("div", { className: "px-3 py-2 border-t border-[#2a2a2a] flex justify-end" },
+            h("button", {
+              type: "button",
+              className: "px-3 py-1 text-xs rounded bg-[#4a9eff] text-white hover:bg-[#3a8eef]",
+              onClick: commitEdit
+            }, "Done")
           )
         );
       }
       case "singleSelect": {
         const opts = col.config?.singleSelect?.options ?? [];
-        return h("select", {
-          ...commonProps,
-          className: baseEditorClass,
-          defaultValue: (val && (val as SelectOption).id) || "",
-          onChange: (e: any) => {
-            const found = opts.find((o) => o.id === e.target.value) ?? null;
-            setCellValue(r, c, found);
-            commitEdit();
-          }
+        const currentValue = val as SelectOption | null;
+        const [searchTerm, setSearchTerm] = React.useState("");
+        const filteredOpts = opts.filter((o) => 
+          o.label.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+        const selectOption = (option: SelectOption | null) => {
+          setCellValue(r, c, option);
+          commitEdit();
+        };
+        
+        return h("div", { 
+          className: "absolute inset-0 z-20 flex flex-col bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-2xl",
+          style: { minHeight: "280px" }
         },
-          h("option", { value: "" }, "-"),
-          ...opts.map((o) => h("option", { key: o.id, value: o.id }, o.label))
+          // Current selection display
+          currentValue ? h("div", { 
+            className: "px-3 py-2 border-b border-[#2a2a2a] flex items-center justify-between" 
+          },
+            h("span", {
+              className: "inline-block rounded-md px-2 py-1 text-xs font-medium text-white",
+              style: { backgroundColor: currentValue.color || "#4a5568" }
+            }, currentValue.label),
+            h("button", {
+              type: "button",
+              className: "text-gray-400 hover:text-white text-xs",
+              onClick: () => selectOption(null)
+            }, "Clear")
+          ) : null,
+          // Search input
+          h("div", { className: "px-3 py-2 border-b border-[#2a2a2a]" },
+            h("input", {
+              type: "text",
+              className: "w-full bg-[#0a0a0a] text-white text-sm px-3 py-1.5 rounded border border-[#3a3a3a] focus:border-[#4a9eff] focus:outline-none placeholder-gray-500",
+              placeholder: "Find an option",
+              value: searchTerm,
+              onChange: (e: any) => setSearchTerm(e.target.value),
+              autoFocus: true
+            })
+          ),
+          // Options list
+          h("div", { 
+            className: "flex-1 overflow-y-auto px-2 py-1",
+            style: { maxHeight: "200px" }
+          },
+            filteredOpts.length > 0
+              ? filteredOpts.map((o) => {
+                  const isSelected = currentValue?.id === o.id;
+                  const bgColor = o.color || "#4a5568";
+                  return h("button", {
+                    key: o.id,
+                    type: "button",
+                    className: "w-full text-left px-3 py-2 rounded hover:bg-[#2a2a2a] transition-colors flex items-center gap-2",
+                    onClick: () => selectOption(o)
+                  },
+                    h("span", {
+                      className: "inline-block rounded-md px-2 py-1 text-xs font-medium text-white",
+                      style: { backgroundColor: bgColor }
+                    }, o.label),
+                    isSelected ? h("span", { className: "ml-auto text-[#4a9eff] text-xs" }, "✓") : null
+                  );
+                })
+              : h("div", { className: "px-3 py-2 text-sm text-gray-500" }, "No options found")
+          )
         );
       }
       case "attachment":
@@ -3146,20 +3262,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           isDraggingColumnHeader && "opacity-60 scale-[0.98] bg-blue-50/60 dark:bg-neutral-800/50",
           columnFullySelected && "bg-blue-100 text-blue-700 dark:bg-neutral-700/80 dark:text-blue-100"
         ),
-        style: (() => {
-          const base: React.CSSProperties = {
-            width: `${colWidths[c]}px`,
-            minWidth: `${colWidths[c]}px`,
-            maxWidth: `${colWidths[c]}px`,
-            transform: isDraggingColumnHeader ? "scale(0.98)" : undefined
-          };
-          if (isColumnEdgeActive) {
-            const color = isColumnResizing ? "rgba(37,99,235,0.9)" : "rgba(59,130,246,0.65)";
-            base.borderRightWidth = "2.5px";
-            base.borderRightColor = color;
-          }
-          return base;
-        })(),
+        style: {
+          width: `${colWidths[c]}px`,
+          minWidth: `${colWidths[c]}px`,
+          maxWidth: `${colWidths[c]}px`,
+          transform: isDraggingColumnHeader ? "scale(0.98)" : undefined
+        },
         onDoubleClick: () => setHeaderEditing(c),
         onContextMenu: (e: React.MouseEvent) => headerMenu.open(e, c),
         role: "columnheader",
@@ -3226,8 +3334,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       h("div", {
         className: mergeClasses(
           cx("resizer", ""),
-          "absolute right-0 top-0 h-full cursor-col-resize transition-all",
-          isColumnResizing ? "w-2.5 bg-blue-500/90" : isColumnEdgeActive ? "w-2.5 bg-blue-400/70" : "w-1 bg-transparent"
+          "absolute right-0 top-0 h-full cursor-col-resize transition-all bg-transparent",
+          isColumnResizing || isColumnEdgeActive ? "w-2.5" : "w-1"
         ),
         draggable: false,
         "data-resize-handle": "true",
@@ -3293,10 +3401,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     }
     if (groupLabel) {
       rowStyle.borderTop = "1px solid rgba(148,163,184,0.35)";
-    }
-    if (isRowEdgeActive) {
-      const color = isRowResizing ? "rgba(37,99,235,0.9)" : "rgba(59,130,246,0.65)";
-      rowStyle.boxShadow = [rowStyle.boxShadow, `inset 0 -2.5px 0 0 ${color}`].filter(Boolean).join(", ");
     }
     const rowChildren: React.ReactNode[] = [
       h("button", {
@@ -3390,11 +3494,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         style.backgroundColor = "rgba(59,130,246,0.08)";
       } else if (inSel) {
         style.boxShadow = "inset 0 0 0 2px rgba(59,130,246,0.35)";
-      }
-      if (isColumnEdgeActive) {
-        const color = isColumnResizing ? "rgba(37,99,235,0.9)" : "rgba(59,130,246,0.6)";
-        const edgeShadow = `inset -2.5px 0 0 0 ${color}`;
-        style.boxShadow = style.boxShadow ? `${style.boxShadow}, ${edgeShadow}` : edgeShadow;
       }
       if (columnDragHover && columnDragHover.from === c) {
         style.opacity = 0.6;
@@ -3498,8 +3597,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       h("div", {
         key: `resizer-${r}`,
         className: mergeClasses(
-          "absolute bottom-0 left-0 right-0 cursor-row-resize transition-all",
-          isRowResizing ? "h-2.5 bg-blue-500/90" : isRowEdgeActive ? "h-2.5 bg-blue-400/70" : "h-1 bg-transparent"
+          "absolute bottom-0 left-0 right-0 cursor-row-resize transition-all bg-transparent",
+          isRowResizing || isRowEdgeActive ? "h-2.5" : "h-1"
         ),
         onMouseDown: (e: React.MouseEvent) => startRowResize(r, e),
         onMouseEnter: (e: React.MouseEvent) => {
@@ -3556,7 +3655,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   },
     h("button", {
       type: "button",
-      className: "rounded-full border px-4 py-1.5 text-sm bg-white dark:bg-neutral-900 disabled:opacity-50",
+      className: "rounded-full border px-4 py-1 text-sm bg-white dark:bg-neutral-900 disabled:opacity-50",
       disabled: isLoadMorePending || !onLoadMoreRows,
       onClick: handleLoadMoreRows
     }, isLoadMorePending ? "Loading…" : "Load more rows")
@@ -3601,7 +3700,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const column = columns[columnIndex];
     if (!column) return null;
     const optionClass = (disabled?: boolean) => mergeClasses(
-      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+      "flex items-center gap-2 rounded-lg px-3 py-1 text-sm transition-colors",
       disabled
         ? "opacity-40 cursor-not-allowed"
         : "hover:bg-blue-50 text-zinc-700 dark:text-zinc-200 dark:hover:bg-neutral-800"
@@ -3641,7 +3740,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         h("button", {
           key: `type-${opt.value}`,
           type: "button",
-          className: "flex items-center gap-3 px-3 py-1.5 text-sm rounded-lg hover:bg-blue-50 text-zinc-700 dark:text-zinc-200 dark:hover:bg-neutral-800",
+          className: "flex items-center gap-2 px-3 py-1 text-sm rounded-lg hover:bg-blue-50 text-zinc-700 dark:text-zinc-200 dark:hover:bg-neutral-800",
           onClick: () => {
             changeColumnType(columnIndex, opt.value);
             headerMenu.close();
@@ -3774,7 +3873,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       ),
       h("div", { className: "border-t my-2" }),
       h("div", { className: "px-3 py-1 text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400" }, "Colors & Fill"),
-      h("div", { className: "flex items-center gap-3 px-3 pb-2" },
+      h("div", { className: "flex items-center gap-2 px-3 pb-2" },
         h("label", { className: "flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-300" },
           "Fill",
           h("input", {
@@ -3829,7 +3928,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     id: viewsDropdownId,
     ref: viewsDropdownRef,
     className: mergeClasses(
-      "absolute right-0 z-40 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+      "absolute right-0 z-40 w-64 rounded-2xl border border-zinc-200 bg-white p-2 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
       viewsDropdownPlacement === "top"
         ? "bottom-full mb-2 origin-bottom-right"
         : "top-full mt-2 origin-top-right"
@@ -3930,7 +4029,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           role: "switch",
           "aria-checked": entry.visible ? "true" : "false",
           className: mergeClasses(
-            "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60",
+            "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60",
             entry.visible
               ? "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800"
               : "text-zinc-500 hover:bg-zinc-100/70 dark:text-neutral-400 dark:hover:bg-neutral-800/70",
@@ -3950,7 +4049,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           disabled: disableToggle,
           title
         },
-          h("div", { className: "flex flex-1 items-center gap-3" },
+          h("div", { className: "flex flex-1 items-center gap-2" },
             h("span", {
               className: mergeClasses(
                 "h-2.5 w-2.5 rounded-full transition ring-2 ring-transparent",
@@ -3977,7 +4076,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const fieldsMenu = fieldsMenuOpen ? h("div", {
     ref: fieldsMenuRef,
     className: mergeClasses(
-      "absolute left-0 z-40 w-80 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+      "absolute left-0 z-40 w-80 rounded-2xl border border-zinc-200 bg-white p-2 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
       fieldsMenuPlacement === "top" ? "bottom-full mb-2 origin-bottom-left" : "top-full mt-2 origin-top-left"
     ),
     role: "menu",
@@ -4044,7 +4143,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       h("select", {
         value: filterDraftColumn,
         onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setFilterDraftColumn(e.target.value),
-        className: "mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+        className: "mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-1 text-sm text-zinc-700 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
       },
         ...columns.map((col, idx) =>
           h("option", { key: `filter-field-${idx}`, value: String(col.key ?? idx) }, String(col.name ?? `Field ${idx + 1}`))
@@ -4056,7 +4155,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       h("select", {
         value: filterDraftOperator,
         onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setFilterDraftOperator(e.target.value as "contains" | "equals"),
-        className: "mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+        className: "mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-1 text-sm text-zinc-700 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
       },
         h("option", { value: "contains" }, "Contains"),
         h("option", { value: "equals" }, "Equals")
@@ -4067,7 +4166,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       h("input", {
         value: filterDraftValue,
         onChange: (e: React.ChangeEvent<HTMLInputElement>) => setFilterDraftValue(e.target.value),
-        className: "mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
+        className: "mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-1 text-sm text-zinc-700 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
         placeholder: "Enter value"
       })
     ),
@@ -4077,7 +4176,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         const comparator = filter.operator === "equals" ? "=" : "contains";
         return h("div", {
           key: `active-filter-${filter.columnKey}`,
-          className: "flex items-center justify-between rounded-lg bg-zinc-100 px-3 py-1.5 text-xs text-zinc-600 dark:bg-neutral-800 dark:text-neutral-200"
+          className: "flex items-center justify-between rounded-lg bg-zinc-100 px-3 py-1 text-xs text-zinc-600 dark:bg-neutral-800 dark:text-neutral-200"
         },
           h("span", null, `${columnName} ${comparator} "${filter.term}"`),
           h("button", {
@@ -4105,7 +4204,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const sortMenu = sortMenuOpen ? h("div", {
     ref: sortMenuRef,
     className: mergeClasses(
-      "absolute left-0 z-40 w-72 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+      "absolute left-0 z-40 w-72 rounded-2xl border border-zinc-200 bg-white p-2 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
       sortMenuPlacement === "top" ? "bottom-full mb-2 origin-bottom-left" : "top-full mt-2 origin-top-left"
     ),
     role: "menu",
@@ -4117,7 +4216,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       ...columns.map((col, idx) =>
         h("div", {
           key: `sort-${idx}`,
-          className: "flex items-center justify-between rounded-lg px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800"
+          className: "flex items-center justify-between rounded-lg px-3 py-1 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800"
         },
           h("span", { className: "truncate" }, String(col.name ?? `Field ${idx + 1}`)),
           h("div", { className: "flex items-center gap-1" },
@@ -4155,7 +4254,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const groupMenu = groupMenuOpen ? h("div", {
     ref: groupMenuRef,
     className: mergeClasses(
-      "absolute left-0 z-40 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+      "absolute left-0 z-40 w-64 rounded-2xl border border-zinc-200 bg-white p-2 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
       groupMenuPlacement === "top" ? "bottom-full mb-2 origin-bottom-left" : "top-full mt-2 origin-top-left"
     ),
     role: "menu",
@@ -4169,7 +4268,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           key: `group-${idx}`,
           type: "button",
           className: mergeClasses(
-            "w-full rounded-lg px-3 py-1.5 text-left text-sm text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800",
+            "w-full rounded-lg px-3 py-1 text-left text-sm text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800",
             groupConfig?.columnKey === String(col.key ?? idx) && "border border-blue-500 text-blue-600 bg-blue-500/10 dark:text-blue-300"
           ),
           onClick: () => handleGroupApply(String(col.key ?? idx))
@@ -4186,7 +4285,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const colorMenu = colorMenuOpen ? h("div", {
     ref: colorMenuRef,
     className: mergeClasses(
-      "absolute left-0 z-40 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+      "absolute left-0 z-40 w-64 rounded-2xl border border-zinc-200 bg-white p-2 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
       colorMenuPlacement === "top" ? "bottom-full mb-2 origin-bottom-left" : "top-full mt-2 origin-top-left"
     ),
     role: "menu",
@@ -4201,7 +4300,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
             key: `color-${idx}`,
             type: "button",
             className: mergeClasses(
-              "w-full rounded-lg px-3 py-1.5 text-left text-sm text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800",
+              "w-full rounded-lg px-3 py-1 text-left text-sm text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800",
               colorConfig?.columnKey === String(col.key ?? idx) && "border border-blue-500 text-blue-600 bg-blue-500/10 dark:text-blue-300"
             ),
             onClick: () => handleColorApply(String(col.key ?? idx))
@@ -4219,7 +4318,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const rowHeightMenu = rowHeightMenuOpen ? h("div", {
     ref: rowHeightMenuRef,
     className: mergeClasses(
-      "absolute right-0 z-40 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+      "absolute right-0 z-40 w-64 rounded-2xl border border-zinc-200 bg-white p-2 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
       rowHeightMenuPlacement === "top" ? "bottom-full mb-2 origin-bottom-right" : "top-full mt-2 origin-top-right"
     ),
     role: "menu",
@@ -4258,7 +4357,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   /* Toolbar (view controls, duplicate/delete rows, search) */
   const toolbar = h("div", {
-    className: mergeClasses(cx("toolbar",""), "flex flex-wrap items-center gap-3 py-2")
+    className: mergeClasses(cx("toolbar",""), "flex flex-wrap items-center gap-2 py-2")
   },
     h("div", { className: "flex flex-wrap items-center gap-2" },
       h("div", { className: "relative" },
@@ -4438,15 +4537,15 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
             : `Delete ${confirmAction.columns.length} fields (${names})? This will remove their values from all rows.`
         );
       })(),
-      h("div", { className: "mt-5 flex justify-end gap-3" },
+      h("div", { className: "mt-5 flex justify-end gap-2" },
         h("button", {
           type: "button",
-          className: "rounded-full border px-4 py-1.5 text-sm",
+          className: "rounded-full border px-4 py-1 text-sm",
           onClick: cancelDeletion
         }, "Cancel"),
         h("button", {
           type: "button",
-          className: "rounded-full bg-red-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-red-700",
+          className: "rounded-full bg-red-600 px-4 py-1 text-sm font-semibold text-white hover:bg-red-700",
           onClick: confirmDeletion
         }, confirmAction.type === "deleteRows"
           ? (confirmAction.range.count === 1 ? "Delete row" : `Delete ${confirmAction.range.count} rows`)
@@ -4475,7 +4574,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       className: "relative max-h-[90vh] w-full max-w-3xl overflow-auto rounded-2xl border border-blue-200 bg-white p-6 shadow-2xl dark:border-neutral-700 dark:bg-neutral-950",
       onClick: (ev: React.MouseEvent) => ev.stopPropagation()
     },
-      h("div", { className: "mb-4 flex items-center justify-between gap-3" },
+      h("div", { className: "mb-4 flex items-center justify-between gap-2" },
         h("h2", { className: "text-lg font-semibold text-blue-600 dark:text-blue-300" }, `Details - ${modalTitle}`),
         h("button", {
           className: "inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white text-sm hover:bg-blue-50 dark:bg-neutral-900 dark:hover:bg-neutral-800",
@@ -4490,7 +4589,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   /* Container */
   const mainContent = h("div",
-    { className: mergeClasses(cx("container","rounded-2xl border p-3 bg-white dark:bg-neutral-950/80 flex-1")) },
+    { className: mergeClasses(cx("container","rounded-2xl border p-2 bg-white dark:bg-neutral-950/80 flex-1")) },
     toolbar,
     searchBox,
     tableContent
