@@ -1691,6 +1691,20 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     className: "pointer-events-none absolute border-2 border-dashed border-blue-400 bg-blue-400/10",
     style: { top: `${rowPlaceholderTop}px`, left: 0, right: 0, height: `${rowPlaceholderHeight}px` }
   }) : null;
+  const columnResizeGuideLine = columnResizeGuide ? h("div", {
+    className: mergeClasses(
+      "pointer-events-none absolute top-0 bottom-0 w-[2.5px]",
+      columnResizeGuide.active ? "bg-blue-500/90" : "bg-blue-400/70"
+    ),
+    style: { left: `${columnResizeGuide.left}px` }
+  }) : null;
+  const rowResizeGuideLine = rowResizeGuide ? h("div", {
+    className: mergeClasses(
+      "pointer-events-none absolute left-0 right-0 h-[2.5px]",
+      rowResizeGuide.active ? "bg-blue-500/90" : "bg-blue-400/70"
+    ),
+    style: { top: `${rowResizeGuide.top}px` }
+  }) : null;
 
   const header = h("div",
     {
@@ -1700,6 +1714,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     ...columns.map((col, c) => {
       const isEditing = headerEditing === c;
       const isDraggingColumnHeader = columnDragHover && columnDragHover.from === c;
+      const isColumnEdgeActive = columnResizeHover === c || (columnResizeGuide && columnResizeGuide.index === c);
+      const isColumnResizing = !!(columnResizeGuide?.active && columnResizeGuide.index === c);
       return h("div",
         {
           key: colKey(col, c),
@@ -1708,12 +1724,20 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
             "flex items-center gap-2 px-3 transition-transform",
             isDraggingColumnHeader && "opacity-60 scale-[0.98] bg-blue-50/60 dark:bg-neutral-800/50"
           ),
-          style: {
-            width: `${colWidths[c]}px`,
-            minWidth: `${colWidths[c]}px`,
-            maxWidth: `${colWidths[c]}px`,
-            transform: isDraggingColumnHeader ? "scale(0.98)" : undefined
-          },
+          style: (() => {
+            const base: React.CSSProperties = {
+              width: `${colWidths[c]}px`,
+              minWidth: `${colWidths[c]}px`,
+              maxWidth: `${colWidths[c]}px`,
+              transform: isDraggingColumnHeader ? "scale(0.98)" : undefined
+            };
+            if (isColumnEdgeActive) {
+              const color = isColumnResizing ? "rgba(37,99,235,0.9)" : "rgba(59,130,246,0.65)";
+              base.borderRightWidth = "2.5px";
+              base.borderRightColor = color;
+            }
+            return base;
+          })(),
           onDoubleClick: () => setHeaderEditing(c),
           onContextMenu: (e: React.MouseEvent) => headerMenu.open(e, c),
           role: "columnheader",
@@ -1742,9 +1766,24 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
             ),
         // header resizer
         h("div", {
-          className: mergeClasses(cx("resizer", ""), "absolute right-0 top-0 h-full w-1 cursor-col-resize"),
+          className: mergeClasses(
+            cx("resizer", ""),
+            "absolute right-0 top-0 h-full cursor-col-resize transition-all",
+            isColumnResizing ? "w-2.5 bg-blue-500/90" : isColumnEdgeActive ? "w-2.5 bg-blue-400/70" : "w-1 bg-transparent"
+          ),
           draggable: false,
-          onMouseDown: (e: React.MouseEvent) => startColResize(c, e)
+          onMouseDown: (e: React.MouseEvent) => startColResize(c, e),
+          onMouseEnter: (e: React.MouseEvent) => {
+            setColumnResizeHover(c);
+            updateColumnGuidePosition(c, e.clientX, false);
+          },
+          onMouseMove: (e: React.MouseEvent) => updateColumnGuidePosition(c, e.clientX, columnResizeGuide?.active ?? false),
+          onMouseLeave: () => {
+            if (!columnResizeGuide?.active) {
+              setColumnResizeHover((prev) => (prev === c ? null : prev));
+              setColumnResizeGuide((prev) => (prev && !prev.active ? null : prev));
+            }
+          }
         })
       );
     }),
@@ -1812,6 +1851,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           const active = activeCell && activeCell.r === r && activeCell.c === c;
           const inSel = selection && r >= selection.r0 && r <= selection.r1 && c >= selection.c0 && c <= selection.c1;
           const isEditingCell = editing && editing.r === r && editing.c === c;
+          const isColumnEdgeActive = columnResizeHover === c || (columnResizeGuide && columnResizeGuide.index === c);
+          const isColumnResizing = !!(columnResizeGuide?.active && columnResizeGuide.index === c);
           const style: React.CSSProperties = {
             width: `${colWidths[c]}px`,
             minWidth: `${colWidths[c]}px`,
@@ -1827,6 +1868,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
             style.backgroundColor = "rgba(59,130,246,0.08)";
           } else if (inSel) {
             style.boxShadow = "inset 0 0 0 2px rgba(59,130,246,0.35)";
+          }
+          if (isColumnEdgeActive) {
+            const color = isColumnResizing ? "rgba(37,99,235,0.9)" : "rgba(59,130,246,0.6)";
+            const edgeShadow = `inset -2.5px 0 0 0 ${color}`;
+            style.boxShadow = style.boxShadow ? `${style.boxShadow}, ${edgeShadow}` : edgeShadow;
           }
           if (columnDragHover && columnDragHover.from === c) {
             style.opacity = 0.6;
@@ -2173,9 +2219,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       ...secondaryViews.map(renderViewButton)
     )
   );
-  const tableContent = h("div", { className: "relative overflow-auto rounded-xl border" },
+  const tableContent = h("div", { className: "relative overflow-auto rounded-xl border", ref: tableContainerRef },
     header,
-    body
+    body,
+    columnResizeGuideLine,
+    rowResizeGuideLine
   );
 
   /* Container */
