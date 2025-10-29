@@ -531,6 +531,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       });
     }
   }, [columns, colWidths.length, minColumnWidth]);
+  React.useEffect(() => { colWidthsRef.current = colWidths; }, [colWidths]);
+  React.useEffect(() => { rowHeightsRef.current = rowHeights; }, [rowHeights]);
 
   /* selection & editing */
   const [selection, setSelection] = React.useState<Selection>(null);
@@ -540,9 +542,16 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const [expanded, setExpanded] = React.useState<Record<number, boolean>>({});
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [columnResizeHover, setColumnResizeHover] = React.useState<number | null>(null);
+  const [columnResizeGuide, setColumnResizeGuide] = React.useState<{ index: number; left: number; active: boolean } | null>(null);
+  const [rowResizeHover, setRowResizeHover] = React.useState<number | null>(null);
+  const [rowResizeGuide, setRowResizeGuide] = React.useState<{ index: number; top: number; active: boolean } | null>(null);
 
   const gridRef = React.useRef<HTMLDivElement | null>(null);
   const editorRef = React.useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const tableContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const colWidthsRef = React.useRef(colWidths);
+  const rowHeightsRef = React.useRef(rowHeights);
 
   function getCellValue(r: number, c: number) {
     const row = rows[r];
@@ -1506,7 +1515,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   /* Styles */
   const cx = (base: string, fallback: string) => classNames[base as keyof typeof classNames] || fallback;
-  const baseCellClass = "relative border border-zinc-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm";
+  const baseCellClass = "relative border border-zinc-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm select-none transition-colors hover:border-blue-300 dark:hover:border-blue-500";
   const baseHeaderClass = "relative border border-zinc-300 dark:border-neutral-700 bg-zinc-100 dark:bg-neutral-800 text-xs font-semibold uppercase tracking-wide select-none";
 
   function renderCellEditor(r: number, c: number) {
@@ -1765,7 +1774,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           onDragStart: (e: React.DragEvent) => { e.stopPropagation(); startRowDrag(r, e); },
           onDragEnd: () => endRowDrag(),
           title: "Drag to reorder row"
-        }, h(FaGripVertical, { className: "h-3 w-3" })),
+        }, h(FaGripVertical, { className: "h-4 w-4" })),
         ...columns.map((col, c) => {
           const active = activeCell && activeCell.r === r && activeCell.c === c;
           const inSel = selection && r >= selection.r0 && r <= selection.r1 && c >= selection.c0 && c <= selection.c1;
@@ -1801,12 +1810,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           );
           const contentStyle: React.CSSProperties = {
             textAlign: decorated?.align,
-            userSelect: "text"
+            userSelect: "none"
           };
           let contentNode: React.ReactNode = h("div", {
             className: contentClass,
-            style: contentStyle,
-            "data-allow-text-selection": "true"
+            style: contentStyle
           }, displayContent);
 
           if (!isEditingCell && col.type === "rating") {
@@ -2101,7 +2109,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       "aria-label": sidebarCollapsed ? "Expand views sidebar" : "Collapse views sidebar",
       "aria-expanded": String(!sidebarCollapsed)
     },
-      h(sidebarToggleIcon, { className: "h-3 w-3" }),
+      h(sidebarToggleIcon, { className: "h-4 w-4" }),
       !sidebarCollapsed && h("span", { className: "font-medium text-zinc-500 dark:text-neutral-300" }, "Hide")
     )
   );

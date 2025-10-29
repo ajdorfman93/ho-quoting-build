@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use server";
+
 import fs from "fs/promises";
 import path from "path";
 import { ColumnSpec, ColumnType, SelectOption } from "@/utils/tableUtils";
@@ -244,13 +247,11 @@ function buildTableDefinition(table: RawTable, recordIdIndex: Map<string, string
 
   const primaryIdField = detectPrimaryIdField(table, recordIdIndex);
 
-  const fieldResults = fieldOrder.map((fieldName, index) =>
+  const fieldResults = fieldOrder.map((fieldName) =>
     inferField({
-      tableName: table.name,
       fieldName,
       records: table.records,
       recordIdIndex,
-      index,
       keyRegistry,
       isPrimaryId: primaryIdField === fieldName
     })
@@ -330,15 +331,13 @@ function detectPrimaryIdField(table: RawTable, recordIdIndex: Map<string, string
 }
 
 function inferField(params: {
-  tableName: string;
   fieldName: string;
   records: GenericRow[];
   recordIdIndex: Map<string, string>;
-  index: number;
   keyRegistry: Set<string>;
   isPrimaryId: boolean;
 }): FieldInferenceResult {
-  const { tableName, fieldName, records, recordIdIndex, index, keyRegistry, isPrimaryId } = params;
+  const { fieldName, records, recordIdIndex, keyRegistry, isPrimaryId } = params;
   const values = records.map((record) => record[fieldName]).filter((value) => value !== null && value !== undefined && value !== "");
   const stringValues = values
     .map((value) => (typeof value === "string" ? value.trim() : String(value)))
@@ -548,16 +547,24 @@ function normalizeCellValue(value: unknown, meta: AirtableFieldMeta): unknown {
     }
     case "multipleSelect": {
       if (Array.isArray(value)) {
-        return value.map((entry, idx) => createSelectOption(String(entry), idx));
+        return value.map((entry, idx) => {
+          const label = String(entry).trim();
+          return findSelectOption(label, meta.config?.multipleSelect?.options) ?? createSelectOption(label, idx);
+        });
       }
       const parts = splitMultiValue(String(value));
-      return parts.map((entry, idx) => createSelectOption(entry, idx));
+      return parts.map((entry, idx) => {
+        const label = entry.trim();
+        return findSelectOption(label, meta.config?.multipleSelect?.options) ?? createSelectOption(label, idx);
+      });
     }
     case "singleSelect": {
       if (typeof value === "object" && value !== null && "label" in (value as any)) {
         return value;
       }
-      return String(value);
+      const label = String(value).trim();
+      if (!label) return null;
+      return findSelectOption(label, meta.config?.singleSelect?.options) ?? createSelectOption(label, 0);
     }
     default:
       return value;
@@ -679,6 +686,16 @@ function createSelectOption(label: string, index: number): SelectOption {
 
 function sanitizeOptionValue(value: string): string {
   return value.replace(/^"+|"+$/g, "").trim();
+}
+
+function findSelectOption(label: string, options: SelectOption[] | undefined) {
+  if (!options || !label) return undefined;
+  const lower = label.toLowerCase();
+  return options.find(
+    (option) =>
+      option.label.toLowerCase() === lower ||
+      (option.id && option.id.toLowerCase() === lower)
+  );
 }
 
 function slugify(value: string): string {

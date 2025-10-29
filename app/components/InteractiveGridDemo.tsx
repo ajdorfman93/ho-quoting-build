@@ -1,7 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { renderInteractiveTable, type ColumnSpec } from "@/utils/tableUtils";
+import {
+  renderInteractiveTable,
+  type ColumnSpec,
+  type InteractiveTableProps,
+} from "@/utils/tableUtils";
 
 type Row = {
   id: string;
@@ -20,16 +24,16 @@ export interface InteractiveGridState<T> {
   columns: ColumnSpec<T>[];
 }
 
-export interface InteractiveGridProps<T extends Record<string, any>> {
+export interface InteractiveGridProps<T extends Record<string, unknown>> {
   initialRows: T[];
   initialColumns: ColumnSpec<T>[];
   users?: Array<{ id: string; name: string; email?: string; avatarUrl?: string }>;
   renderDetails?: (row: T, rowIndex: number) => React.ReactNode;
-  classNames?: Parameters<typeof renderInteractiveTable<T>>[0]["classNames"];
+  classNames?: InteractiveTableProps<T>["classNames"];
   onStateChange?: (next: InteractiveGridState<T>) => void;
 }
 
-export function InteractiveGrid<T extends Record<string, any>>({
+export function InteractiveGrid<T extends Record<string, unknown>>({
   initialRows,
   initialColumns,
   users,

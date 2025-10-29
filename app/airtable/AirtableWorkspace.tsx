@@ -1,18 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { renderInteractiveTable } from "@/utils/tableUtils";
+import {
+  InteractiveGrid,
+  type InteractiveGridState,
+} from "@/app/components/InteractiveGridDemo";
 import type {
   AirtableProject,
   AirtableTableDefinition,
   AirtableAutomation,
-  FieldRelationship
+  FieldRelationship,
 } from "@/utils/airtableLoader";
 
-type TableState = {
-  rows: AirtableTableDefinition["rows"];
-  columns: AirtableTableDefinition["columns"];
-};
+type TableRow = AirtableTableDefinition["rows"][number];
+type TableState = InteractiveGridState<TableRow>;
 
 const NAV_ITEMS = [
   { id: "data", label: "Data" },
@@ -188,14 +189,13 @@ function DataPanel({
   return (
     <section className="grid gap-6 lg:grid-cols-[minmax(0,2.5fr)_minmax(0,1fr)]">
       <div className="rounded-3xl border border-zinc-200 bg-white/80 p-4 shadow-xl dark:border-neutral-800 dark:bg-neutral-950/70">
-        {renderInteractiveTable({
-          rows: state.rows,
-          columns: state.columns,
-          onChange: setState,
-          classNames: {
-            container: "flex flex-col gap-4"
-          }
-        })}
+        <InteractiveGrid
+          key={table.slug}
+          initialRows={state.rows}
+          initialColumns={state.columns}
+          classNames={{ container: "flex flex-col gap-4" }}
+          onStateChange={setState}
+        />
       </div>
 
       <aside className="flex flex-col gap-4">
@@ -475,5 +475,6 @@ function FormsPanel({ tables }: { tables: AirtableTableDefinition[] }) {
 
 function truncate(value: string, length: number): string {
   if (value.length <= length) return value;
-  return `${value.slice(0, length - 1)}…`;
+  const trimmedLength = Math.max(0, length - 3);
+  return `${value.slice(0, trimmedLength)}...`;
 }
