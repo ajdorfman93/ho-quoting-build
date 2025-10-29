@@ -2330,8 +2330,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
     const checkboxOptions = column.type === "checkbox"
       ? [
-          makeOption("Sort ☐ → ☑", FaSortAmountUp, () => sortCheckboxColumn(columnIndex, "uncheckedFirst")),
-          makeOption("Sort ☑ → ☐", FaSortAmountDown, () => sortCheckboxColumn(columnIndex, "checkedFirst"))
+          makeOption("Sort [ ] -> [x]", FaSortAmountUp, () => sortCheckboxColumn(columnIndex, "uncheckedFirst")),
+          makeOption("Sort [x] -> [ ]", FaSortAmountDown, () => sortCheckboxColumn(columnIndex, "checkedFirst"))
         ]
       : [];
 
@@ -2342,9 +2342,18 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       }),
       makeOption("Group by this field", FaLayerGroup, () => console.info("Group by field not yet implemented.")),
       makeOption("Show dependencies", FaSlidersH, () => console.info("Field dependencies not yet implemented.")),
-      makeOption("Hide field", FaEyeSlash, () => console.info("Hide field not yet implemented.")),
+      makeOption("Hide field", FaEyeSlash, () => hideColumn(columnIndex)),
       makeOption("Delete field", FaTrash, () => removeColumnsByIndex([columnIndex]))
     ];
+
+    const hiddenSection = hiddenColumns.length
+      ? [
+          h("div", { key: "hidden-heading", className: "px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-neutral-500" }, "Hidden fields"),
+          ...hiddenColumns.map((entry, hiddenIdx) =>
+            makeOption(`Show ${String(entry.column.name)}`, FaEye, () => restoreHiddenColumn(hiddenIdx))
+          )
+        ]
+      : [];
 
     const sections: React.ReactNode[] = [];
     const pushSection = (key: string, nodes: React.ReactNode[]) => {
@@ -2363,6 +2372,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     pushSection("types", typeSection);
     if (checkboxOptions.length) {
       pushSection("checkbox", checkboxOptions);
+    }
+    if (hiddenSection.length) {
+      pushSection("hidden", hiddenSection);
     }
     pushSection("advanced", advancedOptions);
 
