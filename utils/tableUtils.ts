@@ -142,6 +142,10 @@ type HiddenColumnEntry<T> = {
   width: number;
 };
 
+type ConfirmAction<T> =
+  | { type: "deleteRows"; range: { start: number; end: number; count: number } }
+  | { type: "deleteColumns"; indices: number[]; columns: Array<ColumnSpec<T>> };
+
 type ViewDefinition = {
   id: string;
   name: string;
@@ -271,6 +275,12 @@ export interface InteractiveTableProps<T extends Record<string, any> = any> {
   /** Minimums */
   minColumnWidth?: number;
   minRowHeight?: number;
+  /** Infinite scrolling support */
+  hasMoreRows?: boolean;
+  loadingMoreRows?: boolean;
+  onLoadMoreRows?: () => void | Promise<void>;
+  /** Optional explicit virtualization overscan in px */
+  virtualizationOverscan?: number;
 }
 
 /* -----------------------------------------------------------
@@ -476,7 +486,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     classNames = {},
     initialHeaderHeight = 40,
     minColumnWidth = 96,
-    minRowHeight = 34
+    minRowHeight = 34,
+    hasMoreRows = false,
+    loadingMoreRows,
+    onLoadMoreRows,
+    virtualizationOverscan = 200
   }: InteractiveTableProps<T>
 ) {
   /* Data & columns live in history for undo/redo */
@@ -577,10 +591,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [hiddenColumns, setHiddenColumns] = React.useState<HiddenColumnEntry<T>[]>([]);
+  const [confirmAction, setConfirmAction] = React.useState<ConfirmAction<T> | null>(null);
   const [columnResizeHover, setColumnResizeHover] = React.useState<number | null>(null);
-  const [columnResizeGuide, setColumnResizeGuide] = React.useState<{ index: number; left: number; active: boolean } | null>(null);
+  const [columnResizeGuide, setColumnResizeGuide] = React.useState<{ index: number; left: number; active: boolean; cursor?: number } | null>(null);
   const [rowResizeHover, setRowResizeHover] = React.useState<number | null>(null);
-  const [rowResizeGuide, setRowResizeGuide] = React.useState<{ index: number; top: number; active: boolean } | null>(null);
+  const [rowResizeGuide, setRowResizeGuide] = React.useState<{ index: number; top: number; active: boolean; cursor?: number } | null>(null);
+  const [viewport, setViewport] = React.useState<{ scrollTop: number; scrollLeft: number; width: number; height: number }>({ scrollTop: 0, scrollLeft: 0, width: 0, height: 0 });
+  const [internalLoadMorePending, setInternalLoadMorePending] = React.useState(false);
 
   const gridRef = React.useRef<HTMLDivElement | null>(null);
   const editorRef = React.useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
@@ -589,23 +606,85 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const rowHeightsRef = React.useRef(rowHeights);
   const headerMenuHoverTimer = React.useRef<number | null>(null);
 
-  const updateColumnGuidePosition = React.useCallback((index: number, clientX: number, active: boolean) => {
-    const container = tableContainerRef.current;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const relative = clientX - rect.left;
-    const left = Math.max(0, Math.min(container.scrollWidth, container.scrollLeft + relative));
-    setColumnResizeGuide({ index, left, active });
+  React.useEffect(() => {
+    if (typeof loadingMoreRows === "boolean") {
+      setInternalLoadMorePending(loadingMoreRows);
+    }
+  }, [loadingMoreRows]);
+
+  React.useEffect(() => {
+    if (!hasMoreRows) {
+      setInternalLoadMorePending(false);
+    }
+  }, [hasMoreRows]);
+
+  React.useLayoutEffect(() => {
+    const el = tableContainerRef.current;
+    if (!el) return;
+    const update = () => {
+      setViewport({
+        scrollTop: el.scrollTop,
+        scrollLeft: el.scrollLeft,
+        width: el.clientWidth,
+        height: el.clientHeight
+      });
+    };
+    update();
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(() => {
+        setViewport((prev) => ({
+          scrollTop: el.scrollTop,
+          scrollLeft: el.scrollLeft,
+          width: el.clientWidth,
+          height: el.clientHeight
+        }));
+      });
+      resizeObserver.observe(el);
+    }
+    return () => {
+      resizeObserver?.disconnect();
+    };
   }, []);
 
-  const updateRowGuidePosition = React.useCallback((index: number, clientY: number, active: boolean) => {
+  const handleScroll = React.useCallback(() => {
+    const el = tableContainerRef.current;
+    if (!el) return;
+    setViewport((prev) => ({
+      scrollTop: el.scrollTop,
+      scrollLeft: el.scrollLeft,
+      width: prev.width,
+      height: prev.height
+    }));
+  }, []);
+
+  const updateColumnGuidePosition = React.useCallback((index: number, clientX: number, clientY: number | null, active: boolean) => {
     const container = tableContainerRef.current;
     if (!container) return;
     const rect = container.getBoundingClientRect();
-    const relative = clientY - rect.top;
-    const top = Math.max(0, Math.min(container.scrollHeight, container.scrollTop + relative));
-    setRowResizeGuide({ index, top, active });
-  }, []);
+    const relativeX = clientX - rect.left;
+    const left = Math.max(0, Math.min(container.scrollWidth, container.scrollLeft + relativeX));
+    let cursor = columnResizeGuide?.cursor ?? container.scrollTop;
+    if (typeof clientY === "number") {
+      const relativeY = clientY - rect.top;
+      cursor = Math.max(0, Math.min(container.scrollHeight, container.scrollTop + relativeY));
+    }
+    setColumnResizeGuide({ index, left, active, cursor });
+  }, [columnResizeGuide]);
+
+  const updateRowGuidePosition = React.useCallback((index: number, clientY: number, clientX: number | null, active: boolean) => {
+    const container = tableContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const relativeY = clientY - rect.top;
+    const top = Math.max(0, Math.min(container.scrollHeight, container.scrollTop + relativeY));
+    let cursor = rowResizeGuide?.cursor ?? container.scrollLeft;
+    if (typeof clientX === "number") {
+      const relativeX = clientX - rect.left;
+      cursor = Math.max(0, Math.min(container.scrollWidth, container.scrollLeft + relativeX));
+    }
+    setRowResizeGuide({ index, top, active, cursor });
+  }, [rowResizeGuide]);
 
   function getCellValue(r: number, c: number) {
     const row = rows[r];
@@ -830,7 +909,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const startX = e.clientX;
     const startW = colWidths[idx];
     setColumnResizeHover(idx);
-    updateColumnGuidePosition(idx, e.clientX, true);
+    updateColumnGuidePosition(idx, e.clientX, e.clientY, true);
     function onMove(ev: MouseEvent) {
       const dx = ev.clientX - startX;
       setColWidths((w) => {
@@ -839,7 +918,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         colWidthsRef.current = next;
         return next;
       });
-      updateColumnGuidePosition(idx, ev.clientX, true);
+      updateColumnGuidePosition(idx, ev.clientX, ev.clientY, true);
     }
     function onUp() {
       window.removeEventListener("mousemove", onMove);
@@ -862,7 +941,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const startY = e.clientY;
     const startH = rowHeights[idx];
     setRowResizeHover(idx);
-    updateRowGuidePosition(idx, e.clientY, true);
+    updateRowGuidePosition(idx, e.clientY, e.clientX, true);
     function onMove(ev: MouseEvent) {
       const dy = ev.clientY - startY;
       setRowHeights((h) => {
@@ -871,7 +950,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         rowHeightsRef.current = next;
         return next;
       });
-      updateRowGuidePosition(idx, ev.clientY, true);
+      updateRowGuidePosition(idx, ev.clientY, ev.clientX, true);
     }
     function onUp() {
       window.removeEventListener("mousemove", onMove);
@@ -1232,7 +1311,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     if (!unique.length) return;
     setConfirmAction({
       type: "deleteColumns",
-      indices: unique
+      indices: unique,
+      columns: unique.map((idx) => columns[idx]).filter(Boolean) as Array<ColumnSpec<T>>
     });
   }
   function getCellStyle(r: number, c: number): CellStyle | null {
@@ -1541,6 +1621,39 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   function deleteColumn(idx: number) {
     requestRemoveColumns([idx]);
   }
+
+  async function handleLoadMoreRows() {
+    if (!onLoadMoreRows || isLoadMorePending) return;
+    try {
+      if (typeof loadingMoreRows !== "boolean") {
+        setInternalLoadMorePending(true);
+      }
+      const maybePromise = onLoadMoreRows();
+      if (maybePromise && typeof (maybePromise as Promise<void>).then === "function") {
+        await maybePromise;
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      if (typeof loadingMoreRows !== "boolean") {
+        setInternalLoadMorePending(false);
+      }
+    }
+  }
+
+  function confirmDeletion() {
+    if (!confirmAction) return;
+    if (confirmAction.type === "deleteRows") {
+      performRemoveRows({ start: confirmAction.range.start, end: confirmAction.range.end });
+    } else if (confirmAction.type === "deleteColumns") {
+      performRemoveColumnsByIndex(confirmAction.indices);
+    }
+    setConfirmAction(null);
+  }
+
+  function cancelDeletion() {
+    setConfirmAction(null);
+  }
   function normalizeColumnForType(col: ColumnSpec<T>, type: ColumnType) {
     const copy = deepClone(col);
     copy.type = type;
@@ -1756,6 +1869,55 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     return hit;
   }, [rows, columns, searchTerm]);
 
+  const visibleRowOffsets = React.useMemo(() => {
+    const offsets: number[] = [0];
+    for (let i = 0; i < visibleRowIndexes.length; i++) {
+      const idx = visibleRowIndexes[i];
+      const h = rowHeights[idx] ?? minRowHeight;
+      offsets.push(offsets[offsets.length - 1] + h);
+    }
+    return offsets;
+  }, [visibleRowIndexes, rowHeights, minRowHeight]);
+  const totalVisibleRowHeight = visibleRowOffsets[visibleRowOffsets.length - 1] ?? 0;
+
+  const columnOffsets = React.useMemo(() => {
+    const offsets: number[] = new Array(colWidths.length + 1);
+    offsets[0] = 0;
+    for (let i = 0; i < colWidths.length; i++) {
+      offsets[i + 1] = offsets[i] + (colWidths[i] ?? minColumnWidth);
+    }
+    return offsets;
+  }, [colWidths, minColumnWidth]);
+  const totalColumnWidth = columnOffsets[columnOffsets.length - 1] ?? 0;
+
+  const overscanPx = Math.max(0, virtualizationOverscan ?? 0);
+  const bodyViewportHeight = Math.max(0, viewport.height - headerHeight);
+  const rowScrollTop = Math.max(0, viewport.scrollTop - headerHeight);
+  const rowStartOffset = Math.max(0, rowScrollTop - overscanPx);
+  const rowEndOffset = Math.min(totalVisibleRowHeight, rowScrollTop + bodyViewportHeight + overscanPx);
+  const { start: rowRenderStart, end: rowRenderEnd } = visibleRangeFromOffsets(visibleRowOffsets, rowStartOffset, rowEndOffset);
+
+  const columnScrollLeft = Math.max(0, viewport.scrollLeft);
+  const columnStartOffset = Math.max(0, columnScrollLeft - overscanPx);
+  const columnEndOffset = Math.min(totalColumnWidth, columnScrollLeft + viewport.width + overscanPx);
+  const { start: columnRenderStart, end: columnRenderEnd } = visibleRangeFromOffsets(columnOffsets, columnStartOffset, columnEndOffset);
+
+  const renderedRowIndexes = visibleRowIndexes.slice(rowRenderStart, rowRenderEnd);
+  const renderedColumnIndices: number[] = [];
+  for (let i = columnRenderStart; i < columnRenderEnd; i++) renderedColumnIndices.push(i);
+
+  const rowSpacerTop = visibleRowOffsets[rowRenderStart] ?? 0;
+  const rowSpacerBottom = Math.max(0, totalVisibleRowHeight - (visibleRowOffsets[rowRenderEnd] ?? totalVisibleRowHeight));
+  const columnSpacerLeft = columnOffsets[columnRenderStart] ?? 0;
+  const columnSpacerRight = Math.max(0, totalColumnWidth - (columnOffsets[columnRenderEnd] ?? totalColumnWidth));
+  const headerColumnIndices = renderedColumnIndices.length ? renderedColumnIndices : columns.map((_col, idx) => idx);
+  const bodyColumnIndices = headerColumnIndices;
+  const isLoadMorePending = typeof loadingMoreRows === "boolean" ? loadingMoreRows : internalLoadMorePending;
+  const resizeGuideContainerHeight = tableContainerRef.current?.scrollHeight ?? (headerHeight + totalVisibleRowHeight + 120);
+  const resizeGuideContainerWidth = tableContainerRef.current?.scrollWidth ?? Math.max(totalColumnWidth, viewport.width + 120);
+  const columnHandleTop = columnResizeGuide ? Math.max(0, Math.min(resizeGuideContainerHeight - 25, (columnResizeGuide.cursor ?? viewport.scrollTop) - 12)) : 0;
+  const rowHandleLeft = rowResizeGuide ? Math.max(0, Math.min(resizeGuideContainerWidth - 25, (rowResizeGuide.cursor ?? viewport.scrollLeft) - 12)) : 0;
+
   /* Row & column ids for React keys */
   const rowKey = (row: T, idx: number) => String(getRowId?.(row, idx) ?? idx);
   const colKey = (col: ColumnSpec<T>, idx: number) => String(col.key ?? idx);
@@ -1913,159 +2075,176 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     className: "pointer-events-none absolute border-2 border-dashed border-blue-400 bg-blue-400/10",
     style: { top: `${rowPlaceholderTop}px`, left: 0, right: 0, height: `${rowPlaceholderHeight}px` }
   }) : null;
-  const columnResizeGuideLine = columnResizeGuide ? h("div", {
-    className: mergeClasses(
-      "pointer-events-none absolute top-0 bottom-0 w-[2.5px]",
-      columnResizeGuide.active ? "bg-blue-500/90" : "bg-blue-400/70"
-    ),
-    style: { left: `${columnResizeGuide.left - 1.25}px` }
-  }) : null;
-  const rowResizeGuideLine = rowResizeGuide ? h("div", {
-    className: mergeClasses(
-      "pointer-events-none absolute left-0 right-0 h-[2.5px]",
-      rowResizeGuide.active ? "bg-blue-500/90" : "bg-blue-400/70"
-    ),
-    style: { top: `${rowResizeGuide.top - 1.25}px` }
-  }) : null;
-
-  const header = h("div",
-    {
-      className: mergeClasses(cx("headerRow", "flex relative bg-zinc-100 dark:bg-neutral-800 border-b border-zinc-300 dark:border-neutral-700")),
-      style: { height: `${headerHeight}px` }
-    },
-    ...columns.map((col, c) => {
-      const isEditing = headerEditing === c;
-      const isDraggingColumnHeader = columnDragHover && columnDragHover.from === c;
-      const isColumnEdgeActive = columnResizeHover === c || (columnResizeGuide && columnResizeGuide.index === c);
-      const isColumnResizing = !!(columnResizeGuide?.active && columnResizeGuide.index === c);
-      return h("div",
-        {
-          key: colKey(col, c),
-          className: mergeClasses(
-            cx("headerCell", baseHeaderClass),
-            "flex items-center gap-2 px-3 transition-transform",
-            isDraggingColumnHeader && "opacity-60 scale-[0.98] bg-blue-50/60 dark:bg-neutral-800/50"
-          ),
-          style: (() => {
-            const base: React.CSSProperties = {
-              width: `${colWidths[c]}px`,
-              minWidth: `${colWidths[c]}px`,
-              maxWidth: `${colWidths[c]}px`,
-              transform: isDraggingColumnHeader ? "scale(0.98)" : undefined
-            };
-            if (isColumnEdgeActive) {
-              const color = isColumnResizing ? "rgba(37,99,235,0.9)" : "rgba(59,130,246,0.65)";
-              base.borderRightWidth = "2.5px";
-              base.borderRightColor = color;
-            }
-            return base;
-          })(),
-          onDoubleClick: () => setHeaderEditing(c),
-          onContextMenu: (e: React.MouseEvent) => headerMenu.open(e, c),
-          role: "columnheader",
-          "data-c": c,
-          draggable: true,
-          onDragStart: (e: React.DragEvent) => startColumnDrag(c, e),
-          onDragOver: (e: React.DragEvent) => onColumnDragOver(c, e),
-          onDrop: (e: React.DragEvent) => onColumnDrop(c, e),
-          onDragEnd: () => endColumnDrag(),
-          title: String(col.name)
-        },
-        isEditing
-          ? h("input", {
-              className: "w-full rounded border px-2 py-1 text-sm",
-              defaultValue: col.name,
-              autoFocus: true,
-              onBlur: (e: any) => { setHeaderEditing(null); renameColumn(c, e.target.value); },
-              onKeyDown: (e: any) => {
-                if (e.key === "Enter") { (e.target as HTMLInputElement).blur(); }
-                if (e.key === "Escape") setHeaderEditing(null);
-              }
-            })
-          : (() => {
-              const icon = renderColumnIcon(col.type);
-              const openFromTarget = (target: HTMLElement, delay = 0) => {
-                if (!target) return;
-                if (headerMenuHoverTimer.current != null) {
-                  window.clearTimeout(headerMenuHoverTimer.current);
-                  headerMenuHoverTimer.current = null;
-                }
-                const trigger = () => {
-                  const rect = target.getBoundingClientRect();
-                  headerMenu.openAt({
-                    x: rect.left + rect.width / 2,
-                    y: rect.bottom + 6,
-                    columnIndex: c
-                  });
-                };
-                if (delay > 0) {
-                  headerMenuHoverTimer.current = window.setTimeout(() => {
-                    trigger();
-                    headerMenuHoverTimer.current = null;
-                  }, delay);
-                } else {
-                  trigger();
-                }
-              };
-              const cancelHoverOpen = () => {
-                if (headerMenuHoverTimer.current != null) {
-                  window.clearTimeout(headerMenuHoverTimer.current);
-                  headerMenuHoverTimer.current = null;
-                }
-              };
-              return h("div", { className: "flex items-center gap-2 truncate" },
-                icon,
-                h("span", { className: "flex-1 truncate text-zinc-700 dark:text-zinc-200 font-medium" }, String(col.name)),
-                h("button", {
-                  type: "button",
-                  className: "inline-flex h-6 w-6 items-center justify-center rounded hover:bg-blue-100 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-neutral-700",
-                  onClick: (ev: React.MouseEvent<HTMLButtonElement>) => {
-                    ev.stopPropagation();
-                    ev.preventDefault();
-                    openFromTarget(ev.currentTarget);
-                  },
-                  onMouseEnter: (ev: React.MouseEvent<HTMLButtonElement>) => {
-                    ev.stopPropagation();
-                    openFromTarget(ev.currentTarget, 120);
-                  },
-                  onMouseLeave: () => cancelHoverOpen(),
-                  "aria-haspopup": "menu",
-                  "aria-expanded": headerMenu.menu?.columnIndex === c ? "true" : "false",
-                  title: "Column options"
-                }, h(FaChevronDown, { className: "h-3.5 w-3.5" }))
-              );
-            })(),
-        // header resizer
-        h("div", {
-          className: mergeClasses(
-            cx("resizer", ""),
-            "absolute right-0 top-0 h-full cursor-col-resize transition-all",
-            isColumnResizing ? "w-2.5 bg-blue-500/90" : isColumnEdgeActive ? "w-2.5 bg-blue-400/70" : "w-1 bg-transparent"
-          ),
-          draggable: false,
-          onMouseDown: (e: React.MouseEvent) => startColResize(c, e),
-          onMouseEnter: (e: React.MouseEvent) => {
-            setColumnResizeHover(c);
-            updateColumnGuidePosition(c, e.clientX, false);
-          },
-          onMouseMove: (e: React.MouseEvent) => updateColumnGuidePosition(c, e.clientX, columnResizeGuide?.active ?? false),
-          onMouseLeave: () => {
-            if (!columnResizeGuide?.active) {
-              setColumnResizeHover((prev) => (prev === c ? null : prev));
-              setColumnResizeGuide((prev) => (prev && !prev.active ? null : prev));
-            }
-          }
-        })
-      );
-    }),
-    columnPlaceholderHeader,
-    // header height resizer
+  const columnResizeGuideLine = columnResizeGuide ? h(React.Fragment, null,
     h("div", {
+      className: mergeClasses(
+        "pointer-events-none absolute top-0 bottom-0 w-[2.5px]",
+        columnResizeGuide.active ? "bg-blue-500/90" : "bg-blue-400/70"
+      ),
+      style: { left: `${columnResizeGuide.left - 1.25}px` }
+    }),
+    h("div", {
+      className: "pointer-events-none absolute rounded-full bg-blue-500",
+      style: { left: `${columnResizeGuide.left - 2}px`, top: `${columnHandleTop}px`, width: "4px", height: "25px" }
+    })
+  ) : null;
+  const rowResizeGuideLine = rowResizeGuide ? h(React.Fragment, null,
+    h("div", {
+      className: mergeClasses(
+        "pointer-events-none absolute left-0 right-0 h-[2.5px]",
+        rowResizeGuide.active ? "bg-blue-500/90" : "bg-blue-400/70"
+      ),
+      style: { top: `${rowResizeGuide.top - 1.25}px` }
+    }),
+    h("div", {
+      className: "pointer-events-none absolute rounded-full bg-blue-500",
+      style: { top: `${rowResizeGuide.top - 2}px`, left: `${rowHandleLeft}px`, width: "25px", height: "4px" }
+    })
+  ) : null;
+
+  const headerContent: React.ReactNode[] = [];
+  if (columnSpacerLeft > 0) {
+    headerContent.push(h("div", { key: "header-left-spacer", style: { flex: "0 0 auto", width: `${columnSpacerLeft}px`, height: "100%" } }));
+  }
+  headerColumnIndices.forEach((c) => {
+    const col = columns[c];
+    if (!col) return;
+    const isEditing = headerEditing === c;
+    const isDraggingColumnHeader = columnDragHover && columnDragHover.from === c;
+    const isColumnEdgeActive = columnResizeHover === c || (columnResizeGuide && columnResizeGuide.index === c);
+    const isColumnResizing = !!(columnResizeGuide?.active && columnResizeGuide.index === c);
+    headerContent.push(h("div",
+      {
+        key: colKey(col, c),
+        className: mergeClasses(
+          cx("headerCell", baseHeaderClass),
+          "flex items-center gap-2 px-3 transition-transform",
+          isDraggingColumnHeader && "opacity-60 scale-[0.98] bg-blue-50/60 dark:bg-neutral-800/50"
+        ),
+        style: (() => {
+          const base: React.CSSProperties = {
+            width: `${colWidths[c]}px`,
+            minWidth: `${colWidths[c]}px`,
+            maxWidth: `${colWidths[c]}px`,
+            transform: isDraggingColumnHeader ? "scale(0.98)" : undefined
+          };
+          if (isColumnEdgeActive) {
+            const color = isColumnResizing ? "rgba(37,99,235,0.9)" : "rgba(59,130,246,0.65)";
+            base.borderRightWidth = "2.5px";
+            base.borderRightColor = color;
+          }
+          return base;
+        })(),
+        onDoubleClick: () => setHeaderEditing(c),
+        onContextMenu: (e: React.MouseEvent) => headerMenu.open(e, c),
+        role: "columnheader",
+        "data-c": c,
+        draggable: true,
+        onDragStart: (e: React.DragEvent) => startColumnDrag(c, e),
+        onDragOver: (e: React.DragEvent) => onColumnDragOver(c, e),
+        onDrop: (e: React.DragEvent) => onColumnDrop(c, e),
+        onDragEnd: () => endColumnDrag(),
+        title: String(col.name)
+      },
+      isEditing
+        ? h("input", {
+            className: "w-full rounded border px-2 py-1 text-sm",
+            defaultValue: col.name,
+            autoFocus: true,
+            onBlur: (e: any) => { setHeaderEditing(null); renameColumn(c, e.target.value); },
+            onKeyDown: (e: any) => {
+              if (e.key === "Enter") { (e.target as HTMLInputElement).blur(); }
+              if (e.key === "Escape") setHeaderEditing(null);
+            }
+          })
+        : (() => {
+            const icon = renderColumnIcon(col.type);
+            const openFromTarget = (target: HTMLElement, delay = 0) => {
+              if (!target) return;
+              if (headerMenuHoverTimer.current != null) {
+                window.clearTimeout(headerMenuHoverTimer.current);
+                headerMenuHoverTimer.current = null;
+              }
+              const trigger = () => {
+                const rect = target.getBoundingClientRect();
+                headerMenu.openAt({
+                  x: rect.left + rect.width / 2,
+                  y: rect.bottom + 6,
+                  columnIndex: c
+                });
+              };
+              if (delay > 0) {
+                headerMenuHoverTimer.current = window.setTimeout(() => {
+                  trigger();
+                  headerMenuHoverTimer.current = null;
+                }, delay);
+              } else {
+                trigger();
+              }
+            };
+            const cancelHoverOpen = () => {
+              if (headerMenuHoverTimer.current != null) {
+                window.clearTimeout(headerMenuHoverTimer.current);
+                headerMenuHoverTimer.current = null;
+              }
+            };
+            return h("div", { className: "flex items-center gap-2 truncate" },
+              icon,
+              h("span", { className: "flex-1 truncate text-zinc-700 dark:text-zinc-200 font-medium" }, String(col.name)),
+              h("button", {
+                type: "button",
+                className: "inline-flex h-6 w-6 items-center justify-center rounded hover:bg-blue-100 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-neutral-700",
+                onClick: (ev: React.MouseEvent<HTMLButtonElement>) => {
+                  ev.stopPropagation();
+                  ev.preventDefault();
+                  openFromTarget(ev.currentTarget);
+                },
+                onMouseEnter: (ev: React.MouseEvent<HTMLButtonElement>) => {
+                  ev.stopPropagation();
+                  openFromTarget(ev.currentTarget, 120);
+                },
+                onMouseLeave: () => cancelHoverOpen(),
+                "aria-haspopup": "menu",
+                "aria-expanded": headerMenu.menu?.columnIndex === c ? "true" : "false",
+                title: "Column options"
+              }, h(FaChevronDown, { className: "h-3.5 w-3.5" }))
+            );
+          })(),
+      // header resizer
+      h("div", {
+        className: mergeClasses(
+          cx("resizer", ""),
+          "absolute right-0 top-0 h-full cursor-col-resize transition-all",
+          isColumnResizing ? "w-2.5 bg-blue-500/90" : isColumnEdgeActive ? "w-2.5 bg-blue-400/70" : "w-1 bg-transparent"
+        ),
+        draggable: false,
+        onMouseDown: (e: React.MouseEvent) => startColResize(c, e),
+        onMouseEnter: (e: React.MouseEvent) => {
+          setColumnResizeHover(c);
+          updateColumnGuidePosition(c, e.clientX, e.clientY, false);
+        },
+        onMouseMove: (e: React.MouseEvent) => updateColumnGuidePosition(c, e.clientX, e.clientY, columnResizeGuide?.active ?? false),
+        onMouseLeave: () => {
+          if (!columnResizeGuide?.active) {
+            setColumnResizeHover((prev) => (prev === c ? null : prev));
+            setColumnResizeGuide((prev) => (prev && !prev.active ? null : prev));
+          }
+        }
+      })
+    ));
+  });
+  if (columnSpacerRight > 0) {
+    headerContent.push(h("div", { key: "header-right-spacer", style: { flex: "0 0 auto", width: `${columnSpacerRight}px`, height: "100%" } }));
+  }
+  headerContent.push(
+    columnPlaceholderHeader,
+    h("div", {
+      key: "header-resizer",
       className: "absolute bottom-0 left-0 right-0 h-1 cursor-row-resize",
       onMouseDown: startHeaderResize
     }),
-    // "+" add column at end
     h("button", {
+      key: "header-add-column",
       className: mergeClasses(cx("plusButton", ""), "absolute -right-10 top-1/2 -translate-y-1/2 rounded-full border px-2 py-1 text-xs bg-white dark:bg-neutral-900"),
       onClick: addColumn,
       title: "Add column",
@@ -2074,201 +2253,240 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     }, "+")
   );
 
+  const header = h("div",
+    {
+      className: mergeClasses(cx("headerRow", "flex relative bg-zinc-100 dark:bg-neutral-800 border-b border-zinc-300 dark:border-neutral-700")),
+      style: { height: `${headerHeight}px`, minWidth: `${Math.max(totalColumnWidth, columns.length ? totalColumnWidth : 0)}px` }
+    },
+    ...headerContent
+  );
+
   // Body rows
+  const rowElements = renderedRowIndexes.map((r) => {
+    const row = rows[r];
+    if (!row) return null;
+    const isDraggingRow = rowDragHover && rowDragHover.from === r;
+    const isRowEdgeActive = rowResizeHover === r || (rowResizeGuide && rowResizeGuide.index === r);
+    const isRowResizing = !!(rowResizeGuide?.active && rowResizeGuide.index === r);
+    const rowStyle: React.CSSProperties = {
+      height: `${rowHeights[r]}px`,
+      transform: isDraggingRow ? "scale(0.995)" : undefined
+    };
+    if (isRowEdgeActive) {
+      const color = isRowResizing ? "rgba(37,99,235,0.9)" : "rgba(59,130,246,0.65)";
+      rowStyle.boxShadow = [rowStyle.boxShadow, `inset 0 -2.5px 0 0 ${color}`].filter(Boolean).join(", ");
+    }
+    const rowChildren: React.ReactNode[] = [
+      h("button", {
+        key: `drag-${r}`,
+        className: "absolute -left-16 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border bg-white dark:bg-neutral-900 flex items-center justify-center text-zinc-400 hover:text-zinc-600",
+        draggable: true,
+        onDragStart: (e: React.DragEvent) => { e.stopPropagation(); startRowDrag(r, e); },
+        onDragEnd: () => endRowDrag(),
+        title: "Drag to reorder row"
+      }, h(FaGripVertical, { className: "h-4 w-4" }))
+    ];
+    if (columnSpacerLeft > 0) {
+      rowChildren.push(h("div", { key: `row-${r}-left-spacer`, style: { flex: "0 0 auto", width: `${columnSpacerLeft}px`, height: "100%" } }));
+    }
+    (bodyColumnIndices.length ? bodyColumnIndices : columns.map((_col, idx) => idx)).forEach((c) => {
+      const col = columns[c];
+      if (!col) return;
+      const active = activeCell && activeCell.r === r && activeCell.c === c;
+      const inSel = selection && r >= selection.r0 && r <= selection.r1 && c >= selection.c0 && c <= selection.c1;
+      const isEditingCell = editing && editing.r === r && editing.c === c;
+      const isColumnEdgeActive = columnResizeHover === c || (columnResizeGuide && columnResizeGuide.index === c);
+      const isColumnResizing = !!(columnResizeGuide?.active && columnResizeGuide.index === c);
+      const style: React.CSSProperties = {
+        width: `${colWidths[c]}px`,
+        minWidth: `${colWidths[c]}px`,
+        maxWidth: `${colWidths[c]}px`,
+        userSelect: "none",
+        backgroundColor: undefined,
+        color: undefined
+      };
+      const decorated = getCellStyle(r, c);
+      if (decorated?.background) style.backgroundColor = decorated.background;
+      if (decorated?.color) style.color = decorated.color;
+      if (!decorated?.background && inSel) {
+        style.backgroundColor = "rgba(59,130,246,0.08)";
+      } else if (inSel) {
+        style.boxShadow = "inset 0 0 0 2px rgba(59,130,246,0.35)";
+      }
+      if (isColumnEdgeActive) {
+        const color = isColumnResizing ? "rgba(37,99,235,0.9)" : "rgba(59,130,246,0.6)";
+        const edgeShadow = `inset -2.5px 0 0 0 ${color}`;
+        style.boxShadow = style.boxShadow ? `${style.boxShadow}, ${edgeShadow}` : edgeShadow;
+      }
+      if (columnDragHover && columnDragHover.from === c) {
+        style.opacity = 0.6;
+        style.transform = "scale(0.98)";
+        if (!style.backgroundColor) style.backgroundColor = "rgba(59,130,246,0.1)";
+      }
+      const cellValue = getCellValue(r, c);
+      const displayContent = displayValue(cellValue, col);
+      const contentClass = mergeClasses(
+        "w-full whitespace-pre-wrap break-words leading-snug",
+        decorated?.bold && "font-semibold",
+        decorated?.italic && "italic",
+        decorated?.underline && "underline"
+      );
+      const contentStyle: React.CSSProperties = {
+        textAlign: decorated?.align,
+        userSelect: "none"
+      };
+      let contentNode: React.ReactNode = h("div", {
+        className: contentClass,
+        style: contentStyle
+      }, displayContent);
+      if (!isEditingCell && col.type === "rating") {
+        const max = Math.max(1, col.config?.rating?.max ?? 5);
+        const previewValue = ratingPreview && ratingPreview.r === r && ratingPreview.c === c ? ratingPreview.value : null;
+        const currentValue = Number(cellValue ?? 0);
+        const effectiveValue = previewValue ?? currentValue;
+        const iconType = col.config?.rating?.icon ?? "star";
+        const IconComponent = iconType === "heart" ? FaHeart : iconType === "circle" ? FaCircle : FaStar;
+        const activeColor =
+          iconType === "heart" ? "text-pink-500" :
+          iconType === "circle" ? "text-teal-400" :
+          "text-yellow-400";
+        const inactiveColor = "text-zinc-300 dark:text-neutral-700";
+        const isReadOnly = !!col.readOnly;
+        const justifyContent =
+          decorated?.align === "right" ? "flex-end" :
+          decorated?.align === "center" ? "center" : "flex-start";
+        const buttons = Array.from({ length: max }, (_unused, index) => {
+          const value = index + 1;
+          const isActive = effectiveValue >= value;
+          const colorClass = isActive ? activeColor : inactiveColor;
+          const sharedHandlers = isReadOnly ? {} : {
+            onMouseEnter: () => setRatingPreview({ r, c, value }),
+            onFocus: () => setRatingPreview({ r, c, value }),
+            onMouseLeave: () => setRatingPreview((prev) => (prev && prev.r === r && prev.c === c ? null : prev)),
+            onBlur: () => setRatingPreview((prev) => (prev && prev.r === r && prev.c === c ? null : prev)),
+            onClick: () => setCellValue(r, c, value, { commit: true })
+          };
+          return h("button", {
+            key: value,
+            type: "button",
+            className: mergeClasses(
+              "inline-flex items-center justify-center transition-transform",
+              !isReadOnly && "cursor-pointer hover:scale-110 focus-visible:scale-110 focus-visible:outline-none"
+            ),
+            title: `Set rating to ${value} of ${max}`,
+            ...sharedHandlers
+          },
+            h(IconComponent, { className: mergeClasses("h-4 w-4", colorClass) })
+          );
+        });
+        contentNode = h("div", {
+          className: mergeClasses(
+            "flex items-center gap-1",
+            decorated?.bold && "font-semibold",
+            decorated?.italic && "italic",
+            decorated?.underline && "underline"
+          ),
+          style: { justifyContent },
+          onMouseLeave: () => setRatingPreview((prev) => (prev && prev.r === r && prev.c === c ? null : prev))
+        }, ...buttons);
+      }
+      rowChildren.push(h("div", {
+        key: colKey(col, c),
+        className: mergeClasses(
+          cx("cell", baseCellClass),
+          "px-2 py-1 overflow-hidden transition-transform",
+          columnDragHover && columnDragHover.from === c && "bg-blue-50/50 dark:bg-neutral-800/50",
+          active && "ring-2 ring-blue-500"
+        ),
+        style,
+        role: "gridcell",
+        "data-r": r,
+        "data-c": c,
+        onMouseDown: (e: React.MouseEvent) => startDrag(r, c, e),
+        onDoubleClick: () => beginEdit(r, c),
+        onContextMenu: (e: React.MouseEvent) => handleCellContextMenu(e, r, c)
+      }, isEditingCell ? renderCellEditor(r, c) : contentNode));
+    });
+    if (columnSpacerRight > 0) {
+      rowChildren.push(h("div", { key: `row-${r}-right-spacer`, style: { flex: "0 0 auto", width: `${columnSpacerRight}px`, height: "100%" } }));
+    }
+    rowChildren.push(
+      h("div", {
+        key: `resizer-${r}`,
+        className: mergeClasses(
+          "absolute bottom-0 left-0 right-0 cursor-row-resize transition-all",
+          isRowResizing ? "h-2.5 bg-blue-500/90" : isRowEdgeActive ? "h-2.5 bg-blue-400/70" : "h-1 bg-transparent"
+        ),
+        onMouseDown: (e: React.MouseEvent) => startRowResize(r, e),
+        onMouseEnter: (e: React.MouseEvent) => {
+          setRowResizeHover(r);
+          updateRowGuidePosition(r, e.clientY, e.clientX, false);
+        },
+        onMouseMove: (e: React.MouseEvent) => updateRowGuidePosition(r, e.clientY, e.clientX, rowResizeGuide?.active ?? false),
+        onMouseLeave: () => {
+          if (!rowResizeGuide?.active) {
+            setRowResizeHover((prev) => (prev === r ? null : prev));
+            setRowResizeGuide((prev) => (prev && !prev.active ? null : prev));
+          }
+        }
+      }),
+      h("button", {
+        key: `expand-${r}`,
+        className: "absolute -left-8 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full border bg-white dark:bg-neutral-900 flex items-center justify-center text-sm",
+        onClick: () => setDetailsModal({ rowIndex: r }),
+        title: "Expand details"
+      }, "+")
+    );
+    return h("div", {
+      key: rowKey(row, r),
+      className: mergeClasses(
+        cx("row", "flex relative"),
+        "transition-transform",
+        isDraggingRow && "ring-2 ring-blue-300/60 bg-blue-50/70 dark:bg-neutral-800/60"
+      ),
+      style: rowStyle,
+      role: "row",
+      onDragOver: (e: React.DragEvent) => onRowDragOver(r, e),
+      onDrop: (e: React.DragEvent) => onRowDrop(r, e)
+    }, ...rowChildren);
+  }).filter(Boolean);
+
+  const rowsContainer = h("div", {
+    key: "rows-container",
+    style: { paddingTop: `${rowSpacerTop}px`, paddingBottom: `${rowSpacerBottom}px` }
+  }, ...rowElements);
+
+  const addRowButton = h("div", { className: "flex items-center justify-center py-3", key: "add-row" },
+    h("button", {
+      className: mergeClasses(cx("plusButton", ""), "rounded-full border px-3 py-1 text-sm bg-white dark:bg-neutral-900"),
+      onClick: addRow,
+      onDragOver: (e: React.DragEvent) => onRowDragOver(rows.length, e),
+      onDrop: (e: React.DragEvent) => onRowDrop(rows.length, e)
+    }, "+ Add row")
+  );
+
+  const loadMoreButton = hasMoreRows ? h("div", {
+    key: "load-more",
+    className: "flex items-center justify-center pb-4"
+  },
+    h("button", {
+      className: "rounded-full border px-4 py-1.5 text-sm bg-white dark:bg-neutral-900 disabled:opacity-50",
+      disabled: isLoadMorePending || !onLoadMoreRows,
+      onClick: handleLoadMoreRows
+    }, isLoadMorePending ? "Loading…" : "Load more rows")
+  ) : null;
+
   const body = h("div",
     {
       className: mergeClasses(cx("grid", "relative")),
       ref: gridRef,
       onMouseMove,
-      onMouseUp: endDrag
+      onMouseUp: endDrag,
+      style: { minWidth: `${Math.max(totalColumnWidth, columns.length ? totalColumnWidth : 0)}px` }
     },
-    ...rows.map((row, r) => {
-      const show = visibleRowIndexes.includes(r);
-      if (!show) return null;
-      const isDraggingRow = rowDragHover && rowDragHover.from === r;
-      const isRowEdgeActive = rowResizeHover === r || (rowResizeGuide && rowResizeGuide.index === r);
-      const isRowResizing = !!(rowResizeGuide?.active && rowResizeGuide.index === r);
-      return h("div",
-        {
-          key: rowKey(row, r),
-          className: mergeClasses(
-            cx("row", "flex relative"),
-            "transition-transform",
-            isDraggingRow && "ring-2 ring-blue-300/60 bg-blue-50/70 dark:bg-neutral-800/60"
-          ),
-          style: (() => {
-            const base: React.CSSProperties = {
-              height: `${rowHeights[r]}px`,
-              transform: isDraggingRow ? "scale(0.995)" : undefined
-            };
-            if (isRowEdgeActive) {
-              const color = isRowResizing ? "rgba(37,99,235,0.9)" : "rgba(59,130,246,0.65)";
-              base.boxShadow = [base.boxShadow, `inset 0 -2.5px 0 0 ${color}`].filter(Boolean).join(", ");
-            }
-            return base;
-          })(),
-          role: "row",
-          onDragOver: (e: React.DragEvent) => onRowDragOver(r, e),
-          onDrop: (e: React.DragEvent) => onRowDrop(r, e)
-        },
-        h("button", {
-          className: "absolute -left-16 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border bg-white dark:bg-neutral-900 flex items-center justify-center text-zinc-400 hover:text-zinc-600",
-          draggable: true,
-          onDragStart: (e: React.DragEvent) => { e.stopPropagation(); startRowDrag(r, e); },
-          onDragEnd: () => endRowDrag(),
-          title: "Drag to reorder row"
-        }, h(FaGripVertical, { className: "h-4 w-4" })),
-        ...columns.map((col, c) => {
-          const active = activeCell && activeCell.r === r && activeCell.c === c;
-          const inSel = selection && r >= selection.r0 && r <= selection.r1 && c >= selection.c0 && c <= selection.c1;
-          const isEditingCell = editing && editing.r === r && editing.c === c;
-          const isColumnEdgeActive = columnResizeHover === c || (columnResizeGuide && columnResizeGuide.index === c);
-          const isColumnResizing = !!(columnResizeGuide?.active && columnResizeGuide.index === c);
-          const style: React.CSSProperties = {
-            width: `${colWidths[c]}px`,
-            minWidth: `${colWidths[c]}px`,
-            maxWidth: `${colWidths[c]}px`,
-            userSelect: "none",
-            backgroundColor: undefined,
-            color: undefined
-          };
-          const decorated = getCellStyle(r, c);
-          if (decorated?.background) style.backgroundColor = decorated.background;
-          if (decorated?.color) style.color = decorated.color;
-          if (!decorated?.background && inSel) {
-            style.backgroundColor = "rgba(59,130,246,0.08)";
-          } else if (inSel) {
-            style.boxShadow = "inset 0 0 0 2px rgba(59,130,246,0.35)";
-          }
-          if (isColumnEdgeActive) {
-            const color = isColumnResizing ? "rgba(37,99,235,0.9)" : "rgba(59,130,246,0.6)";
-            const edgeShadow = `inset -2.5px 0 0 0 ${color}`;
-            style.boxShadow = style.boxShadow ? `${style.boxShadow}, ${edgeShadow}` : edgeShadow;
-          }
-          if (columnDragHover && columnDragHover.from === c) {
-            style.opacity = 0.6;
-            style.transform = "scale(0.98)";
-            if (!style.backgroundColor) style.backgroundColor = "rgba(59,130,246,0.1)";
-          }
-          const cellValue = getCellValue(r, c);
-          const displayContent = displayValue(cellValue, col);
-          const contentClass = mergeClasses(
-            "w-full whitespace-pre-wrap break-words leading-snug",
-            decorated?.bold && "font-semibold",
-            decorated?.italic && "italic",
-            decorated?.underline && "underline"
-          );
-          const contentStyle: React.CSSProperties = {
-            textAlign: decorated?.align,
-            userSelect: "none"
-          };
-          let contentNode: React.ReactNode = h("div", {
-            className: contentClass,
-            style: contentStyle
-          }, displayContent);
-
-          if (!isEditingCell && col.type === "rating") {
-            const max = Math.max(1, col.config?.rating?.max ?? 5);
-            const previewValue = ratingPreview && ratingPreview.r === r && ratingPreview.c === c ? ratingPreview.value : null;
-            const currentValue = Number(cellValue ?? 0);
-            const effectiveValue = previewValue ?? currentValue;
-            const iconType = col.config?.rating?.icon ?? "star";
-            const IconComponent = iconType === "heart" ? FaHeart : iconType === "circle" ? FaCircle : FaStar;
-            const activeColor =
-              iconType === "heart" ? "text-pink-500" :
-              iconType === "circle" ? "text-teal-400" :
-              "text-yellow-400";
-            const inactiveColor = "text-zinc-300 dark:text-neutral-700";
-            const isReadOnly = !!col.readOnly;
-            const justifyContent =
-              decorated?.align === "right" ? "flex-end" :
-              decorated?.align === "center" ? "center" : "flex-start";
-            const buttons = Array.from({ length: max }, (_unused, index) => {
-              const value = index + 1;
-              const isActive = effectiveValue >= value;
-              const colorClass = isActive ? activeColor : inactiveColor;
-              const sharedHandlers = isReadOnly ? {} : {
-                onMouseEnter: () => setRatingPreview({ r, c, value }),
-                onFocus: () => setRatingPreview({ r, c, value }),
-                onMouseLeave: () => setRatingPreview((prev) => (prev && prev.r === r && prev.c === c ? null : prev)),
-                onBlur: () => setRatingPreview((prev) => (prev && prev.r === r && prev.c === c ? null : prev)),
-                onClick: () => setCellValue(r, c, value, { commit: true })
-              };
-              return h("button", {
-                key: value,
-                type: "button",
-                className: mergeClasses(
-                  "inline-flex items-center justify-center transition-transform",
-                  !isReadOnly && "cursor-pointer hover:scale-110 focus-visible:scale-110 focus-visible:outline-none"
-                ),
-                title: `Set rating to ${value} of ${max}`,
-                ...sharedHandlers
-              },
-                h(IconComponent, { className: mergeClasses("h-4 w-4", colorClass) })
-              );
-            });
-            contentNode = h("div", {
-              className: mergeClasses(
-                "flex items-center gap-1",
-                decorated?.bold && "font-semibold",
-                decorated?.italic && "italic",
-                decorated?.underline && "underline"
-              ),
-              style: { justifyContent },
-              onMouseLeave: () => setRatingPreview((prev) => (prev && prev.r === r && prev.c === c ? null : prev))
-            }, ...buttons);
-          }
-
-          return h("div",
-            {
-              key: colKey(col, c),
-              className: mergeClasses(
-                cx("cell", baseCellClass),
-                "px-2 py-1 overflow-hidden transition-transform",
-                columnDragHover && columnDragHover.from === c && "bg-blue-50/50 dark:bg-neutral-800/50",
-                active && "ring-2 ring-blue-500"
-              ),
-              style,
-              role: "gridcell",
-              "data-r": r,
-              "data-c": c,
-              onMouseDown: (e: React.MouseEvent) => startDrag(r, c, e),
-              onDoubleClick: () => beginEdit(r, c),
-              onContextMenu: (e: React.MouseEvent) => handleCellContextMenu(e, r, c)
-            },
-            isEditingCell ? renderCellEditor(r, c) : contentNode
-          );
-        }),
-        // row resizer handle
-        h("div", {
-          className: mergeClasses(
-            "absolute bottom-0 left-0 right-0 cursor-row-resize transition-all",
-            isRowResizing ? "h-2.5 bg-blue-500/90" : isRowEdgeActive ? "h-2.5 bg-blue-400/70" : "h-1 bg-transparent"
-          ),
-          onMouseDown: (e: React.MouseEvent) => startRowResize(r, e),
-          onMouseEnter: (e: React.MouseEvent) => {
-            setRowResizeHover(r);
-            updateRowGuidePosition(r, e.clientY, false);
-          },
-          onMouseMove: (e: React.MouseEvent) => updateRowGuidePosition(r, e.clientY, rowResizeGuide?.active ?? false),
-          onMouseLeave: () => {
-            if (!rowResizeGuide?.active) {
-              setRowResizeHover((prev) => (prev === r ? null : prev));
-              setRowResizeGuide((prev) => (prev && !prev.active ? null : prev));
-            }
-          }
-        }),
-        // expand details button
-        h("button", {
-          className: "absolute -left-8 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full border bg-white dark:bg-neutral-900 flex items-center justify-center text-sm",
-          onClick: () => setDetailsModal({ rowIndex: r }),
-          title: "Expand details"
-        }, "+"),
-      );
-    }),
+    rowsContainer,
     columnPlaceholderBody,
     rowPlaceholderElement,
-    // Selection border + fill handle
     selection && h("div", {
       className: mergeClasses(cx("selection", ""), "pointer-events-none absolute border-2 border-blue-500"),
       style: selectionBoxStyle(selection, colWidths, rowHeights, headerHeight)
@@ -2278,15 +2496,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       style: selectionFillHandleStyle(selection, colWidths, rowHeights, headerHeight),
       onMouseDown: onFillMouseDown
     }),
-    // "+" add row at bottom
-    h("div", { className: "flex items-center justify-center py-3" },
-      h("button", {
-        className: mergeClasses(cx("plusButton", ""), "rounded-full border px-3 py-1 text-sm bg-white dark:bg-neutral-900"),
-        onClick: addRow,
-        onDragOver: (e: React.DragEvent) => onRowDragOver(rows.length, e),
-        onDrop: (e: React.DragEvent) => onRowDrop(rows.length, e)
-      }, "+ Add row")
-    )
+    addRowButton,
+    loadMoreButton
   );
 
   /* Context menu UI */
@@ -2584,12 +2795,53 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       ...secondaryViews.map(renderViewButton)
     )
   );
-  const tableContent = h("div", { className: "relative overflow-auto rounded-xl border", ref: tableContainerRef },
+  const tableContent = h("div", { className: "relative overflow-auto rounded-xl border", ref: tableContainerRef, onScroll: handleScroll },
     header,
     body,
     columnResizeGuideLine,
     rowResizeGuideLine
   );
+
+  const confirmModalElement = confirmAction ? h("div", {
+    className: "fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-6",
+    onClick: cancelDeletion,
+    role: "alertdialog",
+    "aria-modal": "true"
+  },
+    h("div", {
+      className: "relative w-full max-w-md rounded-2xl border border-red-200 bg-white p-5 shadow-2xl dark:border-red-900/70 dark:bg-neutral-950",
+      onClick: (ev: React.MouseEvent) => ev.stopPropagation()
+    },
+      h("h2", { className: "text-lg font-semibold text-red-600 dark:text-red-300" }, confirmAction.type === "deleteRows" ? "Delete rows?" : "Delete fields?"),
+      (() => {
+        if (confirmAction.type === "deleteRows") {
+          const { count } = confirmAction.range;
+          return h("p", { className: "mt-3 text-sm text-zinc-600 dark:text-neutral-300" },
+            count === 1 ? "Are you sure you want to delete this row? This action cannot be undone."
+              : `Are you sure you want to delete ${count} rows? This action cannot be undone.`
+          );
+        }
+        const names = confirmAction.columns.map((col) => String(col?.name ?? "Untitled")).join(", ");
+        return h("p", { className: "mt-3 text-sm text-zinc-600 dark:text-neutral-300" },
+          confirmAction.columns.length === 1
+            ? `Delete the field "${names}"? This will remove its values from all rows.`
+            : `Delete ${confirmAction.columns.length} fields (${names})? This will remove their values from all rows.`
+        );
+      })(),
+      h("div", { className: "mt-5 flex justify-end gap-3" },
+        h("button", {
+          className: "rounded-full border px-4 py-1.5 text-sm",
+          onClick: cancelDeletion
+        }, "Cancel"),
+        h("button", {
+          className: "rounded-full bg-red-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-red-700",
+          onClick: confirmDeletion
+        }, confirmAction.type === "deleteRows"
+          ? (confirmAction.range.count === 1 ? "Delete row" : `Delete ${confirmAction.range.count} rows`)
+          : (confirmAction.columns.length === 1 ? "Delete field" : `Delete ${confirmAction.columns.length} fields`))
+      )
+    )
+  ) : null;
 
   const activeModalRow = detailsModal ? rows[detailsModal.rowIndex] : null;
   const modalTitle = detailsModal && activeModalRow
@@ -2637,6 +2889,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     sidebarElement,
     mainContent,
     headerContextMenu,
+    confirmModalElement,
     cellContextMenu,
     detailsModalElement
   );
@@ -2670,6 +2923,32 @@ function sum(arr: number[], start: number, end: number) {
   let s = 0;
   for (let i = start; i < end; i++) s += arr[i] || 0;
   return s;
+}
+
+function lowerBound(arr: number[], value: number) {
+  let low = 0;
+  let high = arr.length;
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2);
+    if (arr[mid] < value) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+  return low;
+}
+
+function visibleRangeFromOffsets(offsets: number[], start: number, end: number) {
+  const count = Math.max(0, offsets.length - 1);
+  if (count === 0) return { start: 0, end: 0 };
+  const total = offsets[count];
+  const clampedStart = Math.max(0, Math.min(start, total));
+  const clampedEnd = Math.max(clampedStart, Math.min(end, total));
+  const startIndex = Math.max(0, Math.min(count - 1, lowerBound(offsets, clampedStart) - 1));
+  let endIndex = lowerBound(offsets, clampedEnd);
+  endIndex = Math.max(startIndex + 1, Math.min(count, endIndex + 1));
+  return { start: startIndex, end: endIndex };
 }
 
 function uniqueColumnKey(cols: ColumnSpec[], base: string) {
