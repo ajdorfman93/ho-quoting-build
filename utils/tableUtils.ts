@@ -572,6 +572,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     latestRowsRef.current = nextRows;
     setColumns(nextCols);
     latestRowsRef.current = nextRows;
+    setRowHeights(nextRows.map(() => ROW_HEIGHT_PRESETS[rowHeightPresetRef.current]));
   }, [current]);
 
   React.useEffect(() => {
@@ -584,22 +585,43 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     }
   }, [availableViews, activeView]);
 
+  const closeAllMenus = React.useCallback(() => {
+    setViewsDropdownOpen(false);
+    setFieldsMenuOpen(false);
+    setFilterMenuOpen(false);
+    setGroupMenuOpen(false);
+    setSortMenuOpen(false);
+    setColorMenuOpen(false);
+    setRowHeightMenuOpen(false);
+  }, []);
+
   React.useEffect(() => {
-    if (!viewsDropdownOpen) return;
+    if (!(viewsDropdownOpen || fieldsMenuOpen || filterMenuOpen || groupMenuOpen || sortMenuOpen || colorMenuOpen || rowHeightMenuOpen)) {
+      return;
+    }
+    const menus = [
+      { open: viewsDropdownOpen, trigger: viewsTriggerRef as React.RefObject<HTMLElement>, menu: viewsDropdownRef as React.RefObject<HTMLElement> },
+      { open: fieldsMenuOpen, trigger: fieldsButtonRef as React.RefObject<HTMLElement>, menu: fieldsMenuRef as React.RefObject<HTMLElement> },
+      { open: filterMenuOpen, trigger: filterButtonRef as React.RefObject<HTMLElement>, menu: filterMenuRef as React.RefObject<HTMLElement> },
+      { open: groupMenuOpen, trigger: groupButtonRef as React.RefObject<HTMLElement>, menu: groupMenuRef as React.RefObject<HTMLElement> },
+      { open: sortMenuOpen, trigger: sortButtonRef as React.RefObject<HTMLElement>, menu: sortMenuRef as React.RefObject<HTMLElement> },
+      { open: colorMenuOpen, trigger: colorButtonRef as React.RefObject<HTMLElement>, menu: colorMenuRef as React.RefObject<HTMLElement> },
+      { open: rowHeightMenuOpen, trigger: rowHeightButtonRef as React.RefObject<HTMLElement>, menu: rowHeightMenuRef as React.RefObject<HTMLElement> }
+    ];
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
       if (!target) return;
-      if (
-        viewsDropdownRef.current?.contains(target) ||
-        viewsTriggerRef.current?.contains(target)
-      ) {
-        return;
+      const insideActiveMenu = menus.some((entry) => {
+        if (!entry.open) return false;
+        return Boolean(entry.menu.current?.contains(target) || entry.trigger.current?.contains(target));
+      });
+      if (!insideActiveMenu) {
+        closeAllMenus();
       }
-      setViewsDropdownOpen(false);
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setViewsDropdownOpen(false);
+        closeAllMenus();
       }
     };
     window.addEventListener("pointerdown", handlePointerDown);
@@ -608,7 +630,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [viewsDropdownOpen]);
+  }, [viewsDropdownOpen, fieldsMenuOpen, filterMenuOpen, groupMenuOpen, sortMenuOpen, colorMenuOpen, rowHeightMenuOpen, closeAllMenus]);
 
   const commit = React.useCallback((nextRows: T[] = rows, nextCols: ColumnSpec<T>[] = columns) => {
     push({ rows: nextRows, columns: nextCols });
@@ -618,21 +640,31 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   /* sizing */
   const [headerHeight, setHeaderHeight] = React.useState(initialHeaderHeight);
   const [rowHeights, setRowHeights] = React.useState<number[]>(
-    () => rows.map(() => minRowHeight)
+    () => rows.map(() => ROW_HEIGHT_PRESETS[rowHeightPreset])
   );
   const [colWidths, setColWidths] = React.useState<number[]>(
     () => columns.map((c) => clamp(c.width ?? 160, minColumnWidth, 800))
   );
 
   React.useEffect(() => {
-    // keep arrays aligned on insert/delete
     if (rowHeights.length !== rows.length) {
-      setRowHeights((prev) => {
-        const next = rows.map((_r, i) => prev[i] ?? minRowHeight);
-        return next;
-      });
+      const height = ROW_HEIGHT_PRESETS[rowHeightPresetRef.current];
+      setRowHeights((prev) => rows.map((_r, i) => prev[i] ?? height));
     }
-  }, [rows, rowHeights.length, minRowHeight]);
+  }, [rows.length, rowHeights.length]);
+  React.useEffect(() => {
+    const target = wrapHeaders ? Math.max(initialHeaderHeight, 64) : initialHeaderHeight;
+    setHeaderHeight((prev) => {
+      if (wrapHeaders && prev < target) return target;
+      if (!wrapHeaders && prev !== target) return target;
+      return prev;
+    });
+  }, [wrapHeaders, initialHeaderHeight]);
+  const applyRowHeightPreset = React.useCallback((preset: RowHeightPreset) => {
+    const height = ROW_HEIGHT_PRESETS[preset];
+    setRowHeightPreset(preset);
+    setRowHeights(() => Array.from({ length: latestRowsRef.current.length }, () => height));
+  }, []);
 
   React.useEffect(() => {
     if (colWidths.length !== columns.length) {
@@ -1964,17 +1996,151 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     setRowDragHover(null);
   }
 
-  /* Search box filtering (Ctrl+F) */
-  const visibleRowIndexes = React.useMemo(() => {
-    if (!searchTerm.trim()) return rows.map((_r, i) => i);
-    const q = searchTerm.toLowerCase();
-    const hit: number[] = [];
-    rows.forEach((row, rIdx) => {
-      const s = columns.map((c) => String(getCellValue(rIdx, columns.indexOf(c)) ?? "")).join(" ").toLowerCase();
-      if (s.includes(q)) hit.push(rIdx);
+  const normalizeSortValue = (value: any): any => {
+    if (value == null) return "";
+    if (typeof value === "number") return value;
+    if (typeof value === "boolean") return value ? 1 : 0;
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === "object") {
+      if (Array.isArray(value)) {
+        return normalizeSortValue(value[0]);
+      }
+      if ("label" in value && typeof value.label === "string") {
+        return value.label.toLowerCase();
+      }
+      if ("name" in value && typeof value.name === "string") {
+        return value.name.toLowerCase();
+      }
+    }
+    const numeric = Number(value);
+    if (!Number.isNaN(numeric) && String(value).trim() !== "") return numeric;
+    return String(value).toLowerCase();
+  };
+
+  /* View transformations (sort, group, filter, search) */
+  const orderedRowIndexes = React.useMemo(() => {
+    const order = rows.map((_row, index) => index);
+    if (sortConfig) {
+      const columnIndex = columns.findIndex((col) => String(col.key) === sortConfig.columnKey);
+      if (columnIndex >= 0) {
+        order.sort((a, b) => {
+          const av = normalizeSortValue(getCellValue(a, columnIndex));
+          const bv = normalizeSortValue(getCellValue(b, columnIndex));
+          if (av < bv) return sortConfig.direction === "asc" ? -1 : 1;
+          if (av > bv) return sortConfig.direction === "asc" ? 1 : -1;
+          return a - b;
+        });
+      }
+    }
+    if (groupConfig) {
+      const groupIndex = columns.findIndex((col) => String(col.key) === groupConfig.columnKey);
+      if (groupIndex >= 0 && (!sortConfig || sortConfig.columnKey !== groupConfig.columnKey)) {
+        order.sort((a, b) => {
+          const av = normalizeSortValue(getCellValue(a, groupIndex));
+          const bv = normalizeSortValue(getCellValue(b, groupIndex));
+          if (av < bv) return -1;
+          if (av > bv) return 1;
+          return a - b;
+        });
+      }
+    }
+    return order;
+  }, [rows, columns, sortConfig, groupConfig, getCellValue]);
+
+  const filteredRowIndexes = React.useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    const activeFilterEntries = activeFilters.filter((filter) => filter.term.trim().length);
+    if (!q && !activeFilterEntries.length) return orderedRowIndexes;
+    return orderedRowIndexes.filter((rowIdx) => {
+      const matchesSearch = !q || columns.some((_col, colIdx) => {
+        const value = getCellValue(rowIdx, colIdx);
+        return String(value ?? "").toLowerCase().includes(q);
+      });
+      if (!matchesSearch) return false;
+      return activeFilterEntries.every((filter) => {
+        const columnIndex = columns.findIndex((col) => String(col.key) === filter.columnKey);
+        if (columnIndex < 0) return true;
+        const value = getCellValue(rowIdx, columnIndex);
+        const normalized = String(value ?? "").toLowerCase();
+        const term = filter.term.trim().toLowerCase();
+        if (!term) return true;
+        if (filter.operator === "equals") return normalized === term;
+        return normalized.includes(term);
+      });
     });
-    return hit;
-  }, [rows, columns, searchTerm]);
+  }, [orderedRowIndexes, columns, searchTerm, activeFilters, getCellValue]);
+
+  const groupHeaders = React.useMemo(() => {
+    if (!groupConfig) return new Map<number, string>();
+    const columnIndex = columns.findIndex((col) => String(col.key) === groupConfig.columnKey);
+    if (columnIndex < 0) return new Map<number, string>();
+    const headers = new Map<number, string>();
+    let previousLabel: string | null = null;
+    filteredRowIndexes.forEach((rowIdx) => {
+      const raw = getCellValue(rowIdx, columnIndex);
+      const label = String(
+        raw == null || raw === ""
+          ? "(Blank)"
+          : typeof raw === "object" && raw !== null && "label" in raw
+            ? (raw as any).label ?? "(Blank)"
+            : raw
+      );
+      if (label !== previousLabel) {
+        headers.set(rowIdx, label);
+        previousLabel = label;
+      }
+    });
+    return headers;
+  }, [groupConfig, columns, filteredRowIndexes, getCellValue]);
+
+  const COLOR_FALLBACKS = ["#22d3ee", "#fb7185", "#f97316", "#22c55e", "#818cf8", "#facc15", "#14b8a6", "#f472b6"] as const;
+
+  const rowColorMap = React.useMemo(() => {
+    if (!colorConfig) return new Map<number, string>();
+    const columnIndex = columns.findIndex((col) => String(col.key) === colorConfig.columnKey);
+    if (columnIndex < 0) return new Map<number, string>();
+    const column = columns[columnIndex];
+    const map = new Map<number, string>();
+    const resolveColor = (label: string, index: number) => {
+      if (!label) return undefined;
+      const paletteIndex = Math.abs(label.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0)) % COLOR_FALLBACKS.length;
+      return COLOR_FALLBACKS[paletteIndex] ?? COLOR_FALLBACKS[index % COLOR_FALLBACKS.length];
+    };
+    const optionColor = (label: string) => {
+      const lower = label.toLowerCase();
+      const options =
+        column.config?.singleSelect?.options ??
+        column.config?.multipleSelect?.options ??
+        [];
+      const match = options.find((opt) => {
+        const id = opt.id ? String(opt.id).toLowerCase() : "";
+        const optLabel = opt.label ? String(opt.label).toLowerCase() : "";
+        return id === lower || optLabel === lower;
+      });
+      return match?.color;
+    };
+    rows.forEach((_row, idx) => {
+      const raw = getCellValue(idx, columnIndex);
+      if (raw == null || raw === "") return;
+      if (column.type === "singleSelect") {
+        const label = typeof raw === "object" && raw !== null ? (raw as any).label ?? (raw as any).id ?? "" : String(raw);
+        const color = optionColor(label) ?? resolveColor(label, idx);
+        if (color) map.set(idx, color);
+      } else if (column.type === "multipleSelect" && Array.isArray(raw)) {
+        const first = raw[0];
+        const label = typeof first === "object" && first !== null ? (first as any).label ?? (first as any).id ?? "" : String(first ?? "");
+        const color = optionColor(label) ?? resolveColor(label, idx);
+        if (color) map.set(idx, color);
+      } else {
+        const label = typeof raw === "object" && raw !== null ? JSON.stringify(raw) : String(raw);
+        const color = resolveColor(label, idx);
+        if (color) map.set(idx, color);
+      }
+    });
+    return map;
+  }, [colorConfig, columns, rows, getCellValue]);
+
+  const visibleRowIndexes = filteredRowIndexes;
 
   const visibleRowOffsets = React.useMemo(() => {
     const offsets: number[] = [0];
