@@ -802,11 +802,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   React.useEffect(() => {
     rowHeightPresetRef.current = rowHeightPreset;
   }, [rowHeightPreset]);
-  React.useEffect(() => {
-    if (selectAllCheckboxRef.current) {
-      selectAllCheckboxRef.current.indeterminate = selectAllIndeterminate;
-    }
-  }, [selectAllIndeterminate]);
   const [filterDraftColumn, setFilterDraftColumn] = React.useState<string>("");
   const [filterDraftOperator, setFilterDraftOperator] = React.useState<"contains" | "equals">("contains");
   const [filterDraftValue, setFilterDraftValue] = React.useState("");
@@ -2810,6 +2805,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       selection.r1 >= lastRowIndex
   );
   const selectAllIndeterminate = Boolean(isRowSelectionRange && selection && !isAllRowsSelected);
+  React.useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      selectAllCheckboxRef.current.indeterminate = selectAllIndeterminate;
+    }
+  }, [selectAllIndeterminate]);
   const columnHandleTop = columnResizeGuide ? Math.max(0, Math.min(resizeGuideContainerHeight - 25, (columnResizeGuide.cursor ?? viewport.scrollTop) - 12)) : 0;
   const rowHandleLeft = rowResizeGuide ? Math.max(0, Math.min(resizeGuideContainerWidth - 25, (rowResizeGuide.cursor ?? viewport.scrollLeft) - 12)) : 0;
 
