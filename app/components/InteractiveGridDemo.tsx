@@ -31,6 +31,10 @@ export interface InteractiveGridProps<T extends Record<string, unknown>> {
   renderDetails?: (row: T, rowIndex: number) => React.ReactNode;
   classNames?: InteractiveTableProps<T>["classNames"];
   onStateChange?: (next: InteractiveGridState<T>) => void;
+  hasMoreRows?: boolean;
+  loadingMoreRows?: boolean;
+  onLoadMoreRows?: () => void | Promise<void>;
+  virtualizationOverscan?: number;
 }
 
 export function InteractiveGrid<T extends Record<string, unknown>>({
@@ -40,6 +44,10 @@ export function InteractiveGrid<T extends Record<string, unknown>>({
   renderDetails,
   classNames,
   onStateChange,
+  hasMoreRows,
+  loadingMoreRows,
+  onLoadMoreRows,
+  virtualizationOverscan,
 }: InteractiveGridProps<T>) {
   const [state, setState] = React.useState<InteractiveGridState<T>>(() => ({
     rows: initialRows,
@@ -65,6 +73,10 @@ export function InteractiveGrid<T extends Record<string, unknown>>({
     users,
     renderDetails,
     classNames,
+    hasMoreRows,
+    loadingMoreRows,
+    onLoadMoreRows,
+    virtualizationOverscan,
   });
 }
 

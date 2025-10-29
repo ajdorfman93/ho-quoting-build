@@ -633,12 +633,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     let resizeObserver: ResizeObserver | null = null;
     if (typeof ResizeObserver !== "undefined") {
       resizeObserver = new ResizeObserver(() => {
-        setViewport((prev) => ({
+        setViewport({
           scrollTop: el.scrollTop,
           scrollLeft: el.scrollLeft,
           width: el.clientWidth,
           height: el.clientHeight
-        }));
+        });
       });
       resizeObserver.observe(el);
     }
@@ -1116,13 +1116,35 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     });
   }
 
-  function createNewColumnSpec(baseName = "New column"): ColumnSpec<T> {
+  function createNewColumnSpec(baseName = "New column", type: ColumnType = "singleLineText"): ColumnSpec<T> {
     const key = uniqueColumnKey(columns, "new_field");
-    return { key, name: baseName, type: "singleLineText", width: 160 } as ColumnSpec<T>;
+    return { key, name: baseName, type, width: 160 } as ColumnSpec<T>;
+  }
+  function promptNewColumnSpec(): ColumnSpec<T> | null {
+    if (typeof window === "undefined") return createNewColumnSpec();
+    const defaultName = `Field ${columns.length + 1}`;
+    const nameInput = window.prompt("Enter new field name", defaultName);
+    if (nameInput === null) return null;
+    const trimmedName = nameInput.trim() || defaultName;
+    const allowedTypes = new Set(ALL_TYPES.map((opt) => opt.value));
+    const defaultType: ColumnType = "singleLineText";
+    const typeInput = window.prompt(
+      `Enter field type (${Array.from(allowedTypes).join(", ")})`,
+      defaultType
+    );
+    const cleanedType = (typeInput ?? "").trim();
+    const normalizedType = cleanedType && allowedTypes.has(cleanedType as ColumnType)
+      ? (cleanedType as ColumnType)
+      : defaultType;
+    return createNewColumnSpec(trimmedName, normalizedType);
   }
 
   function insertColumnAtIndex(index: number, column?: ColumnSpec<T>) {
-    const newColumn = column ?? createNewColumnSpec();
+    let newColumn = column;
+    if (!newColumn) {
+      newColumn = promptNewColumnSpec();
+      if (!newColumn) return;
+    }
     const safeIndex = clamp(index, 0, columns.length);
     const nextCols = columns.slice();
     nextCols.splice(safeIndex, 0, { ...newColumn });
@@ -1617,9 +1639,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   }
   function addColumn() {
     insertColumnAtIndex(columns.length);
-  }
-  function deleteColumn(idx: number) {
-    requestRemoveColumns([idx]);
   }
 
   async function handleLoadMoreRows() {
@@ -2458,6 +2477,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   const addRowButton = h("div", { className: "flex items-center justify-center py-3", key: "add-row" },
     h("button", {
+      type: "button",
       className: mergeClasses(cx("plusButton", ""), "rounded-full border px-3 py-1 text-sm bg-white dark:bg-neutral-900"),
       onClick: addRow,
       onDragOver: (e: React.DragEvent) => onRowDragOver(rows.length, e),
@@ -2470,6 +2490,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     className: "flex items-center justify-center pb-4"
   },
     h("button", {
+      type: "button",
       className: "rounded-full border px-4 py-1.5 text-sm bg-white dark:bg-neutral-900 disabled:opacity-50",
       disabled: isLoadMorePending || !onLoadMoreRows,
       onClick: handleLoadMoreRows
@@ -2830,10 +2851,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       })(),
       h("div", { className: "mt-5 flex justify-end gap-3" },
         h("button", {
+          type: "button",
           className: "rounded-full border px-4 py-1.5 text-sm",
           onClick: cancelDeletion
         }, "Cancel"),
         h("button", {
+          type: "button",
           className: "rounded-full bg-red-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-red-700",
           onClick: confirmDeletion
         }, confirmAction.type === "deleteRows"
