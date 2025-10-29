@@ -1,0 +1,379 @@
+[
+  {
+    "Component ID": "\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"",
+    "Hardware Set": "\"\"\"Home 2 Suites - Springfield, OH_\"\", \"\"Home 2 Suites - Springfield, OH_\"\", \"\"Home 2 Suites - Springfield, OH_\"\", \"\"Home 2 Suites - Springfield, OH_\"\", \"\"Home 2 Suites - Springfield, OH_\"\" - 12\"",
+    "Component": "\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"",
+    "Item (from Component)": "BB1279 4.5x4.5",
+    "Type": "Hinges",
+    "Component Cost": "$3.96",
+    "Quantity": "3",
+    "Item Total Price": "$11.88",
+    "Components copy": "\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\""
+  },
+  {
+    "Component ID": "\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\"",
+    "Hardware Set": "\"\"\"Home 2 Suites - Springfield, OH_\"\", \"\"Home 2 Suites - Springfield, OH_\"\", \"\"Home 2 Suites - Springfield, OH_\"\", \"\"Home 2 Suites - Springfield, OH_\"\", \"\"Home 2 Suites - Springfield, OH_\"\" - 12\"",
+    "Component": "\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\"",
+    "Item (from Component)": "5200 MLT ADJ 1-6 ALM BF",
+    "Type": "Closer",
+    "Component Cost": "$4.96",
+    "Quantity": "1",
+    "Item Total Price": "$4.96",
+    "Components copy": "\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\""
+  },
+  {
+    "Component ID": "\"Hardware: Hager, Cylindrical Passage, 2510 2-3/4 WTN ASA, US26D\"",
+    "Hardware Set": "\"\"\"Home 2 Suites - Springfield, OH_\"\", \"\"Home 2 Suites - Springfield, OH_\"\", \"\"Home 2 Suites - Springfield, OH_\"\", \"\"Home 2 Suites - Springfield, OH_\"\", \"\"Home 2 Suites - Springfield, OH_\"\" - 12\"",
+    "Component": "\"Hardware: Hager, Cylindrical Passage, 2510 2-3/4 WTN ASA, US26D\"",
+    "Item (from Component)": "2510 2-3/4 WTN ASA",
+    "Type": "Cylindrical Passage",
+    "Quantity": "1",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Hardware: Hager, Cylindrical Passage, 2510 2-3/4 WTN ASA, US26D\""
+  },
+  {
+    "Component ID": "\"Hardware: Pemko, Door Shoe, 2173DV35.625, Dark Bronze Aluminum\"",
+    "Hardware Set": "\"\"\"Home 2 Suites - Springfield, OH_\"\", \"\"Home 2 Suites - Springfield, OH_\"\", \"\"Home 2 Suites - Springfield, OH_\"\", \"\"Home 2 Suites - Springfield, OH_\"\", \"\"Home 2 Suites - Springfield, OH_\"\" - 12\"",
+    "Component": "\"Hardware: Pemko, Door Shoe, 2173DV35.625, Dark Bronze Aluminum\"",
+    "Item (from Component)": "2173DV35.625",
+    "Type": "Door Shoe",
+    "Quantity": "1",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Hardware: Pemko, Door Shoe, 2173DV35.625, Dark Bronze Aluminum\""
+  },
+  {
+    "Component ID": "\"Door: Solid Core Wood, Veneer\"",
+    "Hardware Set": "\"\"\"Navy Yard_Montreal, QB\"\" - CW\"",
+    "Component": "\"Door: Solid Core Wood, Veneer\"",
+    "Quantity": "5",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Door: Solid Core Wood, Flush, Veneer\""
+  },
+  {
+    "Component ID": "\"Door: Solid Core Wood, Pre-Painted\"",
+    "Hardware Set": "\"\"\"Navy Yard_Montreal, QB\"\" - CW\"",
+    "Component": "\"Door: Solid Core Wood, Pre-Painted\"",
+    "Quantity": "1",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Door: Solid Core Wood, Flush, Pre-Painted\""
+  },
+  {
+    "Component ID": "\"Door: Solid Core Wood, Plastic Laminate \"",
+    "Hardware Set": "\"\"\"Navy Yard_Montreal, QB\"\" - CW\"",
+    "Component": "\"Door: Solid Core Wood, Plastic Laminate \"",
+    "Quantity": "1",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Door: Solid Core Wood, Flush, Plastic Laminate \""
+  },
+  {
+    "Component ID": "\"Hardware: Pemko, Smoke Seals, S773\"",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 1\"",
+    "Component": "\"Hardware: Pemko, Smoke Seals, S773\"",
+    "Item (from Component)": "S773",
+    "Type": "Smoke Seals",
+    "Component Cost": "$19.00",
+    "Item Total Price": "$0.00",
+    "Hardware Sets": "\"\"\"Tru_Israel, IL\"\" - 1\"",
+    "Hardware Staging": "69",
+    "Components copy": "\"Hardware: Pemko, Smoke Seals, S773\""
+  },
+  {
+    "Component ID": "\"Hardware: Pemko, Door Guard, PDLAA\"",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 1\"",
+    "Component": "\"Hardware: Pemko, Door Guard, PDLAA\"",
+    "Item (from Component)": "PDLAA",
+    "Type": "Door Guard",
+    "Component Cost": "$17.00",
+    "Item Total Price": "$0.00",
+    "Hardware Sets": "\"\"\"Tru_Israel, IL\"\" - 1\"",
+    "Hardware Staging": "68",
+    "Components copy": "\"Hardware: Pemko, Door Guard, PDLAA\""
+  },
+  {
+    "Component ID": "\"Hardware: Rockwood, Viewer, 627\"",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 2\"",
+    "Component": "\"Hardware: Rockwood, Viewer, 627\"",
+    "Item (from Component)": "627",
+    "Type": "Viewer",
+    "Component Cost": "$7.00",
+    "Item Total Price": "$0.00",
+    "Hardware Sets": "\"\"\"Tru_Israel, IL\"\" - 2\"",
+    "Hardware Staging": "70",
+    "Components copy": "\"Hardware: Rockwood, Viewer, 627\""
+  },
+  {
+    "Component ID": "\"Hardware: Pemko, Threshold, EV2325\"",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 2\"",
+    "Component": "\"Hardware: Pemko, Threshold, EV2325\"",
+    "Item (from Component)": "EV2325",
+    "Type": "Threshold",
+    "Component Cost": "$25.00",
+    "Item Total Price": "$0.00",
+    "Hardware Sets": "\"\"\"Tru_Israel, IL\"\" - 2\"",
+    "Hardware Staging": "71",
+    "Components copy": "\"Hardware: Pemko, Threshold, EV2325\""
+  },
+  {
+    "Component ID": "\"Door: Solid Core Wood, Plastic Laminate \"",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 22\"",
+    "Component": "\"Door: Solid Core Wood, Plastic Laminate \"",
+    "Quantity": "1",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Door: Solid Core Wood, Flush, Plastic Laminate \""
+  },
+  {
+    "Component ID": "\"Frame: Hollow Metal, Cased Welded, (16 Gauge)\"",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 22\"",
+    "Component": "\"Frame: Hollow Metal, Cased Welded, (16 Gauge)\"",
+    "Quantity": "1",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Frame: Hollow Metal, Cased Welded, (16 Gauge)\""
+  },
+  {
+    "Component ID": "\"Hardware: Pemko, Smoke Seals, S773\"",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 22\"",
+    "Component": "\"Hardware: Pemko, Smoke Seals, S773\"",
+    "Item (from Component)": "S773",
+    "Type": "Smoke Seals",
+    "Component Cost": "$19.00",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Hardware: Pemko, Smoke Seals, S773\""
+  },
+  {
+    "Component ID": "\"Hardware: Rockwood, Viewer, 627\"",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 22\"",
+    "Component": "\"Hardware: Rockwood, Viewer, 627\"",
+    "Item (from Component)": "627",
+    "Type": "Viewer",
+    "Component Cost": "$7.00",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Hardware: Rockwood, Viewer, 627\""
+  },
+  {
+    "Component ID": "\"Frame: Hollow Metal, Welded, (16 Gauge)\"",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 22\"",
+    "Component": "\"Frame: Hollow Metal, Welded, (16 Gauge)\"",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Frame: Hollow Metal, Welded, (16 Gauge)\""
+  },
+  {
+    "Component ID": "\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"",
+    "Hardware Set": "H2S Brooklyn _Brooklyn NY - 12",
+    "Component": "\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"",
+    "Item (from Component)": "BB1279 4.5x4.5",
+    "Type": "Hinges",
+    "Component Cost": "$3.96",
+    "Quantity": "3",
+    "Item Total Price": "$11.88",
+    "Components copy": "\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\""
+  },
+  {
+    "Component ID": "\"Hardware: Hager, Cylindrical Lock, 2570 2-3/4 WTN NC ASA IC, US26D\"",
+    "Hardware Set": "H2S Brooklyn _Brooklyn NY - 12",
+    "Component": "\"Hardware: Hager, Cylindrical Lock, 2570 2-3/4 WTN NC ASA IC, US26D\"",
+    "Item (from Component)": "2570 2-3/4 WTN NC ASA IC",
+    "Type": "Cylindrical Lock",
+    "Component Cost": "$12.00",
+    "Quantity": "1",
+    "Item Total Price": "$12.00",
+    "Components copy": "\"Hardware: Hager, Cylindrical Lock, 2570 2-3/4 WTN NC ASA IC, US26D\""
+  },
+  {
+    "Component ID": "\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\"",
+    "Hardware Set": "H2S Brooklyn _Brooklyn NY - 12",
+    "Component": "\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\"",
+    "Item (from Component)": "5200 MLT ADJ 1-6 ALM BF",
+    "Type": "Closer",
+    "Component Cost": "$4.96",
+    "Quantity": "1",
+    "Item Total Price": "$4.96",
+    "Components copy": "\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\"",
+    "Hardware Items": "Unnamed record"
+  },
+  {
+    "Component ID": "\"Hardware: Hager, Closer, 5200 TRK ADJ 1-6 ALM HOTA, ALM\"",
+    "Hardware Set": "H2S Brooklyn _Brooklyn NY - 12",
+    "Component": "\"Hardware: Hager, Closer, 5200 TRK ADJ 1-6 ALM HOTA, ALM\"",
+    "Item (from Component)": "5200 TRK ADJ 1-6 ALM HOTA",
+    "Type": "Closer",
+    "Quantity": "1",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Hardware: Hager, Closer, 5200 TRK ADJ 1-6 ALM HOTA, ALM\""
+  },
+  {
+    "Component ID": "\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"",
+    "Hardware Set": "Home 2 Suites & Tru by Hilton_VA 24201 - Set 1",
+    "Component": "\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"",
+    "Item (from Component)": "BB1279 4.5x4.5",
+    "Type": "Hinges",
+    "Component Cost": "$3.96",
+    "Quantity": "3",
+    "Item Total Price": "$11.88",
+    "Components copy": "\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\""
+  },
+  {
+    "Component ID": "\"Hardware: Hager, Closer, 5200, US26D\"",
+    "Hardware Set": "Home 2 Suites & Tru by Hilton_VA 24201 - Set 1",
+    "Component": "\"Hardware: Hager, Closer, 5200, US26D\"",
+    "Item (from Component)": "5200",
+    "Type": "Closer",
+    "Component Cost": "$51.67",
+    "Quantity": "1",
+    "Item Total Price": "$51.67",
+    "Components copy": "\"Hardware: Hager, Closer, 5200, US26D\""
+  },
+  {
+    "Component ID": "\"Hardware: Rockwood, Viewer, 627\"",
+    "Hardware Set": "Home 2 Suites & Tru by Hilton_VA 24201 - Set 1",
+    "Component": "\"Hardware: Rockwood, Viewer, 627\"",
+    "Item (from Component)": "627",
+    "Type": "Viewer",
+    "Component Cost": "$7.00",
+    "Quantity": "1",
+    "Item Total Price": "$7.00",
+    "Components copy": "\"Hardware: Rockwood, Viewer, 627\""
+  },
+  {
+    "Component ID": "\"Hardware: Pemko, Latch, PDLAA10BE, Satin Bronze\"",
+    "Hardware Set": "Home 2 Suites & Tru by Hilton_VA 24201 - Set 1",
+    "Component": "\"Hardware: Pemko, Latch, PDLAA10BE, Satin Bronze\"",
+    "Item (from Component)": "PDLAA10BE",
+    "Type": "Latch",
+    "Quantity": "1",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Hardware: Pemko, Latch, PDLAA10BE, Satin Bronze\""
+  },
+  {
+    "Component ID": "\"Hardware: Pemko, Smoke Seals, S773BL17, Black\"",
+    "Hardware Set": "Home 2 Suites & Tru by Hilton_VA 24201 - Set 1",
+    "Component": "\"Hardware: Pemko, Smoke Seals, S773BL17, Black\"",
+    "Item (from Component)": "S773BL17",
+    "Type": "Smoke Seals",
+    "Quantity": "1",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Hardware: Pemko, Smoke Seals, S773BL17, Black\""
+  },
+  {
+    "Component ID": "\"Hardware: Pemko, Door Bottom, 2173DV\"",
+    "Hardware Set": "Home 2 Suites & Tru by Hilton_VA 24201 - Set 1",
+    "Component": "\"Hardware: Pemko, Door Bottom, 2173DV\"",
+    "Item (from Component)": "2173DV",
+    "Type": "Door Bottom",
+    "Component Cost": "$24.00",
+    "Quantity": "1",
+    "Item Total Price": "$24.00",
+    "Components copy": "\"Hardware: Pemko, Door Bottom, 2173DV\""
+  },
+  {
+    "Component ID": "\"Hardware: Pemko, Threshold, EV2325\"",
+    "Hardware Set": "Home 2 Suites & Tru by Hilton_VA 24201 - Set 1",
+    "Component": "\"Hardware: Pemko, Threshold, EV2325\"",
+    "Item (from Component)": "EV2325",
+    "Type": "Threshold",
+    "Component Cost": "$25.00",
+    "Quantity": "1",
+    "Item Total Price": "$25.00",
+    "Components copy": "\"Hardware: Pemko, Threshold, EV2325\""
+  },
+  {
+    "Component ID": "\"Hardware: Hager, Wall Stop, 232W, US26D\"",
+    "Hardware Set": "Home 2 Suites & Tru by Hilton_VA 24201 - Set 1",
+    "Component": "\"Hardware: Hager, Wall Stop, 232W, US26D\"",
+    "Item (from Component)": "232W",
+    "Type": "Wall Stop",
+    "Component Cost": "$1.00",
+    "Quantity": "1",
+    "Item Total Price": "$1.00",
+    "Components copy": "\"Hardware: Hager, Wall Stop, 232W, US26D\""
+  },
+  {
+    "Component ID": "\"Door: Solid Core Wood, Pre-Painted\"",
+    "Hardware Set": "Home 2 Suites & Tru by Hilton_VA 24201 - Set 2",
+    "Component": "\"Door: Solid Core Wood, Pre-Painted\"",
+    "Quantity": "1",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Door: Solid Core Wood, Flush, Pre-Painted\""
+  },
+  {
+    "Component ID": "\"Hardware: Hager, Door Pull, 34J 4x16, US32D\"",
+    "Hardware Set": "Home 2 Suites & Tru by Hilton_VA 24201 - Set 2",
+    "Component": "\"Hardware: Hager, Door Pull, 34J 4x16, US32D\"",
+    "Item (from Component)": "34J 4x16",
+    "Type": "Door Pull",
+    "Quantity": "1",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Hardware: Hager, Door Pull, 34J 4x16, US32D\""
+  },
+  {
+    "Component ID": "\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\"",
+    "Hardware Set": "Home 2 Suites & Tru by Hilton_VA 24201 - Set 2",
+    "Component": "\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\"",
+    "Quantity": "2",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\""
+  },
+  {
+    "Component ID": "\"Door: Solid Core Wood, Veneer\"",
+    "Hardware Set": "Home 2 Suites & Tru by Hilton_VA 24201 - Set 2",
+    "Component": "\"Door: Solid Core Wood, Veneer\"",
+    "Quantity": "2",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Door: Solid Core Wood, Flush, Veneer\""
+  },
+  {
+    "Component ID": "\"Hardware: Hager, Door Pull, 34J 4x16, US4\"",
+    "Hardware Set": "Project A _Brooklyn NY  - 50",
+    "Component": "\"Hardware: Hager, Door Pull, 34J 4x16, US4\"",
+    "Item (from Component)": "34J 4x16",
+    "Type": "Door Pull",
+    "Quantity": "2",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Hardware: Hager, Door Pull, 34J 4x16, US4\""
+  },
+  {
+    "Component ID": "\"Hardware: Hager, Door Push/Pull, 13J, US32D\", \"Hardware: Hager, Door Pull, 34J 4x16, US26D\"",
+    "Hardware Set": "Project A _Brooklyn NY  - 50",
+    "Component": "\"Hardware: Hager, Door Push/Pull, 13J, US32D\",\"Hardware: Hager, Door Pull, 34J 4x16, US26D\"",
+    "Item (from Component)": "13J, 34J 4x16",
+    "Type": "Door Push/Pull,Door Pull",
+    "Quantity": "2",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Hardware: Hager, Door Pull, 34J 4x16, US26D\",\"Hardware: Hager, Door Push/Pull, 13J, US32D\""
+  },
+  {
+    "Component ID": "\"Hardware: Hager, Door Push/Pull, 13J, US32D\", \"Hardware: Hager, Hinges, ECBB1100 4.5x4.5, US26\"",
+    "Hardware Set": "Project A _Brooklyn NY  - 56",
+    "Component": "\"Hardware: Hager, Door Push/Pull, 13J, US32D\",\"Hardware: Hager, Hinges, ECBB1100 4.5x4.5, US26\"",
+    "Item (from Component)": "13J, ECBB1100 4.5x4.5",
+    "Type": "Door Push/Pull,Hinges",
+    "Quantity": "2",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Hardware: Hager, Hinges, ECBB1100 4.5x4.5, US26\",\"Hardware: Hager, Door Push/Pull, 13J, US32D\""
+  },
+  {
+    "Component ID": "\"Door: Solid Core Wood, Veneer\"",
+    "Hardware Set": "Project A _Brooklyn NY  - 57",
+    "Component": "\"Door: Solid Core Wood, Veneer\"",
+    "Quantity": "1",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Door: Solid Core Wood, Flush, Veneer\""
+  },
+  {
+    "Component ID": "\"Door: Solid Core Wood, Pre-Painted\"",
+    "Hardware Set": "Project A _Brooklyn NY  - 57",
+    "Component": "\"Door: Solid Core Wood, Pre-Painted\"",
+    "Quantity": "3",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Door: Solid Core Wood, Flush, Pre-Painted\""
+  },
+  {
+    "Component ID": "\"Hardware: Hager, Closer, 5100 PAR ADJ 1-6 ALM HDCS BF, ALM\"",
+    "Hardware Set": "Script Test_Brooklyn NY -",
+    "Component": "\"Hardware: Hager, Closer, 5100 PAR ADJ 1-6 ALM HDCS BF, ALM\"",
+    "Item (from Component)": "5100 PAR ADJ 1-6 ALM HDCS BF",
+    "Type": "Closer",
+    "Quantity": "2",
+    "Item Total Price": "$0.00",
+    "Components copy": "\"Hardware: Hager, Closer, 5100 PAR ADJ 1-6 ALM HDCS BF, ALM\""
+  }
+]

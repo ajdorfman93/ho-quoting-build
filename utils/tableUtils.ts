@@ -2,18 +2,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as React from "react";
 import {
+  FaAlignCenter,
   FaAlignLeft,
+  FaAlignRight,
+  FaBold,
   FaCalendarAlt,
   FaCheckSquare,
+  FaChevronLeft,
+  FaChevronRight,
   FaClock,
   FaColumns,
   FaDollarSign,
   FaEnvelope,
   FaFont,
+  FaHeart,
   FaGripVertical,
   FaHashtag,
   FaHourglassHalf,
   FaLayerGroup,
+  FaItalic,
   FaLink,
   FaListOl,
   FaListUl,
@@ -28,6 +35,8 @@ import {
   FaTags,
   FaTh,
   FaThLarge,
+  FaCircle,
+  FaUnderline,
   FaUser,
   FaHistory,
   FaUserEdit,
@@ -103,6 +112,10 @@ export type ColumnType =
 type CellStyle = {
   background?: string;
   color?: string;
+  align?: "left" | "center" | "right";
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
 };
 
 const STYLE_FIELD = "__styles";
@@ -461,6 +474,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const editOriginalRef = React.useRef<any>(null);
   const headerMenu = useContextMenu();
   const cellMenu = useCellContextMenu();
+  const formatClipboardRef = React.useRef<CellStyle | null>(null);
+  const [ratingPreview, setRatingPreview] = React.useState<{ r: number; c: number; value: number } | null>(null);
+  const [columnDragHover, setColumnDragHover] = React.useState<{ from: number; to: number } | null>(null);
+  const [rowDragHover, setRowDragHover] = React.useState<{ from: number; to: number } | null>(null);
 
   // sync from history index changes
   React.useEffect(() => {
@@ -541,7 +558,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     return (row as any)[key];
   }
 
-  function setCellValue(r: number, c: number, value: any) {
+  function setCellValue(r: number, c: number, value: any, options?: { commit?: boolean }) {
     const col = columns[c];
     if (!col || col.readOnly) return;
     const key = col.key as keyof T;
@@ -549,6 +566,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     (next[r] as any)[key] = value;
     setRows(next);
     latestRowsRef.current = next;
+    if (options?.commit) {
+      commit(next, columns);
+    }
   }
 
   function defaultValueForType(type: ColumnType) {
@@ -584,33 +604,99 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   }
 
   function coerceValue(input: any, col: ColumnSpec): any {
-    if (input == null) return defaultValueForType(col.type);
+    if (input == null || input === "") return defaultValueForType(col.type);
     switch (col.type) {
       case "number":
-        return Number.isFinite(Number(input)) ? Number(input) : null;
+      case "currency": {
+        const normalized = typeof input === "number"
+          ? input
+          : Number(String(input).replace(/,/g, "").trim());
+        return Number.isFinite(normalized) ? normalized : defaultValueForType(col.type);
+      }
       case "currency":
-        return Number.isFinite(Number(input)) ? Number(input) : null;
       case "percent":
-        return Number.isFinite(Number(input)) ? Number(input) : null;
+        return Number.isFinite(Number(input)) ? Number(input) : defaultValueForType(col.type);
       case "checkbox":
         if (typeof input === "boolean") return input;
-        return /^(true|1|yes|y)$/i.test(String(input));
+        if (typeof input === "number") return input !== 0;
+        return /^(true|1|yes|y|on)$/i.test(String(input).trim());
       case "rating":
         return clamp(Number(input) || 0, 0, col.config?.rating?.max ?? 5);
       case "multipleSelect": {
+        const known = col.config?.multipleSelect?.options ?? [];
+        if (Array.isArray(input)) {
+          return input.map((item) => {
+            if (typeof item === "string") {
+              return known.find((o) => o.label === item || o.id === item) ?? { id: item, label: item };
+            }
+            if (item && typeof item === "object") {
+              const opt = item as SelectOption;
+              const id = opt.id ?? opt.label;
+              const label = opt.label ?? String(id ?? "");
+              return known.find((o) => o.id === id || o.label === label) ?? { id: String(id), label };
+            }
+            const asString = String(item ?? "").trim();
+            return known.find((o) => o.label === asString) ?? { id: asString, label: asString };
+          }).filter((opt) => Boolean(opt.label));
+        }
         const str = String(input);
         const parts = str.split(",").map((s) => s.trim()).filter(Boolean);
-        const known = col.config?.multipleSelect?.options ?? [];
-        const ensured = parts.map((p) => known.find((o) => o.label === p) ?? { id: p, label: p });
-        return ensured;
+        return parts.map((p) => known.find((o) => o.label === p || o.id === p) ?? { id: p, label: p });
       }
       case "singleSelect": {
-        const label = String(input).trim();
         const known = col.config?.singleSelect?.options ?? [];
+        if (Array.isArray(input) && input.length) {
+          const first = input[0];
+          if (typeof first === "string") {
+            const trimmed = first.trim();
+            return known.find((o) => o.id === trimmed || o.label === trimmed) ?? (trimmed ? { id: trimmed, label: trimmed } : null);
+          }
+          if (first && typeof first === "object") {
+            const opt = first as SelectOption;
+            const id = opt.id ?? opt.label;
+            const label = opt.label ?? String(id ?? "");
+            return known.find((o) => o.id === id || o.label === label) ?? (label ? { id: String(id ?? label), label } : null);
+          }
+        }
+        if (input && typeof input === "object" && "id" in input) {
+          const opt = input as SelectOption;
+          return known.find((o) => o.id === opt.id || o.label === opt.label) ?? { id: String(opt.id ?? opt.label ?? ""), label: opt.label ?? String(opt.id ?? "") };
+        }
+        const label = String(input).trim();
         return known.find((o) => o.label === label) ?? (label ? { id: label, label } : null);
       }
       case "date":
-        return input ? new Date(input).toISOString() : null;
+        if (input instanceof Date) return input.toISOString();
+        if (typeof input === "number" && Number.isFinite(input)) return new Date(input).toISOString();
+        const parsed = Date.parse(String(input));
+        return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
+      case "user":
+        if (typeof input === "string") return input;
+        if (input && typeof input === "object") {
+          const candidate = input as { id?: string; name?: string };
+          return candidate.id ?? candidate.name ?? "";
+        }
+        return String(input);
+      case "attachment": {
+        if (!Array.isArray(input)) return defaultValueForType(col.type);
+        return input.map((item: any, index) => {
+          if (item && typeof item === "object") {
+            const name = String(item.name ?? item.label ?? `Attachment ${index + 1}`);
+            const url = String(item.url ?? item.href ?? "");
+            return { name, url };
+          }
+          const label = String(item ?? `Attachment ${index + 1}`);
+          return { name: label, url: "" };
+        });
+      }
+      case "duration":
+        return Number.isFinite(Number(input)) ? Number(input) : defaultValueForType(col.type);
+      case "url":
+      case "email":
+      case "phone":
+      case "singleLineText":
+      case "longText":
+        return String(input ?? "");
       default:
         return input;
     }
@@ -648,6 +734,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   /* Mouse selection & fill-down drag */
   const dragRef = React.useRef<{ r0: number; c0: number } | null>(null);
   function startDrag(r: number, c: number, e: React.MouseEvent) {
+    const target = e.target as HTMLElement | null;
+    if (target) {
+      const allowText = target.closest("textarea, input, select, [data-allow-text-selection='true']");
+      if (allowText) return;
+    }
     e.preventDefault();
     dragRef.current = { r0: r, c0: c };
     setSelection({ r0: r, c0: c, r1: r, c1: c });
@@ -812,7 +903,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     if (!editing) return;
     if (e.key === "Enter") {
       const colType = columns[editing.c]?.type;
-      if (colType === "longText" && e.shiftKey) return;
+      if (e.shiftKey && (colType === "longText" || colType === "singleLineText")) return;
       e.preventDefault();
       commitEdit();
     } else if (e.key === "Escape") {
@@ -926,7 +1017,18 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     return styles?.[col.key as string] ?? null;
   }
 
-  function applyCellStyleToSelection(sel: Selection, partial: Partial<CellStyle>) {
+  function cleanCellStyle(style: Partial<CellStyle>): CellStyle | null {
+    const next: CellStyle = {};
+    if (style.background) next.background = style.background;
+    if (style.color) next.color = style.color;
+    if (style.align) next.align = style.align;
+    if (style.bold) next.bold = true;
+    if (style.italic) next.italic = true;
+    if (style.underline) next.underline = true;
+    return Object.keys(next).length ? next : null;
+  }
+
+  function applyCellStyleToSelection(sel: Selection, partial: Partial<CellStyle>, mode: "merge" | "replace" = "merge") {
     if (!sel) return;
     const next = deepClone(rows);
     for (let r = sel.r0; r <= sel.r1; r++) {
@@ -936,11 +1038,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         const col = columns[c];
         if (!col) continue;
         const key = col.key as string;
-        const merged = { ...(styles[key] ?? {}), ...partial };
-        if (!merged.background && !merged.color) {
-          delete styles[key];
+        const existing = styles[key] ?? {};
+        const merged = mode === "replace" ? { ...partial } : { ...existing, ...partial };
+        const cleaned = cleanCellStyle(merged);
+        if (cleaned) {
+          styles[key] = cleaned;
         } else {
-          styles[key] = merged;
+          delete styles[key];
         }
       }
       if (Object.keys(styles).length) {
@@ -975,6 +1079,31 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     setRows(next);
     latestRowsRef.current = next;
     commit(next, columns);
+  }
+
+  function copySelectionFormatting(sel: Selection) {
+    if (!sel) return;
+    const style = getCellStyle(sel.r0, sel.c0);
+    formatClipboardRef.current = style ? { ...style } : null;
+  }
+
+  function pasteSelectionFormatting(sel: Selection) {
+    if (!sel || !formatClipboardRef.current) return;
+    applyCellStyleToSelection(sel, { ...formatClipboardRef.current }, "replace");
+  }
+
+  function toggleSelectionTextStyle(sel: Selection, key: "bold" | "italic" | "underline") {
+    if (!sel) return;
+    const sample = getCellStyle(sel.r0, sel.c0);
+    const nextValue = !(sample?.[key] ?? false);
+    applyCellStyleToSelection(sel, { [key]: nextValue } as Partial<CellStyle>);
+  }
+
+  function setSelectionAlignment(sel: Selection, align: CellStyle["align"]) {
+    if (!sel) return;
+    const sample = getCellStyle(sel.r0, sel.c0);
+    const nextAlign = sample?.align === align ? undefined : align;
+    applyCellStyleToSelection(sel, { align: nextAlign });
   }
 
   function selectionToMatrix(sel: Selection): string[][] {
@@ -1156,27 +1285,109 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   function deleteColumn(idx: number) {
     removeColumnsByIndex([idx]);
   }
+  function normalizeColumnForType(col: ColumnSpec<T>, type: ColumnType) {
+    const copy = deepClone(col);
+    copy.type = type;
+    copy.readOnly = ["formula","rollup","lookup","createdTime","lastModifiedTime","createdBy","lastModifiedBy"].includes(type) ? true : col.readOnly;
+
+    const allowedConfigKeys = new Set<string>();
+    switch (type) {
+      case "number": allowedConfigKeys.add("number"); break;
+      case "currency": allowedConfigKeys.add("currency"); break;
+      case "percent": allowedConfigKeys.add("percent"); break;
+      case "rating": allowedConfigKeys.add("rating"); break;
+      case "multipleSelect": allowedConfigKeys.add("multipleSelect"); break;
+      case "singleSelect": allowedConfigKeys.add("singleSelect"); break;
+      case "checkbox": allowedConfigKeys.add("checkbox"); break;
+      case "attachment": allowedConfigKeys.add("attachment"); break;
+      case "date": allowedConfigKeys.add("date"); break;
+      default:
+        break;
+    }
+
+    const config = { ...(copy.config ?? {}) } as Record<string, any>;
+    for (const key of Object.keys(config)) {
+      if (!allowedConfigKeys.has(key)) delete config[key];
+    }
+
+    if (allowedConfigKeys.has("rating")) {
+      const rating = { ...(config.rating ?? {}) };
+      rating.max = Number.isFinite(rating.max) ? rating.max : 5;
+      rating.icon = rating.icon ?? "star";
+      config.rating = rating;
+    }
+    if (allowedConfigKeys.has("multipleSelect")) {
+      const options = Array.isArray(config.multipleSelect?.options) ? config.multipleSelect.options : [];
+      config.multipleSelect = { options };
+    }
+    if (allowedConfigKeys.has("singleSelect")) {
+      const options = Array.isArray(config.singleSelect?.options) ? config.singleSelect.options : [];
+      config.singleSelect = { options };
+    }
+    if (allowedConfigKeys.has("number")) {
+      config.number = { ...(config.number ?? {}) };
+    }
+    if (allowedConfigKeys.has("currency")) {
+      config.currency = { ...(config.currency ?? {}) };
+    }
+    if (allowedConfigKeys.has("percent")) {
+      config.percent = { ...(config.percent ?? {}) };
+    }
+    if (allowedConfigKeys.has("checkbox")) {
+      config.checkbox = { ...(config.checkbox ?? {}) };
+    }
+    if (allowedConfigKeys.has("attachment")) {
+      config.attachment = { ...(config.attachment ?? {}) };
+    }
+    if (allowedConfigKeys.has("date")) {
+      config.date = { ...(config.date ?? {}) };
+    }
+
+    copy.config = Object.keys(config).length ? config : undefined;
+    return copy;
+  }
+
   function changeColumnType(idx: number, type: ColumnType) {
     const next = deepClone(columns);
-    next[idx].type = type;
-
-    // Auto readOnly for computed/system types
-    next[idx].readOnly = ["formula","rollup","lookup","createdTime","lastModifiedTime","createdBy","lastModifiedBy"].includes(type);
+    const prepared = normalizeColumnForType(next[idx], type);
+    next[idx] = prepared;
 
     // Initialize cell values if needed
-    const key = next[idx].key as string;
-    const updatedRows = rows.map((r) => ({
-      ...r,
-      [key]: coerceValue((r as any)[key], next[idx])
-    }));
+    const key = prepared.key as string;
+    const updatedRows = rows.map((r) => {
+      const nextRow = { ...r } as any;
+      nextRow[key] = coerceValue((r as any)[key], prepared);
+      return nextRow as T;
+    });
     setColumns(next);
     setRows(updatedRows);
     latestRowsRef.current = updatedRows;
     commit(updatedRows, next);
   }
 
+  function computeColumnDropTarget(from: number, over: number) {
+    const maxIndex = columns.length;
+    const placingAtEnd = over >= maxIndex;
+    let target = placingAtEnd ? maxIndex : over;
+    if (!placingAtEnd && from < over) target = Math.max(0, over - 1);
+    if (target < 0) target = 0;
+    if (target > maxIndex) target = maxIndex;
+    return target;
+  }
+
+  function computeRowDropTarget(from: number, over: number) {
+    const maxIndex = rows.length;
+    const placingAtEnd = over >= maxIndex;
+    let target = placingAtEnd ? maxIndex : over;
+    if (!placingAtEnd && from < over) target = Math.max(0, over - 1);
+    if (target < 0) target = 0;
+    if (target > maxIndex) target = maxIndex;
+    return target;
+  }
+
   function startColumnDrag(idx: number, e: React.DragEvent) {
     columnDragRef.current = { from: idx };
+    setColumnDragHover({ from: idx, to: idx });
     e.dataTransfer.effectAllowed = "move";
     try {
       e.dataTransfer.setData("text/plain", String(idx));
@@ -1189,6 +1400,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     if (!columnDragRef.current) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+    const from = columnDragRef.current.from;
+    const target = computeColumnDropTarget(from, idx);
+    setColumnDragHover({ from, to: target });
   }
 
   function onColumnDrop(idx: number, e: React.DragEvent) {
@@ -1196,6 +1410,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     e.preventDefault();
     const from = columnDragRef.current.from;
     columnDragRef.current = null;
+    setColumnDragHover(null);
     if (from === idx) return;
     const nextCols = columns.slice();
     const nextWidths = colWidths.slice();
@@ -1218,10 +1433,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   function endColumnDrag() {
     columnDragRef.current = null;
+    setColumnDragHover(null);
   }
 
   function startRowDrag(idx: number, e: React.DragEvent) {
     rowDragRef.current = { from: idx };
+    setRowDragHover({ from: idx, to: idx });
     e.dataTransfer.effectAllowed = "move";
     try {
       e.dataTransfer.setData("text/plain", String(idx));
@@ -1234,6 +1451,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     if (!rowDragRef.current) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+    const from = rowDragRef.current.from;
+    const target = computeRowDropTarget(from, idx);
+    setRowDragHover({ from, to: target });
   }
 
   function onRowDrop(idx: number, e: React.DragEvent) {
@@ -1241,6 +1461,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     e.preventDefault();
     const from = rowDragRef.current.from;
     rowDragRef.current = null;
+    setRowDragHover(null);
     if (from === idx) return;
     const nextRows = rows.slice();
     const nextHeights = rowHeights.slice();
@@ -1264,6 +1485,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   function endRowDrag() {
     rowDragRef.current = null;
+    setRowDragHover(null);
   }
 
   /* Search box filtering (Ctrl+F) */
@@ -1290,16 +1512,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   function renderCellEditor(r: number, c: number) {
     const col = columns[c];
     const val = getCellValue(r, c);
+    const baseEditorClass = "absolute inset-0 z-20 w-full h-full px-2 py-1 text-sm bg-white dark:bg-neutral-900 outline-none ring-2 ring-blue-500";
     const commonProps: any = {
       ref: (el: any) => (editorRef.current = el),
       onBlur: commitEdit,
-      className: "absolute inset-0 z-20 w-full h-full px-2 py-1 text-sm bg-white dark:bg-neutral-900 outline-none ring-2 ring-blue-500",
-      defaultValue: (col.type === "longText" ? String(val ?? "") : undefined),
-      onKeyDown: handleEditorKeyDown,
-      onChange: (e: any) => setCellValue(r, c, e.target.value)
+      onKeyDown: handleEditorKeyDown
     };
 
-    // Editor per type
     switch (col.type) {
       case "checkbox":
         return h("div", { className: "absolute inset-0 z-20 flex items-center justify-center" },
@@ -1316,6 +1535,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       case "percent":
         return h("input", {
           ...commonProps,
+          className: baseEditorClass,
           type: "number",
           step: col.type === "percent" ? "1" : "any",
           defaultValue: String(val ?? ""),
@@ -1324,6 +1544,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       case "date":
         return h("input", {
           ...commonProps,
+          className: baseEditorClass,
           type: "date",
           defaultValue: val ? new Date(val).toISOString().slice(0, 10) : "",
           onChange: (e: any) => {
@@ -1331,11 +1552,20 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
             setCellValue(r, c, inputValue);
           }
         });
-      case "longText":
+      case "singleLineText":
+      case "longText": {
+        const valueString = String(val ?? "");
+        const lineCount = Math.min(8, Math.max(1, valueString.split(/\r?\n/).length));
+?
+/).length));
         return h("textarea", {
           ...commonProps,
-          defaultValue: String(val ?? "")
+          className: mergeClasses(baseEditorClass, "resize-none whitespace-pre-wrap leading-snug"),
+          defaultValue: valueString,
+          rows: lineCount,
+          onChange: (e: any) => setCellValue(r, c, e.target.value)
         });
+      }
       case "multipleSelect": {
         const opts = col.config?.multipleSelect?.options ?? [];
         return h("div", { className: "absolute inset-0 z-20 flex items-center gap-2 px-2" },
@@ -1369,6 +1599,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         const opts = col.config?.singleSelect?.options ?? [];
         return h("select", {
           ...commonProps,
+          className: baseEditorClass,
           defaultValue: (val && (val as SelectOption).id) || "",
           onChange: (e: any) => {
             const found = opts.find((o) => o.id === e.target.value) ?? null;
@@ -1376,13 +1607,14 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
             commitEdit();
           }
         },
-          h("option", { value: "" }, "—"),
+          h("option", { value: "" }, "-"),
           ...opts.map((o) => h("option", { key: o.id, value: o.id }, o.label))
         );
       }
       case "attachment":
         return h("input", {
           ...commonProps,
+          className: baseEditorClass,
           type: "file",
           multiple: true,
           onChange: (e: any) => {
@@ -1399,8 +1631,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       default:
         return h("input", {
           ...commonProps,
+          className: baseEditorClass,
           type: "text",
-          defaultValue: String(val ?? "")
+          defaultValue: String(val ?? ""),
+          onChange: (e: any) => setCellValue(r, c, e.target.value)
         });
     }
   }
@@ -1408,6 +1642,24 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   /* ---- render grid ---- */
 
   // Header row
+  const columnPlaceholderLeft = columnDragHover ? sum(colWidths, 0, columnDragHover.to) : null;
+  const columnPlaceholderWidth = columnDragHover ? (colWidths[columnDragHover.from] ?? minColumnWidth) : null;
+  const columnPlaceholderHeader = columnPlaceholderLeft != null && columnPlaceholderWidth != null ? h("div", {
+    className: "pointer-events-none absolute rounded border-2 border-dashed border-blue-400 bg-blue-400/10",
+    style: { left: `${columnPlaceholderLeft}px`, top: 4, height: `${headerHeight - 8}px`, width: `${columnPlaceholderWidth}px` }
+  }) : null;
+  const columnPlaceholderBody = columnPlaceholderLeft != null && columnPlaceholderWidth != null ? h("div", {
+    className: "pointer-events-none absolute border-2 border-dashed border-blue-400 bg-blue-400/10",
+    style: { left: `${columnPlaceholderLeft}px`, top: 0, bottom: 0, width: `${columnPlaceholderWidth}px` }
+  }) : null;
+
+  const rowPlaceholderTop = rowDragHover ? sum(rowHeights, 0, rowDragHover.to) : null;
+  const rowPlaceholderHeight = rowDragHover ? (rowHeights[rowDragHover.from] ?? minRowHeight) : null;
+  const rowPlaceholderElement = rowPlaceholderTop != null && rowPlaceholderHeight != null ? h("div", {
+    className: "pointer-events-none absolute border-2 border-dashed border-blue-400 bg-blue-400/10",
+    style: { top: `${rowPlaceholderTop}px`, left: 0, right: 0, height: `${rowPlaceholderHeight}px` }
+  }) : null;
+
   const header = h("div",
     {
       className: mergeClasses(cx("headerRow", "flex relative bg-zinc-100 dark:bg-neutral-800 border-b border-zinc-300 dark:border-neutral-700")),
@@ -1415,14 +1667,21 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     },
     ...columns.map((col, c) => {
       const isEditing = headerEditing === c;
+      const isDraggingColumnHeader = columnDragHover && columnDragHover.from === c;
       return h("div",
         {
           key: colKey(col, c),
           className: mergeClasses(
             cx("headerCell", baseHeaderClass),
-            "flex items-center gap-2 px-3",
+            "flex items-center gap-2 px-3 transition-transform",
+            isDraggingColumnHeader && "opacity-60 scale-[0.98] bg-blue-50/60 dark:bg-neutral-800/50"
           ),
-          style: { width: `${colWidths[c]}px`, minWidth: `${colWidths[c]}px`, maxWidth: `${colWidths[c]}px` },
+          style: {
+            width: `${colWidths[c]}px`,
+            minWidth: `${colWidths[c]}px`,
+            maxWidth: `${colWidths[c]}px`,
+            transform: isDraggingColumnHeader ? "scale(0.98)" : undefined
+          },
           onDoubleClick: () => setHeaderEditing(c),
           onContextMenu: (e: React.MouseEvent) => headerMenu.open(e, c),
           role: "columnheader",
@@ -1457,6 +1716,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         })
       );
     }),
+    columnPlaceholderHeader,
     // header height resizer
     h("div", {
       className: "absolute bottom-0 left-0 right-0 h-1 cursor-row-resize",
@@ -1484,11 +1744,19 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       const show = visibleRowIndexes.includes(r);
       if (!show) return null;
       const isExpanded = !!expanded[r];
+      const isDraggingRow = rowDragHover && rowDragHover.from === r;
       return h("div",
         {
           key: rowKey(row, r),
-          className: mergeClasses(cx("row", "flex relative")),
-          style: { height: `${rowHeights[r]}px` },
+          className: mergeClasses(
+            cx("row", "flex relative"),
+            "transition-transform",
+            isDraggingRow && "ring-2 ring-blue-300/60 bg-blue-50/70 dark:bg-neutral-800/60"
+          ),
+          style: {
+            height: `${rowHeights[r]}px`,
+            transform: isDraggingRow ? "scale(0.995)" : undefined
+          },
           role: "row",
           onDragOver: (e: React.DragEvent) => onRowDragOver(r, e),
           onDrop: (e: React.DragEvent) => onRowDrop(r, e)
@@ -1503,6 +1771,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         ...columns.map((col, c) => {
           const active = activeCell && activeCell.r === r && activeCell.c === c;
           const inSel = selection && r >= selection.r0 && r <= selection.r1 && c >= selection.c0 && c <= selection.c1;
+          const isEditingCell = editing && editing.r === r && editing.c === c;
           const style: React.CSSProperties = {
             width: `${colWidths[c]}px`,
             minWidth: `${colWidths[c]}px`,
@@ -1519,10 +1788,90 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           } else if (inSel) {
             style.boxShadow = "inset 0 0 0 2px rgba(59,130,246,0.35)";
           }
+          if (columnDragHover && columnDragHover.from === c) {
+            style.opacity = 0.6;
+            style.transform = "scale(0.98)";
+            if (!style.backgroundColor) style.backgroundColor = "rgba(59,130,246,0.1)";
+          }
+          const cellValue = getCellValue(r, c);
+          const displayContent = displayValue(cellValue, col);
+          const contentClass = mergeClasses(
+            "w-full whitespace-pre-wrap break-words leading-snug",
+            decorated?.bold && "font-semibold",
+            decorated?.italic && "italic",
+            decorated?.underline && "underline"
+          );
+          const contentStyle: React.CSSProperties = {
+            textAlign: decorated?.align,
+            userSelect: "text"
+          };
+          let contentNode: React.ReactNode = h("div", {
+            className: contentClass,
+            style: contentStyle,
+            "data-allow-text-selection": "true"
+          }, displayContent);
+
+          if (!isEditingCell && col.type === "rating") {
+            const max = Math.max(1, col.config?.rating?.max ?? 5);
+            const previewValue = ratingPreview && ratingPreview.r === r && ratingPreview.c === c ? ratingPreview.value : null;
+            const currentValue = Number(cellValue ?? 0);
+            const effectiveValue = previewValue ?? currentValue;
+            const iconType = col.config?.rating?.icon ?? "star";
+            const IconComponent = iconType === "heart" ? FaHeart : iconType === "circle" ? FaCircle : FaStar;
+            const activeColor =
+              iconType === "heart" ? "text-pink-500" :
+              iconType === "circle" ? "text-teal-400" :
+              "text-yellow-400";
+            const inactiveColor = "text-zinc-300 dark:text-neutral-700";
+            const isReadOnly = !!col.readOnly;
+            const justifyContent =
+              decorated?.align === "right" ? "flex-end" :
+              decorated?.align === "center" ? "center" : "flex-start";
+            const buttons = Array.from({ length: max }, (_unused, index) => {
+              const value = index + 1;
+              const isActive = effectiveValue >= value;
+              const colorClass = isActive ? activeColor : inactiveColor;
+              const sharedHandlers = isReadOnly ? {} : {
+                onMouseEnter: () => setRatingPreview({ r, c, value }),
+                onFocus: () => setRatingPreview({ r, c, value }),
+                onMouseLeave: () => setRatingPreview((prev) => (prev && prev.r === r && prev.c === c ? null : prev)),
+                onBlur: () => setRatingPreview((prev) => (prev && prev.r === r && prev.c === c ? null : prev)),
+                onClick: () => setCellValue(r, c, value, { commit: true })
+              };
+              return h("button", {
+                key: value,
+                type: "button",
+                className: mergeClasses(
+                  "inline-flex items-center justify-center transition-transform",
+                  !isReadOnly && "cursor-pointer hover:scale-110 focus-visible:scale-110 focus-visible:outline-none"
+                ),
+                title: `Set rating to ${value} of ${max}`,
+                ...sharedHandlers
+              },
+                h(IconComponent, { className: mergeClasses("h-4 w-4", colorClass) })
+              );
+            });
+            contentNode = h("div", {
+              className: mergeClasses(
+                "flex items-center gap-1",
+                decorated?.bold && "font-semibold",
+                decorated?.italic && "italic",
+                decorated?.underline && "underline"
+              ),
+              style: { justifyContent },
+              onMouseLeave: () => setRatingPreview((prev) => (prev && prev.r === r && prev.c === c ? null : prev))
+            }, ...buttons);
+          }
+
           return h("div",
             {
               key: colKey(col, c),
-              className: mergeClasses(cx("cell", baseCellClass), "px-2 py-1 overflow-hidden", active && "ring-2 ring-blue-500"),
+              className: mergeClasses(
+                cx("cell", baseCellClass),
+                "px-2 py-1 overflow-hidden transition-transform",
+                columnDragHover && columnDragHover.from === c && "bg-blue-50/50 dark:bg-neutral-800/50",
+                active && "ring-2 ring-blue-500"
+              ),
               style,
               role: "gridcell",
               "data-r": r,
@@ -1531,9 +1880,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
               onDoubleClick: () => beginEdit(r, c),
               onContextMenu: (e: React.MouseEvent) => handleCellContextMenu(e, r, c)
             },
-            editing && editing.r === r && editing.c === c
-              ? renderCellEditor(r, c)
-              : h("div", { className: "truncate" }, displayValue(getCellValue(r, c), col))
+            isEditingCell ? renderCellEditor(r, c) : contentNode
           );
         }),
         // row resizer handle
@@ -1553,6 +1900,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         )
       );
     }),
+    columnPlaceholderBody,
+    rowPlaceholderElement,
     // Selection border + fill handle
     selection && h("div", {
       className: mergeClasses(cx("selection", ""), "pointer-events-none absolute border-2 border-blue-500"),
@@ -1601,11 +1950,22 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const cellContextMenu = cellMenu.menu && (() => {
     const sel = cellMenu.menu!.selection;
     if (!sel) return null;
-    const sample = getCellStyle(sel.r0, sel.c0) || { background: "#ffffff", color: "#000000" };
+    const sample = getCellStyle(sel.r0, sel.c0) ?? {};
     const fillValue = typeof sample.background === "string" ? sample.background : "#ffffff";
     const textValue = typeof sample.color === "string" ? sample.color : "#000000";
+    const alignment = sample.align ?? null;
+    const isBold = !!sample.bold;
+    const isItalic = !!sample.italic;
+    const isUnderline = !!sample.underline;
+    const canPasteFormat = !!formatClipboardRef.current;
+    const toggleButtonClass = (active: boolean) => mergeClasses(
+      "inline-flex h-7 w-7 items-center justify-center rounded border text-xs transition-colors",
+      active
+        ? "bg-blue-100 border-blue-300 text-blue-600 dark:bg-blue-500/20 dark:text-blue-200 dark:border-blue-500/40"
+        : "border-zinc-200 hover:bg-zinc-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+    );
     return h("div", {
-      className: "fixed z-50 rounded-lg border bg-white dark:bg-neutral-900 shadow-xl p-2 text-sm min-w-[200px]",
+      className: "fixed z-50 rounded-lg border bg-white dark:bg-neutral-900 shadow-xl p-2 text-sm min-w-[220px]",
       style: { left: `${cellMenu.menu!.x}px`, top: `${cellMenu.menu!.y}px` },
       onMouseLeave: () => cellMenu.close()
     },
@@ -1614,6 +1974,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: async () => { await copySelectionToClipboard(sel); cellMenu.close(); } }, "Copy"),
         h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: async () => { await pasteFromClipboard(sel); cellMenu.close(); } }, "Paste"),
         h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { clearSelectionCells(sel); cellMenu.close(); } }, "Delete"),
+        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { copySelectionFormatting(sel); cellMenu.close(); } }, "Copy format"),
+        h("button", {
+          className: mergeClasses("text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", !canPasteFormat && "opacity-40 cursor-not-allowed"),
+          onClick: () => { if (canPasteFormat) { pasteSelectionFormatting(sel); cellMenu.close(); } },
+          disabled: !canPasteFormat
+        }, "Paste format"),
         h("div", { className: "border-t my-1" }),
         h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertRowsAt(sel.r0, [createBlankRow()]); cellMenu.close(); } }, "Insert row above"),
         h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertRowsAt(sel.r1 + 1, [createBlankRow()]); cellMenu.close(); } }, "Insert row below"),
@@ -1623,7 +1989,19 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { const indices = Array.from({ length: sel.c1 - sel.c0 + 1 }, (_v, i) => sel.c0 + i); removeColumnsByIndex(indices); cellMenu.close(); } }, "Delete column")
       ),
       h("div", { className: "border-t my-2" }),
-      h("div", { className: "px-3 py-1 text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400" }, "Colors"),
+      h("div", { className: "px-3 py-1 text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400" }, "Text"),
+      h("div", { className: "flex items-center gap-1 px-3 pb-2" },
+        h("button", { className: toggleButtonClass(isBold), title: "Bold", onClick: () => toggleSelectionTextStyle(sel, "bold") }, h(FaBold, { className: "h-4 w-4" })),
+        h("button", { className: toggleButtonClass(isItalic), title: "Italic", onClick: () => toggleSelectionTextStyle(sel, "italic") }, h(FaItalic, { className: "h-4 w-4" })),
+        h("button", { className: toggleButtonClass(isUnderline), title: "Underline", onClick: () => toggleSelectionTextStyle(sel, "underline") }, h(FaUnderline, { className: "h-4 w-4" }))
+      ),
+      h("div", { className: "flex items-center gap-1 px-3 pb-2" },
+        h("button", { className: mergeClasses(toggleButtonClass((alignment ?? "left") === "left"), "h-8 w-8"), title: "Align left", onClick: () => setSelectionAlignment(sel, "left") }, h(FaAlignLeft, { className: "h-4 w-4" })),
+        h("button", { className: mergeClasses(toggleButtonClass(alignment === "center"), "h-8 w-8"), title: "Align center", onClick: () => setSelectionAlignment(sel, "center") }, h(FaAlignCenter, { className: "h-4 w-4" })),
+        h("button", { className: mergeClasses(toggleButtonClass(alignment === "right"), "h-8 w-8"), title: "Align right", onClick: () => setSelectionAlignment(sel, "right") }, h(FaAlignRight, { className: "h-4 w-4" }))
+      ),
+      h("div", { className: "border-t my-2" }),
+      h("div", { className: "px-3 py-1 text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400" }, "Colors & Fill"),
       h("div", { className: "flex items-center gap-3 px-3 pb-2" },
         h("label", { className: "flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-300" },
           "Fill",
@@ -1642,9 +2020,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           })
         )
       ),
-      h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800 w-full", onClick: () => { clearStylesFromSelection(sel); cellMenu.close(); } }, "Clear colors")
+      h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800 w-full", onClick: () => { clearStylesFromSelection(sel); cellMenu.close(); } }, "Clear formatting")
     );
   })();
+
 
   /* Toolbar (undo/redo, duplicate/delete rows, search) */
   const toolbar = h("div", {
@@ -1704,35 +2083,47 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         sidebarCollapsed && "justify-center px-0"
       ),
       onClick: () => setActiveView(view.instanceId),
-      title: view.displayName
+      title: view.displayName,
+      "aria-pressed": isActive,
+      "aria-label": view.displayName
     },
       h(view.icon, { className: mergeClasses("h-4 w-4", view.colorClass) }),
       !sidebarCollapsed && h("span", { className: "truncate" }, view.displayName)
     );
   };
 
-  const sidebarToggle = h("button", {
-    type: "button",
-    className: "mb-3 inline-flex items-center justify-center rounded-lg border px-2 py-1 text-xs hover:bg-zinc-100 dark:hover:bg-neutral-800",
-    onClick: () => setSidebarCollapsed((v) => !v),
-    title: sidebarCollapsed ? "Expand views" : "Collapse views"
-  }, sidebarCollapsed ? "»" : "«");
+  const sidebarToggleIcon = sidebarCollapsed ? FaChevronRight : FaChevronLeft;
+  const sidebarHeader = h("div", { className: "mb-3 flex items-center justify-between gap-2" },
+    !sidebarCollapsed && h("span", { className: "text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Views"),
+    h("button", {
+      type: "button",
+      className: "inline-flex items-center gap-2 rounded-lg border px-2 py-1 text-xs hover:bg-zinc-100 dark:hover:bg-neutral-800 transition-colors",
+      onClick: () => setSidebarCollapsed((v) => !v),
+      title: sidebarCollapsed ? "Expand views" : "Collapse views",
+      "aria-label": sidebarCollapsed ? "Expand views sidebar" : "Collapse views sidebar",
+      "aria-expanded": String(!sidebarCollapsed)
+    },
+      h(sidebarToggleIcon, { className: "h-3 w-3" }),
+      !sidebarCollapsed && h("span", { className: "font-medium text-zinc-500 dark:text-neutral-300" }, "Hide")
+    )
+  );
 
   const sidebarElement = h("aside", {
     className: mergeClasses(
       "rounded-2xl border bg-white dark:bg-neutral-950/80 p-3 transition-all",
       sidebarCollapsed ? "w-16" : "w-60",
       "shrink-0"
-    )
+    ),
+    "aria-label": "Table views",
+    "data-collapsed": sidebarCollapsed ? "true" : "false"
   },
-    sidebarToggle,
-    h("div", { className: "flex flex-col gap-1" },
+    sidebarHeader,
+    h("div", { className: mergeClasses("flex flex-col gap-1", sidebarCollapsed && "items-center") },
       ...primaryViews.map(renderViewButton),
-      secondaryViews.length ? h("div", { className: "border-t my-2" }) : null,
+      secondaryViews.length ? h("div", { className: "my-2 h-px bg-zinc-200 dark:bg-neutral-800" }) : null,
       ...secondaryViews.map(renderViewButton)
     )
   );
-
   const tableContent = h("div", { className: "relative overflow-auto rounded-xl border" },
     header,
     body
@@ -1792,3 +2183,6 @@ function uniqueColumnKey(cols: ColumnSpec[], base: string) {
   while (keys.has(k)) { i += 1; k = `${base}_${i}`; }
   return k;
 }
+
+
+

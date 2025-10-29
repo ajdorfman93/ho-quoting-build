@@ -1,0 +1,292 @@
+[
+  {
+    "Customer Name": "Eitzah",
+    "Contact Name": "Herman Klein",
+    "Contact Email": "Herman.klein@gmail.com",
+    "Contact Phone": "(917) 750-1575",
+    "Projects": "\"Orlando Near_Montreal, QB\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\"",
+    "Markup Settings": "Eitzah - 30%, Eitzah - 10%, Eitzah - 50%",
+    "Address ": "123 Mail Street",
+    "Calculation": "recuhzIU6U3Y3jWvn",
+    "Show/Hide": "Hide",
+    "Projects 2": "\"Home 2 Suites - Springfield, OH_\""
+  },
+  {
+    "Customer Name": "Herman",
+    "Contact Email": "Airtable@test.com",
+    "Projects": "\"Tru_Israel, IL\",\"Extended Stay of America_Williamsburg, NJ\",Home_kentoky",
+    "Markup Settings": "Herman - 25%, Herman - 55%, Herman - 35%",
+    "Calculation": "recNU2H5q1sxPo68b",
+    "Show/Hide": "Hide"
+  },
+  {
+    "Customer Name": "Edgeworks",
+    "Contact Name": "Donald Trump",
+    "Projects": "\"Tru by Hilton _Monroe, PA\",Hyatt House_Brooklyn NY,Testing View_,Script Test_Brooklyn NY,Homewood Suites_Celebration FL",
+    "Calculation": "recJsezNSIJi4ETfe",
+    "Show/Hide": "Show",
+    "Projects 2": "Homewood Suites_Celebration FL"
+  },
+  {
+    "Customer Name": "Eitzah",
+    "Contact Name": "Moshe Zichmech",
+    "Projects": "\"Hilton Garden Inn_Monroe, PA\",hello_",
+    "Calculation": "recO5NslovDbUPzvO",
+    "Show/Hide": "Hide"
+  },
+  {
+    "Customer Name": "Moshe",
+    "Calculation": "rec6y13JdFdMqKTSg",
+    "Show/Hide": "Hide"
+  },
+  {
+    "Customer Name": "Cleveland Construction",
+    "Projects": "Homewood Suites_Celebration FL",
+    "Calculation": "rec8hfAPdQ4sfPaVR",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "Airtable",
+    "Contact Email": "Airtable@test.com",
+    "Projects": "\"Aloft City Park Hotel_Montreal, QB\"",
+    "Calculation": "rec4LrDWDpYW4kQRv",
+    "Show/Hide": "Hide"
+  },
+  {
+    "Customer Name": "Test1",
+    "Contact Name": "Test2",
+    "Contact Email": "test@test.com",
+    "Contact Phone": "(987) 654-8321",
+    "Calculation": "recW3Bk8oNI0QgXrR",
+    "Show/Hide": "Hide"
+  },
+  {
+    "Customer Name": "Test Tuesday HO",
+    "Contact Email": "Airtable@test.com",
+    "Projects": "\"Navy Yard_Montreal, QB\",Script Test_Brooklyn NY",
+    "Markup Settings": "Test Tuesday HO - 75%, Test Tuesday HO - 30%, Test Tuesday HO - 25%, Test Tuesday HO - 30%, Test Tuesday HO - 35%, Test Tuesday HO - 50%",
+    "Calculation": "recXDEcfGxw6yt3EJ",
+    "Show/Hide": "Hide"
+  },
+  {
+    "Customer Name": "Sunday Test",
+    "Contact Name": "Mr. Katan",
+    "Contact Email": "Katan@Katan.com",
+    "Contact Phone": "(876) 765-8765",
+    "Projects": "New Sunday Project _Monroe NY",
+    "Notes": "This is a test",
+    "Address ": "804 Willi",
+    "Calculation": "rec0EsmLV6jKLMYV8",
+    "Show/Hide": "Hide"
+  },
+  {
+    "Customer Name": "Landeron",
+    "Contact Name": "Mike",
+    "Contact Email": "mike@landron.com",
+    "Projects": "Project A _Brooklyn NY ,Test Erev YomTov_Monroe KJ",
+    "Notes": "Good customer",
+    "Calculation": "recqf7kcijv2peKnX",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "Opechee Construction Corporation",
+    "Contact Name": "Spencer Dauer",
+    "Projects": "AW Hotel Scarborough ME_Scarborough ME 04074,H2S Brooklyn _Brooklyn NY",
+    "Calculation": "rec4OUkrxp9qXkQSy",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "Duncan Properties And Construction, Inc",
+    "Contact Name": "Joseph Goria",
+    "Projects": "Home 2 Suites & Tru by Hilton_VA 24201",
+    "Notes": "This is a big order",
+    "Address ": "1304 Tayloe Ave SE, Roanoke, VA 24013",
+    "Calculation": "rec7xIlSuI9KsesuV",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "BASK Development, Inc",
+    "Contact Name": "Dini Lowy",
+    "Contact Email": "connect@baskdevelop.com dinil@hopenings.com",
+    "Contact Phone": "(224) 484-8242",
+    "Projects": "\"StudioRes - Haines City, FL_\"",
+    "Address ": "1375 Remington Road, Suite E Schaumburg, IL 60173",
+    "Calculation": "rec9n56VShO3GFtxd",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "Hadfield Building Corp.",
+    "Contact Name": "Dini Lowy",
+    "Contact Email": "dinil@hopenings.com",
+    "Contact Phone": "(702) 454-0966",
+    "Projects": "\"Holiday Inn Express - St. George, UT_\"",
+    "Address ": "3213 East Warm Springs Road, Las Vegas, NV, USA",
+    "Calculation": "recaPsU3zErwAlODj",
+    "Pipedrive Org ID": "2699",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "AMERICARIBE",
+    "Contact Name": "Jay Bidnick",
+    "Contact Email": "jayb@hopenings.com",
+    "Contact Phone": "(305) 374-5383",
+    "Projects": "\"Raleigh Hotel - Miami Beach, FL_\"",
+    "Address ": "One Biscayne Tower, 2 S Biscayne Blvd, Suite 2000 Miami, Fl 33131",
+    "Calculation": "reclpaEdmlpSGzeD1",
+    "Pipedrive Org ID": "2799",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "Sundaram Builders / Total Management Systems",
+    "Contact Name": "Dini Lowy",
+    "Contact Email": "dinil@hopenings.com",
+    "Contact Phone": "(505) 831-4200",
+    "Projects": "\"Residence Inn - Albuquerque, NM_\"",
+    "Address ": "4239 Balloon Park Road, Suite A, Albuquerque, NM, 87109",
+    "Calculation": "rec8TxK8AHsADNrSU",
+    "Pipedrive Org ID": "3297",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "Pinkerton & Laws",
+    "Contact Name": "Jay Bidnick",
+    "Contact Email": "jayb@hopenings.com",
+    "Contact Phone": "GA: 770-956-9000 . FL: 321-400-6161",
+    "Projects": "\"TownePlace Suites - Athens, AL_\"",
+    "Address ": "Atlanta GA office: 1165 Northchase Pkwy #100 Marietta, GA 30067       .     Orlando FL office: 2618 Edgewater Drive #200 Orlando, FL 32804",
+    "Calculation": "recin7PCOrZf2FLqx",
+    "Pipedrive Org ID": "613",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "Thomas Construction",
+    "Contact Name": "Dini Lowy",
+    "Contact Email": "dinil@hopenings.com",
+    "Contact Phone": "(573) 348-3636",
+    "Projects": "\"LaQuinta -Alexander City, AL_\"",
+    "Address ": "5635 Osage Beach Pkwy Osage Beach, MO 65065",
+    "Calculation": "recPh2Qpo1VSNvCuY",
+    "Pipedrive Org ID": "686",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "Span Hospitality Group",
+    "Contact Name": "Jay Bidnick",
+    "Contact Email": "jayb@hopenings.com",
+    "Contact Phone": "(866) 676-SPAN (7726), 501-200-4175",
+    "Projects": "\"TownePlace Suites – Magnolia, AR_\"",
+    "Address ": "11524 Fairview Road, Little Rock, AR 72212, USA",
+    "Calculation": "recgYGNGEwrthjEKY",
+    "Pipedrive Org ID": "88",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "Path Construction Company",
+    "Contact Name": "Dini Lowy",
+    "Contact Email": "dinil@hopenings.com",
+    "Contact Phone": "(847) 398-7100",
+    "Projects": "\"Woodspring Suites - Glendale, AZ_\"",
+    "Address ": "125 E. Algonquin Rd. Arlington Heights, IL 60005",
+    "Calculation": "recmOOzMzHmlY7mym",
+    "Pipedrive Org ID": "606",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "Lake City Hotels Inc.",
+    "Contact Name": "Jay Bidnick",
+    "Contact Email": "jayb@hopenings.com",
+    "Projects": "\"Element - Ocala, FL_\"",
+    "Address ": "450 SW Florida Gateway Dr, Lake City, FL 32024, USA",
+    "Calculation": "recsBlXCI3phxJjOP",
+    "Pipedrive Org ID": "2790",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "Cambean Hospitality LLC",
+    "Contact Name": "Dini Lowy",
+    "Contact Email": "dinil@hopenings.com",
+    "Contact Phone": "(305) 455-3270",
+    "Projects": "\"Cotati Hotel - Sonoma, CA_\"",
+    "Address ": "660 Ocean Dr, Miami Beach, FL 33139",
+    "Calculation": "recMVcottIxSZPI94",
+    "Pipedrive Org ID": "3299",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "HiFive Development Services, Inc.",
+    "Contact Name": "Dini Lowy",
+    "Contact Email": "ben@hifive1.com dinil@hopenings.com",
+    "Contact Phone": "(513) 336-9280",
+    "Projects": "\"Home 2 Suites - Springfield, OH_\"",
+    "Address ": "202 W Main St, Mason, OH 45040, USA",
+    "Calculation": "recYJXGGG9AK25okJ",
+    "Pipedrive Org ID": "879",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "Grace Construction Consultants",
+    "Contact Name": "Dini Lowy",
+    "Contact Email": "dinil@hopenings.com",
+    "Contact Phone": "(423) 208-9833",
+    "Projects": "\"AC Hotel - Chattanooga, TN_\"",
+    "Address ": "5726 Marlin Road Suite 200 Chattanooga, TN 37411",
+    "Calculation": "recj3Dy5VECkwjeXb",
+    "Pipedrive Org ID": "478",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "Firmo Construction",
+    "Contact Name": "Jay Bidnick",
+    "Contact Email": "jayb@hopenings.com",
+    "Contact Phone": "1-941-917-0494 x 115",
+    "Projects": "\"Holiday Inn Express- Alexander City, AL_\"",
+    "Address ": "205 N Orange Ave Sarasota, FL 34236",
+    "Calculation": "rec4t6A5RKZi6jlP5",
+    "Pipedrive Org ID": "179",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "BBL Hospitality",
+    "Contact Name": "Jay Bidnick",
+    "Contact Email": "jayb@hopenings.com",
+    "Contact Phone": "518-452-8200 EXT 4208",
+    "Projects": "\"Home 2 Suites -Plattsburgh, NY_\"",
+    "Address ": "302 Washington Avenue Extension Albany, NY 12203",
+    "Calculation": "recQvBifHMyvCQJ7U",
+    "Pipedrive Org ID": "162",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "Cantilever Inc. / HCP Engineering",
+    "Contact Name": "Jay Bidnick",
+    "Contact Email": "jayb@hopenings.com",
+    "Contact Phone": "(951) 545-2954",
+    "Projects": "\"LaQuinta Hotel - Grover Beach, CA_\"",
+    "Address ": "650 E. Parkridge Ave, #106 Corona, CA 92879",
+    "Calculation": "recIkbMMQNsZnSBxs",
+    "Pipedrive Org ID": "3238",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "E.H. Butland Corp.",
+    "Contact Name": "Jay Bidnick",
+    "Contact Email": "jayb@hopenings.com",
+    "Contact Phone": "(818) 996-7600",
+    "Projects": "\"La Quinta Hotel - Grover Beach, CA_\"",
+    "Address ": "6100 Yolanda Avenue Reseda, CA 91335",
+    "Calculation": "rec6A7dn6Jf0EYegl",
+    "Pipedrive Org ID": "177",
+    "Show/Hide": "Show"
+  },
+  {
+    "Customer Name": "GMS Construction",
+    "Contact Name": "Dini Lowy",
+    "Contact Email": "dinil@hopenings.com",
+    "Contact Phone": "(304) 216-9100",
+    "Projects": "\"Holiday Inn Express - New Albany , IN_\"",
+    "Address ": "224 Moyers Rd, Bruceton Mills, WV 26525",
+    "Calculation": "recSSZXq8AebZSw6g",
+    "Pipedrive Org ID": "3081",
+    "Show/Hide": "Show"
+  }
+]

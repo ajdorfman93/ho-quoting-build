@@ -1,0 +1,535 @@
+[
+  {
+    "ID": "68",
+    "Set ID": "1",
+    "Extracted Description": "HARDWARE BY MFR",
+    "Components": "\"Hardware: Pemko, Door Guard, PDLAA\"",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 1\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "HARDWARE BY MFR CARD READER AS REQUIRED",
+    "Sync to Hardware": "checked",
+    "Hardware Set Items": "\"\"\"Hardware: Pemko, Door Guard, PDLAA\"\"\""
+  },
+  {
+    "ID": "69",
+    "Set ID": "1",
+    "Extracted Description": "CARD READER AS REQUIRED",
+    "Components": "\"Hardware: Pemko, Smoke Seals, S773\"",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 1\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "HARDWARE BY MFR CARD READER AS REQUIRED",
+    "Sync to Hardware": "checked",
+    "Hardware Set Items": "\"\"\"Hardware: Pemko, Smoke Seals, S773\"\"\""
+  },
+  {
+    "ID": "70",
+    "Set ID": "2",
+    "Extracted Description": "1-1/2 PR HINGES",
+    "Components": "\"Hardware: Rockwood, Viewer, 627\"",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 2\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, SILENCERS",
+    "Sync to Hardware": "checked",
+    "Hardware Set Items": "\"\"\"Hardware: Rockwood, Viewer, 627\"\"\""
+  },
+  {
+    "ID": "71",
+    "Set ID": "2",
+    "Extracted Description": "PASSAGE LOCKSET",
+    "Components": "\"Hardware: Pemko, Threshold, EV2325\"",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 2\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, SILENCERS",
+    "Sync to Hardware": "checked",
+    "Hardware Set Items": "\"\"\"Hardware: Pemko, Threshold, EV2325\"\"\""
+  },
+  {
+    "ID": "72",
+    "Set ID": "2",
+    "Extracted Description": "SILENCERS",
+    "Components": "\"Hager, Closer, 5300 x MLT x 1-6 x 5303 x FC, ALM\"",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 2\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, SILENCERS"
+  },
+  {
+    "ID": "73",
+    "Set ID": "2",
+    "Extracted Description": "STOP",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 2\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, SILENCERS"
+  },
+  {
+    "ID": "74",
+    "Set ID": "3",
+    "Extracted Description": "1-1/2 PR HINGES",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 3\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PASSAGE LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "75",
+    "Set ID": "3",
+    "Extracted Description": "PRIVACY LOCKSET",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 3\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PASSAGE LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "76",
+    "Set ID": "3",
+    "Extracted Description": "SILENCERS",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 3\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PASSAGE LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "77",
+    "Set ID": "3",
+    "Extracted Description": "STOP",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 3\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PASSAGE LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "78",
+    "Set ID": "4",
+    "Extracted Description": "1-1/2 PR HINGES",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 4\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "79",
+    "Set ID": "4",
+    "Extracted Description": "PRIVACY LOCKSET",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 4\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "80",
+    "Set ID": "4",
+    "Extracted Description": "SILENCERS",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 4\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "81",
+    "Set ID": "4",
+    "Extracted Description": "STOP",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 4\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "82",
+    "Set ID": "5",
+    "Extracted Description": "HARDWARE BY MFR",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 5\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "HARDWARE BY MFR CARD READER AS REQUIRED"
+  },
+  {
+    "ID": "83",
+    "Set ID": "5",
+    "Extracted Description": "CARD READER AS REQUIRED",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 5\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "HARDWARE BY MFR CARD READER AS REQUIRED"
+  },
+  {
+    "ID": "84",
+    "Set ID": "5",
+    "Extracted Description": "1-1/2 PR HINGES",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 5\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "HARDWARE BY MFR CARD READER AS REQUIRED"
+  },
+  {
+    "ID": "85",
+    "Set ID": "5",
+    "Extracted Description": "SILENCERS",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 5\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "HARDWARE BY MFR CARD READER AS REQUIRED"
+  },
+  {
+    "ID": "86",
+    "Set ID": "5",
+    "Extracted Description": "THRESHOLD",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 5\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "HARDWARE BY MFR CARD READER AS REQUIRED"
+  },
+  {
+    "ID": "87",
+    "Set ID": "6",
+    "Extracted Description": "HARDWARE BY MFR",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 6\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, SILENCERS, THRESHOLD"
+  },
+  {
+    "ID": "88",
+    "Set ID": "7",
+    "Extracted Description": "1-1/2 PR HINGES",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 7\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, EXIT DEVICE, SILENCERS"
+  },
+  {
+    "ID": "89",
+    "Set ID": "7",
+    "Extracted Description": "EXIT DEVICE",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 7\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, EXIT DEVICE, SILENCERS"
+  },
+  {
+    "ID": "90",
+    "Set ID": "7",
+    "Extracted Description": "SILENCERS",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 7\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, EXIT DEVICE, SILENCERS"
+  },
+  {
+    "ID": "91",
+    "Set ID": "7",
+    "Extracted Description": "STOP",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 7\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, EXIT DEVICE, SILENCERS"
+  },
+  {
+    "ID": "92",
+    "Set ID": "8",
+    "Extracted Description": "1-1/2 PR HINGES",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 8\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS"
+  },
+  {
+    "ID": "93",
+    "Set ID": "8",
+    "Extracted Description": "PRIVACY LOCKSET",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 8\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS"
+  },
+  {
+    "ID": "94",
+    "Set ID": "8",
+    "Extracted Description": "SILENCERS",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 8\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS"
+  },
+  {
+    "ID": "95",
+    "Set ID": "8",
+    "Extracted Description": "STOP",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 8\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS"
+  },
+  {
+    "ID": "96",
+    "Set ID": "9",
+    "Extracted Description": "1-1/2 PR HINGES",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 9\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "97",
+    "Set ID": "9",
+    "Extracted Description": "PRIVACY LOCKSET",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 9\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "98",
+    "Set ID": "9",
+    "Extracted Description": "SILENCERS",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 9\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "99",
+    "Set ID": "9",
+    "Extracted Description": "STOP",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 9\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "100",
+    "Set ID": "10",
+    "Extracted Description": "1-1/2 PR HINGES",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 10\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PASSAGE LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "101",
+    "Set ID": "10",
+    "Extracted Description": "PRIVACY LOCKSET",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 10\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PASSAGE LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "102",
+    "Set ID": "10",
+    "Extracted Description": "SILENCERS",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 10\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PASSAGE LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "103",
+    "Set ID": "10",
+    "Extracted Description": "STOP",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 10\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PASSAGE LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "104",
+    "Set ID": "11",
+    "Extracted Description": "1-1/2 PR HINGES",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 11\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, OFFICE LOCKSET, CARD READER AS REQUIRED, SILENCERS, STOP"
+  },
+  {
+    "ID": "105",
+    "Set ID": "11",
+    "Extracted Description": "OFFICE LOCKSET",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 11\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, OFFICE LOCKSET, CARD READER AS REQUIRED, SILENCERS, STOP"
+  },
+  {
+    "ID": "106",
+    "Set ID": "11",
+    "Extracted Description": "CARD READER AS REQUIRED",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 11\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, OFFICE LOCKSET, CARD READER AS REQUIRED, SILENCERS, STOP"
+  },
+  {
+    "ID": "107",
+    "Set ID": "11",
+    "Extracted Description": "SILENCERS",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 11\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, OFFICE LOCKSET, CARD READER AS REQUIRED, SILENCERS, STOP"
+  },
+  {
+    "ID": "108",
+    "Set ID": "11",
+    "Extracted Description": "STOP",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 11\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, OFFICE LOCKSET, CARD READER AS REQUIRED, SILENCERS, STOP"
+  },
+  {
+    "ID": "109",
+    "Set ID": "12",
+    "Extracted Description": "1-1/2 PR HINGES",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 12\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, CLASSROOM LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "110",
+    "Set ID": "12",
+    "Extracted Description": "CLASSROOM LOCKSET",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 12\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, CLASSROOM LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "111",
+    "Set ID": "12",
+    "Extracted Description": "SILENCERS",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 12\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, CLASSROOM LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "112",
+    "Set ID": "12",
+    "Extracted Description": "STOP",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 12\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, CLASSROOM LOCKSET, SILENCERS, STOP"
+  },
+  {
+    "ID": "113",
+    "Set ID": "13",
+    "Extracted Description": "1-1/2 PR HINGES",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 13\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, LATCHSET, CARD READER AS REQUIRED, SILENCERS, STOP"
+  },
+  {
+    "ID": "114",
+    "Set ID": "13",
+    "Extracted Description": "LATCHSET",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 13\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, LATCHSET, CARD READER AS REQUIRED, SILENCERS, STOP"
+  },
+  {
+    "ID": "115",
+    "Set ID": "13",
+    "Extracted Description": "CARD READER AS REQUIRED",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 13\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, LATCHSET, CARD READER AS REQUIRED, SILENCERS, STOP"
+  },
+  {
+    "ID": "116",
+    "Set ID": "13",
+    "Extracted Description": "STOP",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 13\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, LATCHSET, CARD READER AS REQUIRED, SILENCERS, STOP"
+  },
+  {
+    "ID": "117",
+    "Set ID": "14",
+    "Extracted Description": "1-1/2 PR HINGES",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 14\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, EXIT DEVICE (BLANK EXTERIOR FACE), SILENCERS"
+  },
+  {
+    "ID": "118",
+    "Set ID": "14",
+    "Extracted Description": "EXIT DEVICE (BLANK EXTERIOR FACE)",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 14\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, EXIT DEVICE (BLANK EXTERIOR FACE), SILENCERS"
+  },
+  {
+    "ID": "119",
+    "Set ID": "14",
+    "Extracted Description": "STOP",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 14\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, EXIT DEVICE (BLANK EXTERIOR FACE), SILENCERS"
+  },
+  {
+    "ID": "120",
+    "Set ID": "15",
+    "Extracted Description": "3 PR HINGES",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 15\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "3 PR HINGES, PASSAGE LATCHSET, SILENCERS"
+  },
+  {
+    "ID": "121",
+    "Set ID": "15",
+    "Extracted Description": "PRIVACY LATCHSET",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 15\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "3 PR HINGES, PASSAGE LATCHSET, SILENCERS"
+  },
+  {
+    "ID": "122",
+    "Set ID": "15",
+    "Extracted Description": "SILENCERS",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - 15\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "3 PR HINGES, PASSAGE LATCHSET, SILENCERS"
+  },
+  {
+    "ID": "123",
+    "Set ID": "GR1",
+    "Extracted Description": "1-1/2 PR HINGES",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - GR1\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, ENTRANCE LOCKSET (CARD READER CONTROL), CLOSER (AT H/C ROOMS), DOOR VIEWER (NOT AT H/C ROOMS), SOUND GASKET AT FRAME, METAL THRESHOLD (ROLLOVER AT H/C ROOMS)"
+  },
+  {
+    "ID": "124",
+    "Set ID": "GR1",
+    "Extracted Description": "ENTRANCE LOCKSET (CARD READER CONTROL)",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - GR1\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, ENTRANCE LOCKSET (CARD READER CONTROL), CLOSER (AT H/C ROOMS), DOOR VIEWER (NOT AT H/C ROOMS), SOUND GASKET AT FRAME, METAL THRESHOLD (ROLLOVER AT H/C ROOMS)"
+  },
+  {
+    "ID": "125",
+    "Set ID": "GR1",
+    "Extracted Description": "CLOSER (NO HOLD OPEN AT H/C ROOMS)",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - GR1\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, ENTRANCE LOCKSET (CARD READER CONTROL), CLOSER (AT H/C ROOMS), DOOR VIEWER (NOT AT H/C ROOMS), SOUND GASKET AT FRAME, METAL THRESHOLD (ROLLOVER AT H/C ROOMS)"
+  },
+  {
+    "ID": "126",
+    "Set ID": "GR1",
+    "Extracted Description": "DOOR STOP (WALL MTD AT H/C ROOMS)",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - GR1\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, ENTRANCE LOCKSET (CARD READER CONTROL), CLOSER (AT H/C ROOMS), DOOR VIEWER (NOT AT H/C ROOMS), SOUND GASKET AT FRAME, METAL THRESHOLD (ROLLOVER AT H/C ROOMS)"
+  },
+  {
+    "ID": "127",
+    "Set ID": "GR1",
+    "Extracted Description": "SOUND GASKET AT FRAME",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - GR1\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, ENTRANCE LOCKSET (CARD READER CONTROL), CLOSER (AT H/C ROOMS), DOOR VIEWER (NOT AT H/C ROOMS), SOUND GASKET AT FRAME, METAL THRESHOLD (ROLLOVER AT H/C ROOMS)"
+  },
+  {
+    "ID": "128",
+    "Set ID": "GR1",
+    "Extracted Description": "METAL THRESHOLD (ROLLOVER AT H/C ROOMS)",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - GR1\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, ENTRANCE LOCKSET (CARD READER CONTROL), CLOSER (AT H/C ROOMS), DOOR VIEWER (NOT AT H/C ROOMS), SOUND GASKET AT FRAME, METAL THRESHOLD (ROLLOVER AT H/C ROOMS)"
+  },
+  {
+    "ID": "129",
+    "Set ID": "GR2",
+    "Extracted Description": "1-1/2 PR HINGES",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - GR2\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PRIVACY LOCKSET"
+  },
+  {
+    "ID": "130",
+    "Set ID": "GR2",
+    "Extracted Description": "PRIVACY LOCKSET",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - GR2\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PRIVACY LOCKSET"
+  },
+  {
+    "ID": "131",
+    "Set ID": "GR3",
+    "Extracted Description": "1-1/2 PR HINGES",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - GR3\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PRIVACY LOCKSET (BLANK ON WALL SIDE)"
+  },
+  {
+    "ID": "132",
+    "Set ID": "GR3",
+    "Extracted Description": "PRIVACY LOCKSET (BLANK ON WALL SIDE)",
+    "Hardware Set": "\"\"\"Tru_Israel, IL\"\" - GR3\"",
+    "File Uploads (from Hardware Set)": "\"Tru_Israel, IL 2025-07-10 16:38\"",
+    "Extracted Data (from Hardware Set)": "1-1/2 PR HINGES, PRIVACY LOCKSET (BLANK ON WALL SIDE)"
+  }
+]

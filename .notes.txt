@@ -4,7 +4,8 @@
     ////////////////
 
 ////////////////////
-    airtable\csv containts all csv data exported from Airtable. Each csv file is named after the corresponding Airtable table.
+    add new page in app\ for rebuilding an Airtable project.
+    airtable\csv contains all csv data exported from Airtable. Each csv file is named after the corresponding Airtable table.
     each csv file has a header row with column names, followed by data rows.
     airtable\js contains automation codes from the same Airtable project. each js file has an explanation of its purpose at the top of the file.
     work to rebuild the Airtable project using the csv data and js automation codes.
@@ -19,6 +20,7 @@
     including top navigation, sidebars, views, filters, sorts, and any other UI elements.
     top navigation should include: Data, Automations, Interfaces, Forms
     below that should be the appControlsContainer with links to different tables (based on csv file names)
+    use the existing table component to display each table's data.
     ////////////////////
 
 ////////////////////
@@ -104,28 +106,20 @@
 
        Form — purple document/form icon.
        Section — gray section/panel icon (stacked lines in a box).
-    10. here is the list of column types and their corresponding icons to show in the column header before the column name:
-        Link to another record — three horizontal lines with a right-pointing arrow (relation/link).
-        Single line text — capital A.
-        Long text — A with three lines (paragraph).
-        Attachment — document/page.
-        Checkbox — checked square.
-        Multiple select — three lines, each with a small chevron (multi-choice).
-        Single select — circle with a down chevron (dropdown).
-        User — person silhouette.
-        Date — calendar (shows “31”).
-        Phone number — telephone handset.
-        Email — envelope.
-        URL — chain link.
-        Number — hash #.
-        Currency — dollar $.
-        Percent — percent %.
-        Duration — clock.
-        Rating — star outline.
-        Formula — f(x).
-        Rollup — spiral/bullseye.
-        Count — calculator keypad.
-        Lookup — list with magnifying glass.
-        Created time — calendar with a small lightning bolt (auto-captured timestamp).
-        Last modified time — calendar with a small lightning bolt (auto-updated timestamp).
-        Created by — person silhouette with a small lightning bolt (auto-captured author).
+
+    10. add missing text editing features:
+        a. finish cell edit by pressing enter key.
+        b. cancel cell edit by pressing escape key.
+        c. multi-line text editing with line breaks using shift+enter.
+        d. text alignment options (left, center, right).
+        e. text formatting options (bold, italic, underline).
+        f. drag to select text within a cell.
+        g. copy and paste text formatting.
+        h. 
+    11. add star column functionality.
+        default 5 Empty stars for each row.
+        clicking on a star fills in that star and all stars to the left of it.
+        hovering over a star highlights that star and all stars to the left of it.
+        ability to set the maximum number of stars (e.g., 3-star rating, 10-star rating).
+    12. make drag to reorder columns and rows show a visual placeholder where the column or row will be dropped.
+        make drag to reorder columns and rows visually show the column or row being dragged by the mouse.

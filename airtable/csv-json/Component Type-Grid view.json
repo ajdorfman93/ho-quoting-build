@@ -1,0 +1,340 @@
+[
+  {
+    "Type Name": "Hinges",
+    "Type": "Hinges",
+    "Functional Group": "Hang",
+    "Subgroup": "Hinges & Pivots",
+    "Priority": "1",
+    "Components": "\"Hardware: Hager, Hinges, ECBB 1100 4.5x4.5, US10B\""
+  },
+  {
+    "Type Name": "Spring Hinge",
+    "Type": "Spring Hinge",
+    "Functional Group": "Hang",
+    "Subgroup": "Hinges & Pivots",
+    "Priority": "1"
+  },
+  {
+    "Type Name": "Pivot Hinge",
+    "Type": "Pivot Hinge",
+    "Functional Group": "Hang",
+    "Subgroup": "Hinges & Pivots",
+    "Priority": "1"
+  },
+  {
+    "Type Name": "HW Hinges",
+    "Type": "HW Hinges",
+    "Functional Group": "Hang",
+    "Subgroup": "Hinges & Pivots",
+    "Priority": "1"
+  },
+  {
+    "Type Name": "SS Hinges",
+    "Type": "SS Hinges",
+    "Functional Group": "Hang",
+    "Subgroup": "Hinges & Pivots",
+    "Priority": "1"
+  },
+  {
+    "Type Name": "Barn Door Track",
+    "Type": "Barn Door Track",
+    "Functional Group": "Hang",
+    "Subgroup": "Sliding Systems",
+    "Priority": "1"
+  },
+  {
+    "Type Name": "Storeroom Lock",
+    "Type": "Storeroom Lock",
+    "Functional Group": "Secure",
+    "Subgroup": "Locks",
+    "Priority": "2"
+  },
+  {
+    "Type Name": "Office Lock",
+    "Type": "Office Lock",
+    "Functional Group": "Secure",
+    "Subgroup": "Locks",
+    "Priority": "2"
+  },
+  {
+    "Type Name": "Classroom Lock",
+    "Type": "Classroom Lock",
+    "Functional Group": "Secure",
+    "Subgroup": "Locks",
+    "Priority": "2"
+  },
+  {
+    "Type Name": "Passage Lock",
+    "Type": "Passage Lock",
+    "Functional Group": "Secure",
+    "Subgroup": "Locks",
+    "Priority": "2"
+  },
+  {
+    "Type Name": "Privacy Lock",
+    "Type": "Privacy Lock",
+    "Functional Group": "Secure",
+    "Subgroup": "Locks",
+    "Priority": "2"
+  },
+  {
+    "Type Name": "Communicating Lock",
+    "Type": "Communicating Lock",
+    "Functional Group": "Secure",
+    "Subgroup": "Locks",
+    "Priority": "2"
+  },
+  {
+    "Type Name": "Single Dummy",
+    "Type": "Single Dummy",
+    "Functional Group": "Secure",
+    "Subgroup": "Locks",
+    "Priority": "2"
+  },
+  {
+    "Type Name": "Double Dummy",
+    "Type": "Double Dummy",
+    "Functional Group": "Secure",
+    "Subgroup": "Locks",
+    "Priority": "2"
+  },
+  {
+    "Type Name": "Deadlock",
+    "Type": "Deadlock",
+    "Functional Group": "Secure",
+    "Subgroup": "Bolts & Latches",
+    "Priority": "2"
+  },
+  {
+    "Type Name": "Deadbolt",
+    "Type": "Deadbolt",
+    "Functional Group": "Secure",
+    "Subgroup": "Bolts & Latches",
+    "Priority": "2"
+  },
+  {
+    "Type Name": "Flush Bolt",
+    "Type": "Flush Bolt",
+    "Functional Group": "Secure",
+    "Subgroup": "Bolts & Latches",
+    "Priority": "2",
+    "Components": "\"Hardware: Hager, Flush Bolt, 293D, US32D\""
+  },
+  {
+    "Type Name": "Fire Bolt",
+    "Type": "Fire Bolt",
+    "Functional Group": "Secure",
+    "Subgroup": "Bolts & Latches",
+    "Priority": "2"
+  },
+  {
+    "Type Name": "Exit Device",
+    "Type": "Exit Device",
+    "Functional Group": "Secure",
+    "Subgroup": "Exit Devices",
+    "Priority": "2",
+    "Components": "\"Hardware: Hager, Exit Device Lever, 45CE REV 2 WTN NC, US26D\",\"Hardware: Hager, Exit Device, 4501 LBR FR 36x84 EO w/BOLT, US26D\",\"Hardware: Hager, Exit Device, 4501 LBR 36x96, US32D\""
+  },
+  {
+    "Type Name": "Rim Exit Device",
+    "Type": "Rim Exit Device",
+    "Functional Group": "Secure",
+    "Subgroup": "Exit Devices",
+    "Priority": "2"
+  },
+  {
+    "Type Name": "SVR Exit Device",
+    "Type": "SVR Exit Device",
+    "Functional Group": "Secure",
+    "Subgroup": "Exit Devices",
+    "Priority": "2"
+  },
+  {
+    "Type Name": "CVR Exit Device",
+    "Type": "CVR Exit Device",
+    "Functional Group": "Secure",
+    "Subgroup": "Exit Devices",
+    "Priority": "2"
+  },
+  {
+    "Type Name": "Card Reader",
+    "Type": "Card Reader",
+    "Functional Group": "Secure",
+    "Subgroup": "Access Control",
+    "Priority": "2"
+  },
+  {
+    "Type Name": "Strike",
+    "Type": "Strike",
+    "Functional Group": "Secure",
+    "Subgroup": "Strikes & Catches",
+    "Priority": "2",
+    "Components": "\"Hardware: Hager, Strike, 381A 2 LS, N/A\""
+  },
+  {
+    "Type Name": "Closer",
+    "Type": "Closer",
+    "Functional Group": "Control",
+    "Subgroup": "Closers",
+    "Priority": "3",
+    "Components": "\"Hardware: Hager, Closer, 5100 PAR ADJ 1-6 BLK BF HDHOS, BLK\",\"Hardware: Hager, Closer, 5100 PAR ADJ 1-6 ALM HDCS BF, ALM\""
+  },
+  {
+    "Type Name": "Wall Stop",
+    "Type": "Wall Stop",
+    "Functional Group": "Control",
+    "Subgroup": "Stops & Bumpers",
+    "Priority": "3",
+    "Components": "\"Hardware: Hager, Wall Stop, 236W, US32D\""
+  },
+  {
+    "Type Name": "Floor Stop",
+    "Type": "Floor Stop",
+    "Functional Group": "Control",
+    "Subgroup": "Stops & Bumpers",
+    "Priority": "3"
+  },
+  {
+    "Type Name": "Overhead Stop",
+    "Type": "Overhead Stop",
+    "Functional Group": "Control",
+    "Subgroup": "Stops & Bumpers",
+    "Priority": "3"
+  },
+  {
+    "Type Name": "Hinge Pine Stop",
+    "Type": "Hinge Pine Stop",
+    "Functional Group": "Control",
+    "Subgroup": "Stops & Bumpers",
+    "Priority": "3"
+  },
+  {
+    "Type Name": "Roller Bumper",
+    "Type": "Roller Bumper",
+    "Functional Group": "Control",
+    "Subgroup": "Stops & Bumpers",
+    "Priority": "3"
+  },
+  {
+    "Type Name": "Silencer",
+    "Type": "Silencer",
+    "Functional Group": "Control",
+    "Subgroup": "Silencers",
+    "Priority": "3"
+  },
+  {
+    "Type Name": "Threshold",
+    "Type": "Threshold",
+    "Functional Group": "Protect",
+    "Subgroup": "Bottoms & Seals",
+    "Priority": "4"
+  },
+  {
+    "Type Name": "Door Bottom",
+    "Type": "Door Bottom",
+    "Functional Group": "Protect",
+    "Subgroup": "Bottoms & Seals",
+    "Priority": "4"
+  },
+  {
+    "Type Name": "Door Sweep",
+    "Type": "Door Sweep",
+    "Functional Group": "Protect",
+    "Subgroup": "Bottoms & Seals",
+    "Priority": "4"
+  },
+  {
+    "Type Name": "Door Shoe",
+    "Type": "Door Shoe",
+    "Functional Group": "Protect",
+    "Subgroup": "Bottoms & Seals",
+    "Priority": "4"
+  },
+  {
+    "Type Name": "Smoke Seal",
+    "Type": "Smoke Seal",
+    "Functional Group": "Protect",
+    "Subgroup": "Bottoms & Seals",
+    "Priority": "4"
+  },
+  {
+    "Type Name": "Drip Cap",
+    "Type": "Drip Cap",
+    "Functional Group": "Protect",
+    "Subgroup": "Bottoms & Seals",
+    "Priority": "4"
+  },
+  {
+    "Type Name": "Kick Plate",
+    "Type": "Kick Plate",
+    "Functional Group": "Protect",
+    "Subgroup": "Plates & Guards",
+    "Priority": "4"
+  },
+  {
+    "Type Name": "Push Plate",
+    "Type": "Push Plate",
+    "Functional Group": "Protect",
+    "Subgroup": "Plates & Guards",
+    "Priority": "4",
+    "Components": "\"Hardware: Hager, Push Plate, 30S 4x16, US26D\""
+  },
+  {
+    "Type Name": "Door Pull",
+    "Type": "Door Pull",
+    "Functional Group": "Protect",
+    "Subgroup": "Pulls & Handles",
+    "Priority": "4"
+  },
+  {
+    "Type Name": "Door Push/Pull",
+    "Type": "Door Push/Pull",
+    "Functional Group": "Protect",
+    "Subgroup": "Pulls & Handles",
+    "Priority": "4",
+    "Components": "\"Hardware: Hager, Door Push/Pull, 13J, US32D\""
+  },
+  {
+    "Type Name": "Flush Pull",
+    "Type": "Flush Pull",
+    "Functional Group": "Protect",
+    "Subgroup": "Pulls & Handles",
+    "Priority": "4"
+  },
+  {
+    "Type Name": "Pull",
+    "Type": "Pull",
+    "Functional Group": "Protect",
+    "Subgroup": "Pulls & Handles",
+    "Priority": "4"
+  },
+  {
+    "Type Name": "Ball Catch",
+    "Type": "Ball Catch",
+    "Functional Group": "Accessories",
+    "Subgroup": "Accessories",
+    "Priority": "5"
+  },
+  {
+    "Type Name": "Privacy Door Latch",
+    "Type": "Privacy Door Latch",
+    "Functional Group": "Accessories",
+    "Subgroup": "Accessories",
+    "Priority": "5"
+  },
+  {
+    "Type Name": "Screw Pack",
+    "Type": "Screw Pack",
+    "Functional Group": "Accessories",
+    "Subgroup": "Accessories",
+    "Priority": "5"
+  },
+  {
+    "Type Name": "Screws",
+    "Type": "Screws",
+    "Functional Group": "Accessories",
+    "Subgroup": "Accessories",
+    "Priority": "5"
+  },
+  {}
+]
