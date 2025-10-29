@@ -316,9 +316,9 @@ function formatCurrency(
  * 4) History (undo/redo)
  * ---------------------------------------------------------*/
 
-type HistoryEntry<T> = { rows: T[]; columns: ColumnSpec<T>[] };
+type HistoryEntry<T extends Record<string, any>> = { rows: T[]; columns: ColumnSpec<T>[] };
 
-function useHistory<T>(initial: HistoryEntry<T>) {
+function useHistory<T extends Record<string, any>>(initial: HistoryEntry<T>) {
   const [stack, setStack] = React.useState<HistoryEntry<T>[]>([deepClone(initial)]);
   const [index, setIndex] = React.useState(0);
 

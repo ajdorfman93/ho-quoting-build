@@ -90,3 +90,42 @@
     5. finish cell edit by pressing enter key.
     6. cancel cell edit by pressing escape key.
     7. show icon in column header before the column name based on column type.
+    8. when changing column type, convert existing data to the new type if possible.
+    9. add collapsing sidebar on the left with list of views of the active table.each view should have an icon based on its type. follow this list of view types and their corresponding icons:
+       Grid — blue 2×2 table/grid icon (four squares).
+       Calendar — orange calendar page icon.
+       Gallery — blue 3×3 tiles icon.
+       Kanban — green board icon with vertical columns.
+       Timeline — pink branching/flow line icon.
+       List — blue list/notepad icon (stacked lines).
+       Gantt — teal Gantt bars icon (staggered horizontal bars with a connector).
+
+       ——— (thin divider line) ———
+
+       Form — purple document/form icon.
+       Section — gray section/panel icon (stacked lines in a box).
+    10. here is the list of column types and their corresponding icons to show in the column header before the column name:
+        Link to another record — three horizontal lines with a right-pointing arrow (relation/link).
+        Single line text — capital A.
+        Long text — A with three lines (paragraph).
+        Attachment — document/page.
+        Checkbox — checked square.
+        Multiple select — three lines, each with a small chevron (multi-choice).
+        Single select — circle with a down chevron (dropdown).
+        User — person silhouette.
+        Date — calendar (shows “31”).
+        Phone number — telephone handset.
+        Email — envelope.
+        URL — chain link.
+        Number — hash #.
+        Currency — dollar $.
+        Percent — percent %.
+        Duration — clock.
+        Rating — star outline.
+        Formula — f(x).
+        Rollup — spiral/bullseye.
+        Count — calculator keypad.
+        Lookup — list with magnifying glass.
+        Created time — calendar with a small lightning bolt (auto-captured timestamp).
+        Last modified time — calendar with a small lightning bolt (auto-updated timestamp).
+        Created by — person silhouette with a small lightning bolt (auto-captured author).
