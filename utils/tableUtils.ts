@@ -1600,6 +1600,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   const cellContextMenu = cellMenu.menu && (() => {
     const sel = cellMenu.menu!.selection;
+    if (!sel) return null;
     const sample = getCellStyle(sel.r0, sel.c0) || { background: "#ffffff", color: "#000000" };
     const fillValue = typeof sample.background === "string" ? sample.background : "#ffffff";
     const textValue = typeof sample.color === "string" ? sample.color : "#000000";
