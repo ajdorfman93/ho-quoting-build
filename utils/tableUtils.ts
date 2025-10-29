@@ -162,6 +162,7 @@ const ROW_HEIGHT_PRESETS = {
 } as const;
 
 type RowHeightPreset = keyof typeof ROW_HEIGHT_PRESETS;
+const ROW_COLOR_PALETTE = ["#22d3ee", "#fb7185", "#f97316", "#22c55e", "#818cf8", "#facc15", "#14b8a6", "#f472b6"] as const;
 
 const VIEW_DEFINITIONS: ViewDefinition[] = [
   { id: "grid", name: "Grid", icon: FaThLarge, colorClass: "text-blue-500", group: "primary" },
@@ -524,8 +525,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const viewsDropdownRef = React.useRef<HTMLDivElement | null>(null);
   const viewsDropdownId = React.useId();
   const [fieldsMenuOpen, setFieldsMenuOpen] = React.useState(false);
+  const [fieldsSearchTerm, setFieldsSearchTerm] = React.useState("");
   const fieldsButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const fieldsMenuRef = React.useRef<HTMLDivElement | null>(null);
+  const fieldsSearchInputRef = React.useRef<HTMLInputElement | null>(null);
+  const fieldsSearchInputId = React.useId();
   const [filterMenuOpen, setFilterMenuOpen] = React.useState(false);
   const filterButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const filterMenuRef = React.useRef<HTMLDivElement | null>(null);
@@ -2048,7 +2052,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       }
     }
     return order;
-  }, [rows, columns, sortConfig, groupConfig, getCellValue]);
+  }, [rows, columns, sortConfig, groupConfig, getCellValue, normalizeSortValue]);
 
   const filteredRowIndexes = React.useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -2096,19 +2100,17 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     return headers;
   }, [groupConfig, columns, filteredRowIndexes, getCellValue]);
 
-  const COLOR_FALLBACKS = ["#22d3ee", "#fb7185", "#f97316", "#22c55e", "#818cf8", "#facc15", "#14b8a6", "#f472b6"] as const;
-
   const rowColorMap = React.useMemo(() => {
     if (!colorConfig) return new Map<number, string>();
     const columnIndex = columns.findIndex((col) => String(col.key) === colorConfig.columnKey);
     if (columnIndex < 0) return new Map<number, string>();
     const column = columns[columnIndex];
     const map = new Map<number, string>();
-    const resolveColor = (label: string, index: number) => {
-      if (!label) return undefined;
-      const paletteIndex = Math.abs(label.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0)) % COLOR_FALLBACKS.length;
-      return COLOR_FALLBACKS[paletteIndex] ?? COLOR_FALLBACKS[index % COLOR_FALLBACKS.length];
-    };
+      const resolveColor = (label: string, index: number) => {
+        if (!label) return undefined;
+        const paletteIndex = Math.abs(label.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0)) % ROW_COLOR_PALETTE.length;
+        return ROW_COLOR_PALETTE[paletteIndex] ?? ROW_COLOR_PALETTE[index % ROW_COLOR_PALETTE.length];
+      };
     const optionColor = (label: string) => {
       const lower = label.toLowerCase();
       const options =
@@ -2189,6 +2191,18 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     }
   };
 
+  React.useEffect(() => {
+    if (!fieldsMenuOpen) {
+      setFieldsSearchTerm("");
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      fieldsSearchInputRef.current?.focus();
+      fieldsSearchInputRef.current?.select();
+    }, 50);
+    return () => window.clearTimeout(handle);
+  }, [fieldsMenuOpen]);
+
   const toggleFilterMenu = () => {
     if (filterMenuOpen) {
       setFilterMenuOpen(false);
@@ -2239,6 +2253,75 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     if (columns.length <= 1) return;
     hideColumn(idx);
   };
+
+  function hideAllVisibleColumns() {
+    if (columns.length <= 1) return;
+    const entries = columns.map((col, idx) => {
+      const key = String(col.key);
+      return {
+        column: deepClone(col),
+        index: idx,
+        values: rows.map((row) => deepClone((row as any)[key])),
+        styles: rows.map((_row, rIdx) => getCellStyle(rIdx, idx)),
+        width: clamp(colWidths[idx] ?? col.width ?? 160, minColumnWidth, 800)
+      };
+    });
+    const nextRows = rows.map((row) => {
+      const nextRow: any = { ...row };
+      columns.forEach((col) => {
+        const key = String(col.key);
+        delete nextRow[key];
+        dropColumnStyles(nextRow, key);
+      });
+      return nextRow as T;
+    });
+    setHiddenColumns((prev) => [...prev, ...entries]);
+    setColumns([]);
+    setRows(nextRows);
+    latestRowsRef.current = nextRows;
+    setColWidths([]);
+    commit(nextRows, []);
+  }
+
+  function showAllHiddenColumns() {
+    if (!hiddenColumns.length) return;
+    const ordered = hiddenColumns
+      .map((entry, idx) => ({ entry, idx }))
+      .sort((a, b) => (a.entry.index - b.entry.index) || (a.idx - b.idx));
+    const nextCols = columns.slice();
+    const nextRows = rows.map((row) => ({ ...row })) as T[];
+    const nextWidths = colWidths.slice();
+    for (const { entry } of ordered) {
+      const columnClone = deepClone(entry.column);
+      const columnKey = String(columnClone.key);
+      const insertIndex = clamp(entry.index, 0, nextCols.length);
+      nextCols.splice(insertIndex, 0, columnClone);
+      nextRows.forEach((row, rIdx) => {
+        const nextRow: any = row;
+        nextRow[columnKey] = deepClone(entry.values[rIdx]);
+        if (entry.styles[rIdx]) {
+          const styles = { ...((nextRow[STYLE_FIELD] as Record<string, CellStyle>) ?? {}) };
+          styles[columnKey] = { ...entry.styles[rIdx]! };
+          nextRow[STYLE_FIELD] = styles;
+        } else if (nextRow[STYLE_FIELD]) {
+          const styles = { ...(nextRow[STYLE_FIELD] as Record<string, CellStyle>) };
+          delete styles[columnKey];
+          if (Object.keys(styles).length) {
+            nextRow[STYLE_FIELD] = styles;
+          } else {
+            delete nextRow[STYLE_FIELD];
+          }
+        }
+      });
+      nextWidths.splice(insertIndex, 0, clamp(entry.width, minColumnWidth, 800));
+    }
+    setColumns(nextCols);
+    setRows(nextRows);
+    latestRowsRef.current = nextRows;
+    setColWidths(nextWidths);
+    setHiddenColumns([]);
+    commit(nextRows, nextCols);
+  }
 
   const hasActiveFilters = activeFilters.some((filter) => filter.term.trim().length > 0);
 
@@ -3216,54 +3299,156 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   ) : null;
 
   const hideFieldsActive = fieldsMenuOpen || hiddenColumns.length > 0;
+  const fieldsButtonLabel = hiddenColumns.length
+    ? `${hiddenColumns.length} hidden field${hiddenColumns.length === 1 ? "" : "s"}`
+    : "Hide fields";
   const filterButtonLabel = hasActiveFilters ? `Filtered (${activeFilters.length})` : "Filter";
   const sortButtonLabel = sortConfig ? "Sorted by 1 field" : "Sort";
   const groupButtonLabel = groupConfig ? "Grouped" : "Group";
   const colorButtonLabel = colorConfig ? "Color applied" : "Color";
   const colorableColumns = columns.filter((col) => col.type === "singleSelect" || col.type === "multipleSelect");
 
+  type FieldVisibilityEntry = {
+    key: string;
+    label: string;
+    column: ColumnSpec<T>;
+    visible: boolean;
+    order: number;
+    hiddenIndex: number | null;
+  };
+
+  const visibleIndexByKey = React.useMemo(() => {
+    const map = new Map<string, number>();
+    columns.forEach((col, idx) => map.set(String(col.key), idx));
+    return map;
+  }, [columns]);
+
+  const fieldVisibilityEntries = React.useMemo<FieldVisibilityEntry[]>(() => {
+    const visibleEntries = columns.map((col, idx) => ({
+      key: String(col.key),
+      label: String(col.name ?? `Field ${idx + 1}`),
+      column: col,
+      visible: true,
+      order: idx,
+      hiddenIndex: null
+    }));
+    const hiddenEntries = hiddenColumns.map((entry, idx) => ({
+      key: String(entry.column.key),
+      label: String(entry.column.name ?? `Field ${idx + 1}`),
+      column: entry.column,
+      visible: false,
+      order: entry.index + (idx + 1) / 100,
+      hiddenIndex: idx
+    }));
+    return [...visibleEntries, ...hiddenEntries].sort((a, b) => a.order - b.order);
+  }, [columns, hiddenColumns]);
+
+  const fieldsSearchNormalized = fieldsSearchTerm.trim().toLowerCase();
+  const filteredFieldEntries = React.useMemo(() => {
+    if (!fieldsSearchNormalized) return fieldVisibilityEntries;
+    return fieldVisibilityEntries.filter((entry) =>
+      entry.label.toLowerCase().includes(fieldsSearchNormalized)
+    );
+  }, [fieldVisibilityEntries, fieldsSearchNormalized]);
+
+  const fieldListItems = filteredFieldEntries.length
+    ? filteredFieldEntries.map((entry) => {
+        const disableToggle = entry.visible && columns.length <= 1;
+        const title = disableToggle
+          ? "At least one field must remain visible"
+          : entry.visible
+            ? "Hide field"
+            : "Show field";
+        return h("button", {
+          key: entry.key,
+          type: "button",
+          role: "switch",
+          "aria-checked": entry.visible ? "true" : "false",
+          className: mergeClasses(
+            "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60",
+            entry.visible
+              ? "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800"
+              : "text-zinc-500 hover:bg-zinc-100/70 dark:text-neutral-400 dark:hover:bg-neutral-800/70",
+            disableToggle && "cursor-not-allowed opacity-60 hover:bg-transparent dark:hover:bg-transparent"
+          ),
+          onClick: () => {
+            if (disableToggle) return;
+            if (entry.visible) {
+              const idx = visibleIndexByKey.get(entry.key);
+              if (typeof idx === "number") {
+                handleHideColumnClick(idx);
+              }
+            } else if (entry.hiddenIndex != null) {
+              restoreHiddenColumn(entry.hiddenIndex);
+            }
+          },
+          disabled: disableToggle,
+          title
+        },
+          h("span", {
+            className: mergeClasses(
+              "flex h-4 w-7 items-center rounded-full border px-0.5 transition",
+              entry.visible ? "border-emerald-500 bg-emerald-500/30 justify-end" : "border-zinc-500 bg-transparent justify-start"
+            )
+          },
+            h("span", {
+              className: mergeClasses(
+                "h-3 w-3 rounded-full transition",
+                entry.visible ? "bg-emerald-500" : "bg-zinc-400"
+              )
+            })
+          ),
+          renderColumnIcon(entry.column.type),
+          h("span", { className: "flex-1 truncate text-left" }, entry.label),
+          h(FaGripVertical, { className: "h-3 w-3 text-zinc-400" })
+        );
+      })
+    : [
+        h("div", {
+          key: "fields-empty",
+          className: "px-3 py-6 text-center text-sm text-zinc-500 dark:text-neutral-400"
+        }, fieldsSearchTerm ? "No fields match that search." : "No fields available.")
+      ];
+
   const fieldsMenu = fieldsMenuOpen ? h("div", {
     ref: fieldsMenuRef,
-    className: "absolute left-0 top-full z-40 mt-2 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+    className: "absolute left-0 top-full z-40 mt-2 w-80 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
     role: "menu",
     "aria-label": "Field visibility"
   },
-    h("p", { className: "px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Visible fields"),
-    h("div", { className: "space-y-1" },
-      ...columns.map((col, idx) =>
-        h("button", {
-          key: `visible-field-${idx}`,
-          type: "button",
-          className: "flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800",
-          onClick: () => handleHideColumnClick(idx)
-        },
-          h("span", { className: "flex items-center gap-2" },
-            h(FaCheck, { className: "h-3 w-3 text-blue-500" }),
-            String(col.name ?? `Field ${idx + 1}`)
-          ),
-          h(FaEyeSlash, { className: "h-3 w-3 text-zinc-400" })
-        )
+    h("div", { className: "pb-3" },
+      h("p", { className: "px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Fields"),
+      h("div", { className: "relative" },
+        h(FaSearch, { className: "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" }),
+        h("input", {
+          ref: fieldsSearchInputRef,
+          id: fieldsSearchInputId,
+          type: "search",
+          value: fieldsSearchTerm,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => setFieldsSearchTerm(e.target.value),
+          placeholder: "Find a field",
+          className: "w-full rounded-xl border border-zinc-300 bg-white py-2 pl-9 pr-3 text-sm text-zinc-700 placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
+          "aria-label": "Find a field"
+        })
       )
     ),
-    hiddenColumns.length ? h("div", { className: "mt-3 border-t border-zinc-200 pt-3 dark:border-neutral-800" },
-      h("p", { className: "px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Hidden fields"),
-      h("div", { className: "space-y-1" },
-        ...hiddenColumns.map((entry, hiddenIdx) =>
-          h("button", {
-            key: `hidden-field-${hiddenIdx}`,
-            type: "button",
-            className: "flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800",
-            onClick: () => restoreHiddenColumn(hiddenIdx)
-          },
-            h("span", { className: "flex items-center gap-2" },
-              h(FaEye, { className: "h-3 w-3 text-emerald-500" }),
-              String(entry.column.name ?? `Field ${hiddenIdx + 1}`)
-            ),
-            "Show"
-          )
-        )
-      )
-    ) : null
+    h("div", { className: "max-h-72 space-y-1 overflow-y-auto pr-1" },
+      ...fieldListItems
+    ),
+    h("div", { className: "mt-3 flex items-center justify-between border-t border-zinc-200 pt-3 text-xs uppercase tracking-wide text-zinc-500 dark:border-neutral-800 dark:text-neutral-300" },
+      h("button", {
+        type: "button",
+        className: "rounded-md px-2 py-1 font-semibold transition hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-40",
+        onClick: hideAllVisibleColumns,
+        disabled: columns.length <= 1
+      }, "Hide all"),
+      h("button", {
+        type: "button",
+        className: "rounded-md px-2 py-1 font-semibold transition hover:text-blue-600 dark:hover:text-blue-400 disabled:cursor-not-allowed disabled:opacity-40",
+        onClick: showAllHiddenColumns,
+        disabled: hiddenColumns.length === 0
+      }, "Show all")
+    )
   ) : null;
 
   const filterMenu = filterMenuOpen ? h("div", {
@@ -3536,7 +3721,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           "aria-expanded": fieldsMenuOpen ? "true" : "false"
         },
           h(FaEyeSlash, { className: "h-3.5 w-3.5" }),
-          h("span", null, "Hide fields")
+          h("span", null, fieldsButtonLabel)
         ),
         fieldsMenu
       ),
