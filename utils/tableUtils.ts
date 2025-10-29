@@ -3351,6 +3351,21 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     );
   }, [fieldVisibilityEntries, fieldsSearchNormalized]);
 
+  const renderFieldLabel = (label: string) => {
+    if (!fieldsSearchNormalized) return label;
+    const lower = label.toLowerCase();
+    const index = lower.indexOf(fieldsSearchNormalized);
+    if (index === -1) return label;
+    const before = label.slice(0, index);
+    const match = label.slice(index, index + fieldsSearchNormalized.length);
+    const after = label.slice(index + fieldsSearchNormalized.length);
+    return [
+      before ? h("span", { key: "before" }, before) : null,
+      h("span", { key: "match", className: "text-blue-600 dark:text-blue-300" }, match),
+      after ? h("span", { key: "after" }, after) : null
+    ].filter(Boolean);
+  };
+
   const fieldListItems = filteredFieldEntries.length
     ? filteredFieldEntries.map((entry) => {
         const disableToggle = entry.visible && columns.length <= 1;
@@ -3359,6 +3374,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           : entry.visible
             ? "Hide field"
             : "Show field";
+        const typeIcon = renderColumnIcon(entry.column.type);
+        const labelContent = renderFieldLabel(entry.label);
         return h("button", {
           key: entry.key,
           type: "button",
@@ -3385,21 +3402,20 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           disabled: disableToggle,
           title
         },
-          h("span", {
-            className: mergeClasses(
-              "flex h-4 w-7 items-center rounded-full border px-0.5 transition",
-              entry.visible ? "border-emerald-500 bg-emerald-500/30 justify-end" : "border-zinc-500 bg-transparent justify-start"
-            )
-          },
+          h("div", { className: "flex flex-1 items-center gap-3" },
             h("span", {
               className: mergeClasses(
-                "h-3 w-3 rounded-full transition",
-                entry.visible ? "bg-emerald-500" : "bg-zinc-400"
+                "h-2.5 w-2.5 rounded-full transition",
+                entry.visible
+                  ? "bg-emerald-400 shadow-[0_0_0_3px_rgba(16,185,129,0.25)]"
+                  : "bg-zinc-500/40"
               )
-            })
+            }),
+            h("span", {
+              className: "flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-100 text-zinc-500 dark:bg-neutral-900 dark:text-neutral-300"
+            }, typeIcon ?? h("span", { className: "h-2 w-2 rounded-full bg-zinc-400/40" })),
+            h("span", { className: "flex-1 truncate text-left" }, labelContent)
           ),
-          renderColumnIcon(entry.column.type),
-          h("span", { className: "flex-1 truncate text-left" }, entry.label),
           h(FaGripVertical, { className: "h-3 w-3 text-zinc-400" })
         );
       })
@@ -3435,16 +3451,16 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     h("div", { className: "max-h-72 space-y-1 overflow-y-auto pr-1" },
       ...fieldListItems
     ),
-    h("div", { className: "mt-3 flex items-center justify-between border-t border-zinc-200 pt-3 text-xs uppercase tracking-wide text-zinc-500 dark:border-neutral-800 dark:text-neutral-300" },
+    h("div", { className: "mt-3 flex items-center justify-between border-t border-zinc-200 pt-3 text-xs text-zinc-500 dark:border-neutral-800 dark:text-neutral-300" },
       h("button", {
         type: "button",
-        className: "rounded-md px-2 py-1 font-semibold transition hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-40",
+        className: "rounded-md px-2 py-1 text-xs font-semibold transition hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-40",
         onClick: hideAllVisibleColumns,
         disabled: columns.length <= 1
       }, "Hide all"),
       h("button", {
         type: "button",
-        className: "rounded-md px-2 py-1 font-semibold transition hover:text-blue-600 dark:hover:text-blue-400 disabled:cursor-not-allowed disabled:opacity-40",
+        className: "rounded-md px-2 py-1 text-xs font-semibold transition hover:text-blue-600 dark:hover:text-blue-400 disabled:cursor-not-allowed disabled:opacity-40",
         onClick: showAllHiddenColumns,
         disabled: hiddenColumns.length === 0
       }, "Show all")
