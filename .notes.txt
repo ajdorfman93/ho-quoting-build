@@ -1,3 +1,79 @@
 ////////////////
     add a single table that is Interactive, Data Formatting, Column Visibility Controls, Empty State Handling, Automatic Data Type Handling, Custom Data Formatting, Custom Header Formatting, Row Actions, Row Click Handling, Sorting, Search and Filtering, Pagination, Dark Mode, Advanced Cell Expansion, Master-Detail with Expandable Rows table from EXAMPLES.md to replace app\page.tsx/app \ layout.tsx
     also refer to API.md for props and usage
+    ////////////////
+
+////////////////////
+    airtable\csv containts all csv data exported from Airtable. Each csv file is named after the corresponding Airtable table.
+    each csv file has a header row with column names, followed by data rows.
+    airtable\js contains automation codes from the same Airtable project. each js file has an explanation of its purpose at the top of the file.
+    work to rebuild the Airtable project using the csv data and js automation codes.
+    infer the relationships between tables based on column names and data patterns.
+    infer each field's type (e.g., single line text, number, date, linked record, etc.) based on the data in the csv files.
+    infer any formulas or computed fields based on the data patterns.
+    infer any automation logic based on the js files.
+    infer Data Formatting rules based on the data patterns.
+    convert csv data into json files which follow a database schema suitable for a relational database.
+    attempt to reconstruct the Airtable project as accurately as possible.
+    attempt to recreate the Airtable layout and user interface as closely as possible.
+    including top navigation, sidebars, views, filters, sorts, and any other UI elements.
+    top navigation should include: Data, Automations, Interfaces, Forms
+    below that should be the appControlsContainer with links to different tables (based on csv file names)
+    ////////////////////
+
+////////////////////
+    place all table universal functions in a new file called tableUtils.ts in the utils folder.
+    /////////////////////
+
+////////////////////
+    add to utils\tableUtils.ts a function that generates an interactive table with the following features:
+    make double clicking a row in the table makes that row editable.
+    make Expand details button expand the row to show more details optional
+    double clicking a column header makes that column name editable.
+    each column width is adjustable by dragging the edge of the column header.
+    each height is adjustable by dragging the edge of the row.
+    the height of all the header rows is adjustable together by dragging the bottom edge of the header row.
+    include all basic excel like table functions.
+    for example, selecting multiple cells and copying and pasting values.
+    selecting multiple rows and deleting them.
+    selecting multiple rows and duplicating them.
+    clicking and dragging to fill values down a column.
+    ctrl+z to undo the last action.
+    ctrl+y to redo the last undone action.
+    ctrl+f to search within the table.
+    plus symbol at the bottom of the table to add a new row.
+    plus symbol at the end of the column headers to add a new column.
+    right clicking on a column header to open a context menu with options to delete the column, rename the column, change the column type, and other column settings.
+    when changing the column type or creating a new column, the user will be prompted to select the new column type from the list of supported types.
+    this is a list of column types to support:
+        Link to another record  //will prompt to select which table to link and name the column
+        Single line text        //will prompt to enter a single line of text and name the column
+        Long text               //will prompt to enter a longer text and name the column
+        Attachment              //users will be able to upload a file and name the column
+        Checkbox                //users will be able to select a true/false value and name the column, and more style options for the checkbox, like a toggle switch etc.
+        Multiple select         //users will be able to select one or more options and name the column, user will also be able to pre-define the options, add a plus button when typing a new option to add it to the list of options, add dropdown to select from existing options
+        Single select           //same as multiple select but only one option can be selected
+        User                    //users will be able to select a user and name the column
+        Date                    //users will be able to select a date and name the column, with options for date format
+        Phone number            //users will be able to enter a phone number and name the column
+        Email                   //users will be able to enter an email address and name the column
+        URL                     //users will be able to enter a URL and name the column
+        Number                  //users will be able to enter a number and name the column, with options for number format, decimal places, Large number abbreviation, comma separators, fractions, etc.
+        Currency                //users will be able to enter a currency value and name the column, with options for currency type/symbol,
+                                    Thousands and decimal separators
+                                    Local             1,000,000.00
+                                    Comma, period     1,000,000.00
+                                    Period, comma     1.000.000,00
+                                    Space, comma      1 000 000,00
+                                    Space, period     1 000 000.00
+        Percent                 //users will be able to enter a percentage value and name the column
+        Duration                //users will be able to enter a duration and name the column
+        Rating                  //users will be able to enter a rating and name the column, including options for number of stars, custom icons, etc.
+        Formula                 //users will be able to enter a formula and Compute values based on fields and name the column
+        Rollup                  //users will be able to Summarize data from linked records and name the column
+        Count                   //users will be able to Count the number of linked records and name the column
+        Lookup                  //users will be able to See values from a field in a linked record and name the column
+        Created time            //users will be able to See the date and time each record was created and name the column
+        Last modified time      //users will be able to See the date and time each record was last modified and name the column
+        Created by              //users will be able to See the user who created each record and name the column
+        Last modified by        //users will be able to See the user who last modified each record and name the column
