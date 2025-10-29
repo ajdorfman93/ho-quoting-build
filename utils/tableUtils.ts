@@ -375,6 +375,22 @@ function useContextMenu() {
   return { menu, open, close };
 }
 
+function useCellContextMenu() {
+  const [menu, setMenu] = React.useState<null | {
+    x: number;
+    y: number;
+    selection: Selection;
+  }>(null);
+
+  const open = (e: React.MouseEvent, selection: Selection) => {
+    e.preventDefault();
+    setMenu({ x: e.clientX, y: e.clientY, selection });
+  };
+  const close = () => setMenu(null);
+
+  return { menu, open, close };
+}
+
 const ALL_TYPES: Array<{ value: ColumnType; label: string }> = [
   { value: "linkToRecord", label: "Link to another record" },
   { value: "singleLineText", label: "Single line text" },
@@ -440,12 +456,29 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       ({ readOnly: ["formula","rollup","lookup","createdTime","lastModifiedTime","createdBy","lastModifiedBy"].includes(c.type) ? true : c.readOnly, ...c })
     );
   });
+  const availableViews = React.useMemo(
+    () => VIEW_DEFINITIONS.map((def) => ({ ...def, instanceId: def.id, displayName: def.name })),
+    []
+  );
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const [activeView, setActiveView] = React.useState(() => availableViews[0]?.instanceId ?? "grid");
+  const columnDragRef = React.useRef<{ from: number } | null>(null);
+  const rowDragRef = React.useRef<{ from: number } | null>(null);
+  const editOriginalRef = React.useRef<any>(null);
+  const headerMenu = useContextMenu();
+  const cellMenu = useCellContextMenu();
 
   // sync from history index changes
   React.useEffect(() => {
     setRows(deepClone(current.rows));
     setColumns(deepClone(current.columns));
   }, [current]);
+
+  React.useEffect(() => {
+    if (!availableViews.some((view) => view.instanceId === activeView)) {
+      setActiveView(availableViews[0]?.instanceId ?? "grid");
+    }
+  }, [availableViews, activeView]);
 
   const commit = React.useCallback((nextRows: T[] = rows, nextCols: ColumnSpec<T>[] = columns) => {
     push({ rows: nextRows, columns: nextCols });
@@ -739,6 +772,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   function beginEdit(r: number, c: number) {
     const col = columns[c];
     if (col.readOnly) return;
+    editOriginalRef.current = deepClone(getCellValue(r, c));
     setActiveCell({ r, c });
     setEditing({ r, c });
     // focus happens after input is rendered
@@ -747,9 +781,40 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   function commitEdit() {
     if (!editing) return;
     const { r, c } = editing;
+    editOriginalRef.current = null;
     setEditing(null);
     commit(rows, columns);
     setActiveCell({ r, c });
+  }
+  function cancelEdit() {
+    if (!editing) return;
+    const { r, c } = editing;
+    const col = columns[c];
+    const previous = deepClone(editOriginalRef.current);
+    editOriginalRef.current = null;
+    if (!col) {
+      setEditing(null);
+      return;
+    }
+    setRows((prev) => {
+      const next = deepClone(prev);
+      if (next[r]) (next[r] as any)[col.key as keyof T] = previous;
+      return next;
+    });
+    setEditing(null);
+    setActiveCell({ r, c });
+  }
+  function handleEditorKeyDown(e: React.KeyboardEvent) {
+    if (!editing) return;
+    if (e.key === "Enter") {
+      const colType = columns[editing.c]?.type;
+      if (colType === "longText" && e.shiftKey) return;
+      e.preventDefault();
+      commitEdit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cancelEdit();
+    }
   }
 
   /* Expand / collapse details (with optional button) */
