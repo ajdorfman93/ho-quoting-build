@@ -503,7 +503,9 @@ export default function Home() {
     () =>
       activeColumns
         .filter((column) => SORTABLE_COLUMNS.includes(column.key))
-        .map((column) => column.key) as ReadonlyArray<keyof TeamMember>,
+        .map(
+          (column) => column.key
+        ) as Array<keyof TeamMember>,
     [activeColumns]
   );
 
