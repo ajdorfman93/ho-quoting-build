@@ -557,6 +557,7 @@ function DataPanel({
           onDragOver={(event) => {
             if (tabDragSlug.current) {
               event.preventDefault();
+              setTabDragOverSlug(null);
             }
           }}
           onDrop={(event) => handleTabDrop(null, event)}

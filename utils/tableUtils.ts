@@ -18,7 +18,6 @@ import {
   FaEnvelope,
   FaEye,
   FaEyeSlash,
-  FaCheck,
   FaFilter,
   FaFont,
   FaHeart,
@@ -3003,7 +3002,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       key: "row-number-header",
       className: mergeClasses(
         cx("rowNumberHeader", baseHeaderClass),
-        "sticky left-0 z-40 flex items-center justify-center px-2"
+        "sticky left-0 z-40 flex items-center justify-center px-2",
+        isAllRowsSelected && "bg-blue-100 text-blue-700 dark:bg-neutral-700/80 dark:text-blue-100",
+        selectAllIndeterminate && !isAllRowsSelected && "bg-blue-50/70 dark:bg-neutral-700/60"
       ),
       style: {
         width: `${ROW_NUMBER_COLUMN_WIDTH}px`,
@@ -3011,9 +3012,18 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         maxWidth: `${ROW_NUMBER_COLUMN_WIDTH}px`,
         height: "100%"
       },
+      role: "button",
+      tabIndex: 0,
+      "aria-pressed": isAllRowsSelected ? "true" : "false",
       onClick: (event: React.MouseEvent) => {
         event.stopPropagation();
         toggleSelectAllRows();
+      },
+      onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          toggleSelectAllRows();
+        }
       }
     },
       h("input", {
