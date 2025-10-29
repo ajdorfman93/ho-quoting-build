@@ -1,2 +1,3 @@
 ////////////////
     add a single table that is Interactive, Data Formatting, Column Visibility Controls, Empty State Handling, Automatic Data Type Handling, Custom Data Formatting, Custom Header Formatting, Row Actions, Row Click Handling, Sorting, Search and Filtering, Pagination, Dark Mode, Advanced Cell Expansion, Master-Detail with Expandable Rows table from EXAMPLES.md to replace app\page.tsx/app \ layout.tsx
+    also refer to API.md for props and usage
