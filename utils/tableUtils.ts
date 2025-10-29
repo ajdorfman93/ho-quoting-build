@@ -33,6 +33,7 @@ import {
   FaListUl,
   FaLock,
   FaPaperclip,
+  FaPalette,
   FaPencilAlt,
   FaPercent,
   FaPhoneAlt,
@@ -3684,53 +3685,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     )
   ) : null;
 
-  /* Toolbar (undo/redo, duplicate/delete rows, search) */
-  const toolbar = h("div", {
-    className: mergeClasses(cx("toolbar",""), "flex items-center gap-2 py-2")
-  },
-    h("button", {
-      className: "rounded-full border px-3 py-1 text-sm disabled:opacity-40",
-      onClick: () => undo(),
-      disabled: !canUndo
-    }, "Undo (Ctrl+Z)"),
-    h("button", {
-      className: "rounded-full border px-3 py-1 text-sm disabled:opacity-40",
-      onClick: () => redo(),
-      disabled: !canRedo
-    }, "Redo (Ctrl+Y)"),
-    h("span", { className: "mx-3 text-zinc-400 select-none" }, "•"),
-    h("button", {
-      className: "rounded-full border px-3 py-1 text-sm",
-      onClick: duplicateSelectedRows
-    }, "Duplicate rows"),
-    h("button", {
-      className: "rounded-full border px-3 py-1 text-sm",
-      onClick: deleteSelectedRows
-    }, "Delete rows"),
-    h("span", { className: "mx-3 text-zinc-400 select-none" }, "•"),
-    h("button", {
-      className: "rounded-full border px-3 py-1 text-sm",
-      onClick: () => setSearchOpen((v) => !v)
-    }, "Search (Ctrl+F)"),
-    h("div", {
-      className: "ml-auto relative"
-    },
-      h("button", {
-        ref: viewsTriggerRef,
-        type: "button",
-        className: "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition hover:bg-zinc-100 dark:hover:bg-neutral-800",
-        onClick: () => setViewsDropdownOpen((open) => !open),
-        "aria-haspopup": "menu",
-        "aria-expanded": viewsDropdownOpen ? "true" : "false",
-        "aria-controls": viewsDropdownOpen ? viewsDropdownId : undefined
-      },
-        "Create new...",
-        h(FaChevronDown, { className: mergeClasses("h-3 w-3 transition-transform", viewsDropdownOpen && "rotate-180") })
-      ),
-      viewsDropdownElement
-    )
-  );
-
   /* Toolbar (view controls, duplicate/delete rows, search) */
   const toolbar = h("div", {
     className: mergeClasses(cx("toolbar",""), "flex flex-wrap items-center gap-3 py-2")
@@ -4041,6 +3995,7 @@ function uniqueColumnKey(cols: ColumnSpec[], base: string) {
   while (keys.has(k)) { i += 1; k = `${base}_${i}`; }
   return k;
 }
+
 
 
 
