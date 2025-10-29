@@ -2558,7 +2558,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     if (!current) return;
     const columnKey = current?.key as string;
 
-    let derivedOptions: SelectOption[] = [];
+    const derivedOptions: SelectOption[] = [];
     if (columnKey && (type === "singleSelect" || type === "multipleSelect")) {
       const seen = new Set<string>();
       const registerOption = (raw: unknown) => {
