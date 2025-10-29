@@ -1,4 +1,4 @@
-// utils/tableUtils.ts
+﻿// utils/tableUtils.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as React from "react";
 import {
@@ -316,6 +316,12 @@ function resolveOptionMeta<T extends Record<string, any>>(
   };
 }
 
+function optionIdentifier(option: Partial<SelectOption> | null | undefined): string {
+  if (!option) return "";
+  const raw = option.id ?? option.label ?? "";
+  return String(raw);
+}
+
 export interface ColumnSpec<T extends Record<string, any> = any> {
   key: keyof T | string;
   name: string;
@@ -485,6 +491,189 @@ function formatCurrency(
   const parts = Number(raw).toFixed(decimals).split(".");
   parts[0] = parts[0].replace(g, repl);
   return s.replace(/-?[\d.,\s]+/, parts.join(dec));
+}
+
+function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds)) return "";
+  const total = Math.max(0, Math.floor(seconds));
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  const parts = [
+    String(mins).padStart(2, "0"),
+    String(secs).padStart(2, "0")
+  ];
+  if (hrs > 0) parts.unshift(String(hrs));
+  return parts.join(":");
+}
+
+function formatDateValue(value: unknown, format?: string): string {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(value as any);
+  if (Number.isNaN(date.getTime())) return "";
+  if (!format) {
+    return date.toLocaleDateString(undefined, { dateStyle: "medium" });
+  }
+  const token = format.toLowerCase();
+  switch (token) {
+    case "iso":
+      return date.toISOString();
+    case "iso-date":
+      return date.toISOString().split("T")[0] ?? date.toISOString();
+    case "short":
+      return date.toLocaleDateString(undefined, { dateStyle: "short" });
+    case "medium":
+      return date.toLocaleDateString(undefined, { dateStyle: "medium" });
+    case "long":
+      return date.toLocaleDateString(undefined, { dateStyle: "long" });
+    case "full":
+      return date.toLocaleDateString(undefined, { dateStyle: "full" });
+    case "time":
+      return date.toLocaleTimeString(undefined, { timeStyle: "short" });
+    case "datetime":
+      return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    default:
+      return date.toLocaleDateString(undefined, { dateStyle: "medium" });
+  }
+}
+
+function stringifyValue(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map((v) => stringifyValue(v)).filter(Boolean).join(", ");
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function displayValue<T extends Record<string, any>>(value: unknown, column: ColumnSpec<T>): React.ReactNode {
+  switch (column.type) {
+    case "checkbox":
+      return value ? h(FaCheck, { className: "mx-auto text-emerald-500" }) : "";
+    case "number": {
+      const num = typeof value === "number" ? value : Number(value);
+      return Number.isFinite(num) ? formatNumber(num, column.config?.number) : "";
+    }
+    case "currency": {
+      const num = typeof value === "number" ? value : Number(value);
+      return Number.isFinite(num) ? formatCurrency(num, column.config?.currency) : "";
+    }
+    case "percent": {
+      const num = typeof value === "number" ? value : Number(value);
+      if (!Number.isFinite(num)) return "";
+      const normalized = Math.abs(num) <= 1 ? num : num / 100;
+      const digits = column.config?.percent?.decimals ?? 0;
+      return formatPercentage(normalized, digits);
+    }
+    case "rating": {
+      const num = typeof value === "number" ? value : Number(value);
+      return Number.isFinite(num) ? String(num) : "";
+    }
+    case "date":
+    case "createdTime":
+    case "lastModifiedTime":
+      return formatDateValue(value, column.config?.date?.format);
+    case "duration": {
+      const num = typeof value === "number" ? value : Number(value);
+      return Number.isFinite(num) ? formatDuration(num) : "";
+    }
+    case "multipleSelect": {
+      const options = Array.isArray(value) ? value : [];
+      if (!options.length) return "";
+      const pills = options
+        .map((opt) => resolveOptionMeta(column, opt))
+        .filter((opt): opt is SelectOption => Boolean(opt))
+        .map((opt) => {
+          const pillStyle = optionPillStylesFromColor(opt.color);
+          return h("span", {
+            key: optionIdentifier(opt),
+            className: "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+            style: pillStyle
+          }, opt.label);
+        });
+      return h("div", { className: "flex flex-wrap gap-1" }, ...pills);
+    }
+    case "singleSelect": {
+      const option = resolveOptionMeta(column, value);
+      if (!option) return stringifyValue(value);
+      const pillStyle = optionPillStylesFromColor(option.color);
+      return h("span", {
+        className: "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+        style: pillStyle
+      }, option.label);
+    }
+    case "attachment": {
+      const files = Array.isArray(value) ? value : [];
+      if (!files.length) return "";
+      return h("div", { className: "flex flex-wrap gap-1" },
+        ...files.map((file, idx) => {
+          const label = (file && typeof file === "object" && "name" in file) ? String((file as any).name ?? `File ${idx + 1}`) : stringifyValue(file);
+          return h("span", {
+            key: `${idx}-${label}`,
+            className: "inline-flex items-center gap-1 rounded border border-zinc-300 px-2 py-0.5 text-xs text-zinc-700 dark:border-neutral-600 dark:text-neutral-200"
+          }, label);
+        })
+      );
+    }
+    case "url": {
+      const text = stringifyValue(value);
+      if (!text) return "";
+      return h("a", {
+        href: text,
+        target: "_blank",
+        rel: "noopener noreferrer",
+        className: "text-blue-600 underline hover:text-blue-500 dark:text-blue-400"
+      }, text);
+    }
+    case "email": {
+      const text = stringifyValue(value);
+      if (!text) return "";
+      return h("a", {
+        href: `mailto:${text}`,
+        className: "text-blue-600 underline hover:text-blue-500 dark:text-blue-400"
+      }, text);
+    }
+    case "phone": {
+      const text = stringifyValue(value);
+      if (!text) return "";
+      return h("a", {
+        href: `tel:${text.replace(/\s+/g, "")}`,
+        className: "text-blue-600 underline hover:text-blue-500 dark:text-blue-400"
+      }, text);
+    }
+    case "user": {
+      if (!value) return "";
+      if (Array.isArray(value)) {
+        const names = value.map((v) => {
+          if (typeof v === "string") return v;
+          if (v && typeof v === "object") {
+            const maybeUser = v as { name?: string; email?: string; id?: string };
+            return maybeUser.name ?? maybeUser.email ?? maybeUser.id ?? "";
+          }
+          return "";
+        }).filter(Boolean);
+        return names.join(", ");
+      }
+      if (typeof value === "object") {
+        const user = value as { name?: string; email?: string; id?: string };
+        return user.name ?? user.email ?? user.id ?? "";
+      }
+      return stringifyValue(value);
+    }
+    case "linkToRecord":
+    case "lookup":
+    case "rollup":
+    case "formula":
+    case "count":
+    case "singleLineText":
+    case "longText":
+    default:
+      return stringifyValue(value);
+  }
 }
 
 /* -----------------------------------------------------------
@@ -1269,66 +1458,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         }
         const label = String(input).trim();
         return known.find((o) => o.label === label) ?? (label ? { id: label, label } : null);
-      }
-      case "date":
-        if (input instanceof Date) return input.toISOString();
-        if (typeof input === "number" && Number.isFinite(input)) return new Date(input).toISOString();
-        const parsed = Date.parse(String(input));
-        return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
-      case "user":
-        if (typeof input === "string") return input;
-        if (input && typeof input === "object") {
-          const candidate = input as { id?: string; name?: string };
-          return candidate.id ?? candidate.name ?? "";
-        }
-        return String(input);
-      case "attachment": {
-        if (!Array.isArray(input)) return defaultValueForType(col.type);
-        return input.map((item: any, index) => {
-          if (item && typeof item === "object") {
-            const name = String(item.name ?? item.label ?? `Attachment ${index + 1}`);
-            const url = String(item.url ?? item.href ?? "");
-            return { name, url };
-          }
-          const label = String(item ?? `Attachment ${index + 1}`);
-          return { name: label, url: "" };
-        });
-      }
-      case "duration":
-        return Number.isFinite(Number(input)) ? Number(input) : defaultValueForType(col.type);
-      case "url":
-      case "email":
-      case "phone":
-      case "singleLineText":
-      case "longText":
-        return String(input ?? "");
-      default:
-        return input;
-    }
-  }
-
-  function displayValue(v: any, col: ColumnSpec<T>) {
-    switch (col.type) {
-      case "number": return formatNumber(Number(v || 0), col.config?.number);
-      case "currency": return formatCurrency(Number(v || 0), col.config?.currency);
-      case "percent": return formatPercentage((Number(v || 0)) / 100, col.config?.percent?.decimals ?? 0);
-      case "checkbox": return v ? "☑" : "";
-      case "rating": {
-        const max = col.config?.rating?.max ?? 5;
-        const icon = col.config?.rating?.icon ?? "star";
-        const filled = Number(v || 0);
-        const ch = icon === "heart" ? "❤" : icon === "circle" ? "●" : "★";
-        const gr = icon === "heart" ? "♡" : icon === "circle" ? "○" : "☆";
-        return `${ch.repeat(filled)}${gr.repeat(Math.max(0, max - filled))}`;
-      }
-      case "multipleSelect": {
-        const arr = Array.isArray(v) ? v as SelectOption[] : [];
-        return arr.map((o) => o.label).join(", ");
-      }
-      case "singleSelect": return (v && (v as SelectOption).label) || "";
-      case "user": {
-        const u = v ? users.find((x) => x.id === v || x.name === v) : null;
-        return u ? u.name : "";
       }
       case "date":
         return v ? new Date(v).toLocaleDateString() : "";
@@ -3102,7 +3231,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
                     e.stopPropagation();
                     removeOption(o);
                   }
-                }, "×")
+                }, "├ù")
               );
             })
           ) : null,
@@ -3136,7 +3265,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
                       className: "inline-block rounded-md px-2 py-1 text-xs font-medium text-white",
                       style: { backgroundColor: bgColor }
                     }, o.label),
-                    isSelected ? h("span", { className: "ml-auto text-[#4a9eff] text-xs" }, "✓") : null
+                    isSelected ? h("span", { className: "ml-auto text-[#4a9eff] text-xs" }, "Γ£ô") : null
                   );
                 })
               : h("div", { className: "px-3 py-2 text-sm text-gray-500" }, "No options found")
@@ -3212,7 +3341,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
                       className: "inline-block rounded-md px-2 py-1 text-xs font-medium text-white",
                       style: { backgroundColor: bgColor }
                     }, o.label),
-                    isSelected ? h("span", { className: "ml-auto text-[#4a9eff] text-xs" }, "✓") : null
+                    isSelected ? h("span", { className: "ml-auto text-[#4a9eff] text-xs" }, "Γ£ô") : null
                   );
                 })
               : h("div", { className: "px-3 py-2 text-sm text-gray-500" }, "No options found")
@@ -3759,7 +3888,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       className: "rounded-full border px-4 py-1 text-sm bg-white dark:bg-neutral-900 disabled:opacity-50",
       disabled: isLoadMorePending || !onLoadMoreRows,
       onClick: handleLoadMoreRows
-    }, isLoadMorePending ? "Loading…" : "Load more rows")
+    }, isLoadMorePending ? "LoadingΓÇª" : "Load more rows")
   ) : null;
 
   const body = h("div",
@@ -4284,7 +4413,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
             type: "button",
             className: "ml-2 text-xs text-zinc-400 hover:text-rose-500",
             onClick: () => handleFilterRemove(filter.columnKey)
-          }, "×")
+          }, "├ù")
         );
       })
     ) : null,
@@ -4330,7 +4459,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
                   : "border-zinc-300 text-zinc-500 dark:border-neutral-700 dark:text-neutral-300"
               ),
               onClick: () => handleSortApply(String(col.key ?? idx), "asc")
-            }, "A → Z"),
+            }, "A ΓåÆ Z"),
             h("button", {
               type: "button",
               className: mergeClasses(
@@ -4340,7 +4469,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
                   : "border-zinc-300 text-zinc-500 dark:border-neutral-700 dark:text-neutral-300"
               ),
               onClick: () => handleSortApply(String(col.key ?? idx), "desc")
-            }, "Z → A")
+            }, "Z ΓåÆ A")
           )
         )
       )
@@ -4598,7 +4727,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   },
     h("input", {
       className: "w-64 rounded-2xl border px-3 py-2 text-sm",
-      placeholder: "Search in table…",
+      placeholder: "Search in tableΓÇª",
       value: searchTerm,
       onChange: (e: any) => setSearchTerm(e.target.value)
     }),
