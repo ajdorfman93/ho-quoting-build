@@ -1745,8 +1745,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     ...rows.map((row, r) => {
       const show = visibleRowIndexes.includes(r);
       if (!show) return null;
-      const isExpanded = !!expanded[r];
       const isDraggingRow = rowDragHover && rowDragHover.from === r;
+      const isRowEdgeActive = rowResizeHover === r || (rowResizeGuide && rowResizeGuide.index === r);
+      const isRowResizing = !!(rowResizeGuide?.active && rowResizeGuide.index === r);
       return h("div",
         {
           key: rowKey(row, r),
@@ -1755,10 +1756,17 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
             "transition-transform",
             isDraggingRow && "ring-2 ring-blue-300/60 bg-blue-50/70 dark:bg-neutral-800/60"
           ),
-          style: {
-            height: `${rowHeights[r]}px`,
-            transform: isDraggingRow ? "scale(0.995)" : undefined
-          },
+          style: (() => {
+            const base: React.CSSProperties = {
+              height: `${rowHeights[r]}px`,
+              transform: isDraggingRow ? "scale(0.995)" : undefined
+            };
+            if (isRowEdgeActive) {
+              const color = isRowResizing ? "rgba(37,99,235,0.9)" : "rgba(59,130,246,0.65)";
+              base.boxShadow = [base.boxShadow, `inset 0 -2.5px 0 0 ${color}`].filter(Boolean).join(", ");
+            }
+            return base;
+          })(),
           role: "row",
           onDragOver: (e: React.DragEvent) => onRowDragOver(r, e),
           onDrop: (e: React.DragEvent) => onRowDrop(r, e)
@@ -1886,8 +1894,22 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         }),
         // row resizer handle
         h("div", {
-          className: "absolute bottom-0 left-0 right-0 h-1 cursor-row-resize",
-          onMouseDown: (e: React.MouseEvent) => startRowResize(r, e)
+          className: mergeClasses(
+            "absolute bottom-0 left-0 right-0 cursor-row-resize transition-all",
+            isRowResizing ? "h-2.5 bg-blue-500/90" : isRowEdgeActive ? "h-2.5 bg-blue-400/70" : "h-1 bg-transparent"
+          ),
+          onMouseDown: (e: React.MouseEvent) => startRowResize(r, e),
+          onMouseEnter: (e: React.MouseEvent) => {
+            setRowResizeHover(r);
+            updateRowGuidePosition(r, e.clientY, false);
+          },
+          onMouseMove: (e: React.MouseEvent) => updateRowGuidePosition(r, e.clientY, rowResizeGuide?.active ?? false),
+          onMouseLeave: () => {
+            if (!rowResizeGuide?.active) {
+              setRowResizeHover((prev) => (prev === r ? null : prev));
+              setRowResizeGuide((prev) => (prev && !prev.active ? null : prev));
+            }
+          }
         }),
         // expand details button
         h("button", {
