@@ -1418,24 +1418,60 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         return clamp(Number(input) || 0, 0, col.config?.rating?.max ?? 5);
       case "multipleSelect": {
         const known = col.config?.multipleSelect?.options ?? [];
+        const normalizeOption = (raw: unknown): SelectOption | null => {
+          if (raw == null || raw === "") return null;
+          if (typeof raw === "string" || typeof raw === "number" || typeof raw === "boolean") {
+            const text = String(raw).trim();
+            if (!text) return null;
+            const match = known.find((opt) => opt.id === text || opt.label === text);
+            return match ? { ...match } : { id: text, label: text };
+          }
+          if (typeof raw === "object") {
+            const opt = raw as Partial<SelectOption>;
+            const id = opt.id != null ? String(opt.id).trim() : "";
+            const label = opt.label != null ? String(opt.label).trim() : "";
+            const match = known.find((candidate) =>
+              (id && (candidate.id === id || candidate.label === id)) ||
+              (label && (candidate.id === label || candidate.label === label))
+            );
+            if (match) {
+              if (opt.color && opt.color !== match.color) {
+                return { ...match, color: opt.color };
+              }
+              return match;
+            }
+            const fallbackId = id || label;
+            const fallbackLabel = label || id;
+            if (!fallbackId && !fallbackLabel) return null;
+            return {
+              id: fallbackId || fallbackLabel || "",
+              label: fallbackLabel || fallbackId || "",
+              color: opt.color
+            };
+          }
+          const text = String(raw).trim();
+          if (!text) return null;
+          const match = known.find((opt) => opt.id === text || opt.label === text);
+          return match ? match : { id: text, label: text };
+        };
+
         if (Array.isArray(input)) {
-          return input.map((item) => {
-            if (typeof item === "string") {
-              return known.find((o) => o.label === item || o.id === item) ?? { id: item, label: item };
-            }
-            if (item && typeof item === "object") {
-              const opt = item as SelectOption;
-              const id = opt.id ?? opt.label;
-              const label = opt.label ?? String(id ?? "");
-              return known.find((o) => o.id === id || o.label === label) ?? { id: String(id), label };
-            }
-            const asString = String(item ?? "").trim();
-            return known.find((o) => o.label === asString) ?? { id: asString, label: asString };
-          }).filter((opt) => Boolean(opt.label));
+          return input
+            .map((item) => normalizeOption(item))
+            .filter((opt): opt is SelectOption => Boolean(opt));
         }
-        const str = String(input);
-        const parts = str.split(",").map((s) => s.trim()).filter(Boolean);
-        return parts.map((p) => known.find((o) => o.label === p || o.id === p) ?? { id: p, label: p });
+
+        if (typeof input === "string") {
+          const parts = input.split(",").map((s) => s.trim()).filter(Boolean);
+          if (parts.length > 1) {
+            return parts
+              .map((part) => normalizeOption(part))
+              .filter((opt): opt is SelectOption => Boolean(opt));
+          }
+        }
+
+        const normalized = normalizeOption(input);
+        return normalized ? [normalized] : [];
       }
       case "singleSelect": {
         const known = col.config?.singleSelect?.options ?? [];
@@ -2441,6 +2477,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         if (raw == null) return;
         let id = "";
         let label = "";
+        let color: string | undefined;
         if (typeof raw === "string") {
           label = raw.trim();
           id = label;
@@ -2449,6 +2486,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           label = typeof opt.label === "string" ? opt.label.trim() : "";
           const rawId = typeof opt.id === "string" ? opt.id.trim() : opt.id != null ? String(opt.id).trim() : "";
           id = rawId || label;
+          if (typeof opt.color === "string") {
+            color = opt.color;
+          }
           if (!label && id) {
             label = id;
           }
@@ -2462,7 +2502,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         const key = finalId.toLowerCase();
         if (seen.has(key)) return;
         seen.add(key);
-        derivedOptions.push({ id: finalId, label: finalLabel });
+        const option: SelectOption = { id: finalId, label: finalLabel };
+        if (color) option.color = color;
+        derivedOptions.push(option);
       };
 
       rows.forEach((row) => {
