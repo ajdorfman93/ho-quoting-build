@@ -127,13 +127,6 @@ const VIEW_DEFINITIONS: ViewDefinition[] = [
   { id: "section", name: "Section", icon: FaLayerGroup, colorClass: "text-gray-500", group: "secondary" }
 ];
 
-const VIEW_DEFINITION_MAP = VIEW_DEFINITIONS.reduce(
-  (acc, def) => ({ ...acc, [def.id]: def }),
-  {} as Record<ViewDefinition["id"], ViewDefinition>
-);
-
-type ViewType = ViewDefinition["id"];
-
 const columnTypeIconMap: Partial<Record<ColumnType, React.ComponentType<{ className?: string }>>> = {
   singleLineText: FaFont,
   longText: FaAlignLeft,
@@ -298,7 +291,7 @@ function formatCurrency(
   const currency = cfg?.currency ?? "USD";
   const decimals = cfg?.decimals ?? 2;
   const nf = new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: decimals });
-  let s = nf.format(n);
+  const s = nf.format(n);
   if (!cfg?.thousandSeparator || cfg.thousandSeparator === "local") return s;
 
   // Re-map separators for the custom options.
@@ -558,65 +551,100 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     latestRowsRef.current = next;
   }
 
-  /* copy / paste */
-  React.useEffect(() => {
-    function onCopy(e: ClipboardEvent) {
-      if (!selection) return;
-      e.clipboardData?.setData("text/plain", matrixToTsv(selectionToMatrix(selection)));
-      e.preventDefault();
+  function defaultValueForType(type: ColumnType) {
+    switch (type) {
+      case "checkbox": return false;
+      case "number":
+      case "currency":
+      case "percent": return 0;
+      case "rating": return 0;
+      case "multipleSelect": return [] as SelectOption[];
+      case "singleSelect": return null as SelectOption | null;
+      case "user": return null;
+      case "date": return null as string | null;
+      case "attachment": return [] as Array<{ name: string; url: string }>;
+      case "duration": return 0; // seconds
+      case "formula":
+      case "rollup":
+      case "count":
+      case "lookup":
+      case "createdTime":
+      case "lastModifiedTime":
+      case "createdBy":
+      case "lastModifiedBy":
+      case "linkToRecord":
+      case "url":
+      case "email":
+      case "phone":
+      case "singleLineText":
+      case "longText":
+      default:
+        return "";
     }
-    function onPaste(e: ClipboardEvent) {
-      if (!activeCell) return;
-      const text = e.clipboardData?.getData("text/plain");
-      if (!text) return;
-      const matrix = tsvToMatrix(text);
-      const baseR = activeCell.r;
-      const baseC = activeCell.c;
-      applyMatrixAt(matrix, baseR, baseC);
-      e.preventDefault();
-    }
-    function onKey(e: KeyboardEvent) {
-      // ctrl/cmd + f
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
-        e.preventDefault();
-        setSearchOpen(true);
-        return;
-      }
-      // undo / redo
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
-        e.preventDefault();
-        undo();
-        return;
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
-        e.preventDefault();
-        redo();
-        return;
-      }
-      // delete rows (if entire rows selected)
-      if ((e.key === "Delete" || e.key === "Backspace") && selection) {
-        const { r0, r1, c0, c1 } = selection;
-        // If all columns selected -> delete rows
-        if (c0 === 0 && c1 === columns.length - 1) {
-          e.preventDefault();
-          removeRows({ start: r0, end: r1 });
-        } else {
-          e.preventDefault();
-          clearSelectionCells(selection);
-        }
-      }
-    }
+  }
 
-    document.addEventListener("copy", onCopy);
-    document.addEventListener("paste", onPaste);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("copy", onCopy);
-      document.removeEventListener("paste", onPaste);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [selection, activeCell, rows, columns, commit, undo, redo]);
+  function coerceValue(input: any, col: ColumnSpec): any {
+    if (input == null) return defaultValueForType(col.type);
+    switch (col.type) {
+      case "number":
+        return Number.isFinite(Number(input)) ? Number(input) : null;
+      case "currency":
+        return Number.isFinite(Number(input)) ? Number(input) : null;
+      case "percent":
+        return Number.isFinite(Number(input)) ? Number(input) : null;
+      case "checkbox":
+        if (typeof input === "boolean") return input;
+        return /^(true|1|yes|y)$/i.test(String(input));
+      case "rating":
+        return clamp(Number(input) || 0, 0, col.config?.rating?.max ?? 5);
+      case "multipleSelect": {
+        const str = String(input);
+        const parts = str.split(",").map((s) => s.trim()).filter(Boolean);
+        const known = col.config?.multipleSelect?.options ?? [];
+        const ensured = parts.map((p) => known.find((o) => o.label === p) ?? { id: p, label: p });
+        return ensured;
+      }
+      case "singleSelect": {
+        const label = String(input).trim();
+        const known = col.config?.singleSelect?.options ?? [];
+        return known.find((o) => o.label === label) ?? (label ? { id: label, label } : null);
+      }
+      case "date":
+        return input ? new Date(input).toISOString() : null;
+      default:
+        return input;
+    }
+  }
 
+  function displayValue(v: any, col: ColumnSpec<T>) {
+    switch (col.type) {
+      case "number": return formatNumber(Number(v || 0), col.config?.number);
+      case "currency": return formatCurrency(Number(v || 0), col.config?.currency);
+      case "percent": return formatPercentage((Number(v || 0)) / 100, col.config?.percent?.decimals ?? 0);
+      case "checkbox": return v ? "☑" : "";
+      case "rating": {
+        const max = col.config?.rating?.max ?? 5;
+        const icon = col.config?.rating?.icon ?? "star";
+        const filled = Number(v || 0);
+        const ch = icon === "heart" ? "❤" : icon === "circle" ? "●" : "★";
+        const gr = icon === "heart" ? "♡" : icon === "circle" ? "○" : "☆";
+        return `${ch.repeat(filled)}${gr.repeat(Math.max(0, max - filled))}`;
+      }
+      case "multipleSelect": {
+        const arr = Array.isArray(v) ? v as SelectOption[] : [];
+        return arr.map((o) => o.label).join(", ");
+      }
+      case "singleSelect": return (v && (v as SelectOption).label) || "";
+      case "user": {
+        const u = v ? users.find((x) => x.id === v || x.name === v) : null;
+        return u ? u.name : "";
+      }
+      case "date":
+        return v ? new Date(v).toLocaleDateString() : "";
+      default:
+        return v ?? "";
+    }
+  }
   /* Mouse selection & fill-down drag */
   const dragRef = React.useRef<{ r0: number; c0: number } | null>(null);
   function startDrag(r: number, c: number, e: React.MouseEvent) {
@@ -996,6 +1024,61 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     commit(next, columns);
   }
 
+  /* copy / paste */
+  React.useEffect(() => {
+    function onCopy(e: ClipboardEvent) {
+      if (!selection) return;
+      e.clipboardData?.setData("text/plain", matrixToTsv(selectionToMatrix(selection)));
+      e.preventDefault();
+    }
+    function onPaste(e: ClipboardEvent) {
+      if (!activeCell) return;
+      const text = e.clipboardData?.getData("text/plain");
+      if (!text) return;
+      const matrix = tsvToMatrix(text);
+      const baseR = activeCell.r;
+      const baseC = activeCell.c;
+      applyMatrixAt(matrix, baseR, baseC);
+      e.preventDefault();
+    }
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        setSearchOpen(true);
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        undo();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        redo();
+        return;
+      }
+      if ((e.key === "Delete" || e.key === "Backspace") && selection) {
+        const { r0, r1, c0, c1 } = selection;
+        if (c0 === 0 && c1 === columns.length - 1) {
+          e.preventDefault();
+          removeRows({ start: r0, end: r1 });
+        } else {
+          e.preventDefault();
+          clearSelectionCells(selection);
+        }
+      }
+    }
+
+    document.addEventListener("copy", onCopy);
+    document.addEventListener("paste", onPaste);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("copy", onCopy);
+      document.removeEventListener("paste", onPaste);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [selection, activeCell, columns.length, applyMatrixAt, clearSelectionCells, removeRows, undo, redo, selectionToMatrix]);
+
   async function copySelectionToClipboard(sel: Selection) {
     if (!sel || typeof navigator === "undefined" || !navigator.clipboard) return;
     try {
@@ -1202,102 +1285,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const cx = (base: string, fallback: string) => classNames[base as keyof typeof classNames] || fallback;
   const baseCellClass = "relative border border-zinc-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm";
   const baseHeaderClass = "relative border border-zinc-300 dark:border-neutral-700 bg-zinc-100 dark:bg-neutral-800 text-xs font-semibold uppercase tracking-wide select-none";
-
-  /* Render helpers (cell editor & display) */
-  function coerceValue(input: any, col: ColumnSpec): any {
-    if (input == null) return defaultValueForType(col.type);
-    switch (col.type) {
-      case "number":
-        return Number.isFinite(Number(input)) ? Number(input) : null;
-      case "currency":
-        return Number.isFinite(Number(input)) ? Number(input) : null;
-      case "percent":
-        return Number.isFinite(Number(input)) ? Number(input) : null;
-      case "checkbox":
-        if (typeof input === "boolean") return input;
-        return /^(true|1|yes|y)$/i.test(String(input));
-      case "rating":
-        return clamp(Number(input) || 0, 0, col.config?.rating?.max ?? 5);
-      case "multipleSelect": {
-        const str = String(input);
-        const parts = str.split(",").map((s) => s.trim()).filter(Boolean);
-        const known = col.config?.multipleSelect?.options ?? [];
-        const ensured = parts.map((p) => known.find((o) => o.label === p) ?? { id: p, label: p });
-        return ensured;
-      }
-      case "singleSelect": {
-        const label = String(input).trim();
-        const known = col.config?.singleSelect?.options ?? [];
-        return known.find((o) => o.label === label) ?? (label ? { id: label, label } : null);
-      }
-      case "date":
-        return input ? new Date(input).toISOString() : null;
-      default:
-        return input;
-    }
-  }
-
-  function defaultValueForType(type: ColumnType) {
-    switch (type) {
-      case "checkbox": return false;
-      case "number":
-      case "currency":
-      case "percent": return 0;
-      case "rating": return 0;
-      case "multipleSelect": return [] as SelectOption[];
-      case "singleSelect": return null as SelectOption | null;
-      case "user": return null;
-      case "date": return null as string | null;
-      case "attachment": return [] as Array<{ name: string; url: string }>;
-      case "duration": return 0; // seconds
-      case "formula":
-      case "rollup":
-      case "count":
-      case "lookup":
-      case "createdTime":
-      case "lastModifiedTime":
-      case "createdBy":
-      case "lastModifiedBy":
-      case "linkToRecord":
-      case "url":
-      case "email":
-      case "phone":
-      case "singleLineText":
-      case "longText":
-      default:
-        return "";
-    }
-  }
-
-  function displayValue(v: any, col: ColumnSpec<T>) {
-    switch (col.type) {
-      case "number": return formatNumber(Number(v || 0), col.config?.number);
-      case "currency": return formatCurrency(Number(v || 0), col.config?.currency);
-      case "percent": return formatPercentage((Number(v || 0)) / 100, col.config?.percent?.decimals ?? 0);
-      case "checkbox": return v ? "✓" : "";
-      case "rating": {
-        const max = col.config?.rating?.max ?? 5;
-        const icon = col.config?.rating?.icon ?? "star";
-        const filled = Number(v || 0);
-        const ch = icon === "heart" ? "♥" : icon === "circle" ? "●" : "★";
-        const gr = icon === "heart" ? "♡" : icon === "circle" ? "○" : "☆";
-        return `${ch.repeat(filled)}${gr.repeat(Math.max(0, max - filled))}`;
-      }
-      case "multipleSelect": {
-        const arr = Array.isArray(v) ? v as SelectOption[] : [];
-        return arr.map((o) => o.label).join(", ");
-      }
-      case "singleSelect": return (v && (v as SelectOption).label) || "";
-      case "user": {
-        const u = v ? users.find((x) => x.id === v || x.name === v) : null;
-        return u ? u.name : "";
-      }
-      case "date":
-        return v ? new Date(v).toLocaleDateString() : "";
-      default:
-        return v ?? "";
-    }
-  }
 
   function renderCellEditor(r: number, c: number) {
     const col = columns[c];
