@@ -248,7 +248,7 @@ function DataPanel({
   const gridClassNames = React.useMemo(
     () => ({
       container:
-        "flex flex-1 flex-col overflow-hidden rounded-xl border border-[#121c34] bg-[#0c152a]/90 shadow-[0_30px_60px_rgba(2,8,20,0.55)]",
+        "flex flex-1 flex-col overflow-visible rounded-xl border border-[#121c34] bg-[#0c152a]/90 shadow-[0_30px_60px_rgba(2,8,20,0.55)]",
       headerRow:
         "flex relative bg-[#101c38] border-b border-[#16254a] text-xs font-semibold uppercase tracking-wide text-slate-300",
       headerCell:
