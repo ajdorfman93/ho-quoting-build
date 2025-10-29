@@ -553,6 +553,24 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const colWidthsRef = React.useRef(colWidths);
   const rowHeightsRef = React.useRef(rowHeights);
 
+  const updateColumnGuidePosition = React.useCallback((index: number, clientX: number, active: boolean) => {
+    const container = tableContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const relative = clientX - rect.left;
+    const left = Math.max(0, Math.min(container.scrollWidth, container.scrollLeft + relative));
+    setColumnResizeGuide({ index, left, active });
+  }, []);
+
+  const updateRowGuidePosition = React.useCallback((index: number, clientY: number, active: boolean) => {
+    const container = tableContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const relative = clientY - rect.top;
+    const top = Math.max(0, Math.min(container.scrollHeight, container.scrollTop + relative));
+    setRowResizeGuide({ index, top, active });
+  }, []);
+
   function getCellValue(r: number, c: number) {
     const row = rows[r];
     const col = columns[c];
@@ -775,22 +793,28 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     e.preventDefault();
     const startX = e.clientX;
     const startW = colWidths[idx];
+    setColumnResizeHover(idx);
+    updateColumnGuidePosition(idx, e.clientX, true);
     function onMove(ev: MouseEvent) {
       const dx = ev.clientX - startX;
       setColWidths((w) => {
         const next = w.slice();
         next[idx] = clamp(startW + dx, minColumnWidth, 800);
+        colWidthsRef.current = next;
         return next;
       });
+      updateColumnGuidePosition(idx, ev.clientX, true);
     }
     function onUp() {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
       // persist column width on spec
       const nextCols = deepClone(columns);
-      nextCols[idx].width = colWidths[idx];
+      nextCols[idx].width = colWidthsRef.current[idx];
       setColumns(nextCols);
       commit(rows, nextCols);
+      setColumnResizeGuide(null);
+      setColumnResizeHover(null);
     }
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
@@ -801,17 +825,23 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     e.preventDefault();
     const startY = e.clientY;
     const startH = rowHeights[idx];
+    setRowResizeHover(idx);
+    updateRowGuidePosition(idx, e.clientY, true);
     function onMove(ev: MouseEvent) {
       const dy = ev.clientY - startY;
       setRowHeights((h) => {
         const next = h.slice();
         next[idx] = clamp(startH + dy, minRowHeight, 400);
+        rowHeightsRef.current = next;
         return next;
       });
+      updateRowGuidePosition(idx, ev.clientY, true);
     }
     function onUp() {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      setRowResizeGuide(null);
+      setRowResizeHover(null);
     }
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
@@ -1913,14 +1943,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         }),
         // expand details button
         h("button", {
-          className: "absolute -left-8 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border text-xs bg-white dark:bg-neutral-900",
-          onClick: () => toggleExpand(r),
-          title: isExpanded ? "Collapse details" : "Expand details"
-        }, isExpanded ? "−" : "+"),
-        isExpanded && h("div",
-          { className: "absolute left-0 right-0 translate-y-full mt-2 rounded-lg border p-3 bg-white dark:bg-neutral-900 text-sm" },
-          renderDetails ? renderDetails(row, r) : h("div", null, "No details renderer provided.")
-        )
+          className: "absolute -left-8 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full border bg-white dark:bg-neutral-900 flex items-center justify-center text-sm",
+          onClick: () => setDetailsModal({ rowIndex: r }),
+          title: "Expand details"
+        }, "＋"),
       );
     }),
     columnPlaceholderBody,

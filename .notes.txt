@@ -5,21 +5,19 @@
 
 ////////////////////
     add new page in app\ for rebuilding an Airtable project.
-    airtable\csv contains all csv data exported from Airtable. Each csv file is named after the corresponding Airtable table.
-    each csv file has a header row with column names, followed by data rows.
+    airtable\csv-json contains all json data exported from Airtable(converted csv's from airtable\csv). Each json file is named after the corresponding Airtable table.
     airtable\js contains automation codes from the same Airtable project. each js file has an explanation of its purpose at the top of the file.
-    work to rebuild the Airtable project using the csv data and js automation codes.
+    work to rebuild the Airtable project using the json data and js automation codes.
     infer the relationships between tables based on column names and data patterns.
-    infer each field's type (e.g., single line text, number, date, linked record, etc.) based on the data in the csv files.
+    infer each field's type (e.g., single line text, number, date, linked record, etc.) based on the data in the json files.
     infer any formulas or computed fields based on the data patterns.
     infer any automation logic based on the js files.
     infer Data Formatting rules based on the data patterns.
-    convert csv data into json files which follow a database schema suitable for a relational database.
     attempt to reconstruct the Airtable project as accurately as possible.
     attempt to recreate the Airtable layout and user interface as closely as possible.
     including top navigation, sidebars, views, filters, sorts, and any other UI elements.
     top navigation should include: Data, Automations, Interfaces, Forms
-    below that should be the appControlsContainer with links to different tables (based on csv file names)
+    below that should be the appControlsContainer with links to different tables (based on json file names)
     use the existing table component to display each table's data.
     ////////////////////
 
@@ -123,3 +121,29 @@
         ability to set the maximum number of stars (e.g., 3-star rating, 10-star rating).
     12. make drag to reorder columns and rows show a visual placeholder where the column or row will be dropped.
         make drag to reorder columns and rows visually show the column or row being dragged by the mouse.
+
+    13. disable text selection unless editing cell
+    14. on hover of a cell, show a light border around the cell to indicate it is hoverable.
+    15. on hover of an edge of a column header or row, make the whole edge more blue and 2.5px to indicate it is draggable for resizing.
+    16. all icons should match text height and be vertically centered.
+    17. when resizing a column or row, show a vertical or horizontal line that follows the mouse to indicate the new size.
+    18. when hovering/resizing a column or row, show a vertical or horizontal bar that follows the mouse sliding along the edge to indicate edge is draggable.
+    19. make Expand details button expand as a fullscreen popup modal instead of expanding the row height.
+    20. make this list a dropdown for each column header:
+        open on hover or click of a down arrow icon next to the column name.
+        place icons on the left side of each option.
+        options:
+        Edit field — pencil icon.
+        Duplicate field — two overlapping squares icon.
+        Insert left — left arrow icon.
+        Insert right — right arrow icon.
+        Copy field URL — link/chain icon.
+        Edit field description — info “i” in a circle icon.
+        Edit field permissions — padlock icon.
+        Sort ☐ → ☑ — sort icon (unchecked to checked for checkbox fields).
+        Sort ☑ → ☐ — sort icon (checked to unchecked for checkbox fields).
+        Filter by this field — funnel/filter icon.
+        Group by this field — grouped rows/table stacks icon.
+        Show dependencies — sliders/controls icon.
+        Hide field — eye with a slash icon.
+        Delete field — trash can icon.
