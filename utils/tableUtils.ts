@@ -456,6 +456,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       ({ readOnly: ["formula","rollup","lookup","createdTime","lastModifiedTime","createdBy","lastModifiedBy"].includes(c.type) ? true : c.readOnly, ...c })
     );
   });
+  const latestRowsRef = React.useRef(rows);
   const availableViews = React.useMemo(
     () => VIEW_DEFINITIONS.map((def) => ({ ...def, instanceId: def.id, displayName: def.name })),
     []
@@ -470,9 +471,17 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   // sync from history index changes
   React.useEffect(() => {
-    setRows(deepClone(current.rows));
-    setColumns(deepClone(current.columns));
+    const nextRows = deepClone(current.rows);
+    const nextCols = deepClone(current.columns);
+    setRows(nextRows);
+    latestRowsRef.current = nextRows;
+    setColumns(nextCols);
+    latestRowsRef.current = nextRows;
   }, [current]);
+
+  React.useEffect(() => {
+    latestRowsRef.current = rows;
+  }, [rows]);
 
   React.useEffect(() => {
     if (!availableViews.some((view) => view.instanceId === activeView)) {
@@ -546,23 +555,14 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const next = deepClone(rows);
     (next[r] as any)[key] = value;
     setRows(next);
+    latestRowsRef.current = next;
   }
 
   /* copy / paste */
   React.useEffect(() => {
     function onCopy(e: ClipboardEvent) {
       if (!selection) return;
-      const { r0, c0, r1, c1 } = selection;
-      const matrix: string[][] = [];
-      for (let r = r0; r <= r1; r++) {
-        const row: string[] = [];
-        for (let c = c0; c <= c1; c++) {
-          const v = getCellValue(r, c);
-          row.push(v == null ? "" : String(v));
-        }
-        matrix.push(row);
-      }
-      e.clipboardData?.setData("text/plain", matrixToTsv(matrix));
+      e.clipboardData?.setData("text/plain", matrixToTsv(selectionToMatrix(selection)));
       e.preventDefault();
     }
     function onPaste(e: ClipboardEvent) {
@@ -572,21 +572,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       const matrix = tsvToMatrix(text);
       const baseR = activeCell.r;
       const baseC = activeCell.c;
-      const next = deepClone(rows);
-      for (let i = 0; i < matrix.length; i++) {
-        for (let j = 0; j < matrix[i].length; j++) {
-          const r = baseR + i;
-          const c = baseC + j;
-          if (r < next.length && c < columns.length) {
-            const col = columns[c];
-            if (!col.readOnly) {
-              (next[r] as any)[col.key as keyof T] = coerceValue(matrix[i][j], col);
-            }
-          }
-        }
-      }
-      setRows(next);
-      commit(next, columns);
+      applyMatrixAt(matrix, baseR, baseC);
       e.preventDefault();
     }
     function onKey(e: KeyboardEvent) {
@@ -612,23 +598,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         const { r0, r1, c0, c1 } = selection;
         // If all columns selected -> delete rows
         if (c0 === 0 && c1 === columns.length - 1) {
-          const next = rows.filter((_r, idx) => idx < r0 || idx > r1);
-          setRows(next);
-          setSelection(null);
-          commit(next, columns);
           e.preventDefault();
+          removeRows({ start: r0, end: r1 });
         } else {
-          // clear cell contents
-          const next = deepClone(rows);
-          for (let r = r0; r <= r1; r++) {
-            for (let c = c0; c <= c1; c++) {
-              const col = columns[c];
-              if (!col.readOnly) (next[r] as any)[col.key as keyof T] = null;
-            }
-          }
-          setRows(next);
-          commit(next, columns);
           e.preventDefault();
+          clearSelectionCells(selection);
         }
       }
     }
@@ -762,6 +736,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         }
       }
       setRows(next);
+      latestRowsRef.current = next;
       commit(next, columns);
     }
     window.addEventListener("mousemove", onMove);
@@ -783,7 +758,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const { r, c } = editing;
     editOriginalRef.current = null;
     setEditing(null);
-    commit(rows, columns);
+    commit(latestRowsRef.current, columns);
     setActiveCell({ r, c });
   }
   function cancelEdit() {
@@ -799,6 +774,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     setRows((prev) => {
       const next = deepClone(prev);
       if (next[r]) (next[r] as any)[col.key as keyof T] = previous;
+      latestRowsRef.current = next;
       return next;
     });
     setEditing(null);
@@ -817,6 +793,251 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     }
   }
 
+  function createBlankRow(): any {
+    const template: any = {};
+    for (const c of columns) template[c.key as string] = defaultValueForType(c.type);
+    return template;
+  }
+
+  function insertRowsAt(index: number, newRows: T[], heights?: number[]) {
+    if (!newRows.length) return;
+    const safeIndex = clamp(index, 0, rows.length);
+    const nextRows = rows.slice();
+    nextRows.splice(safeIndex, 0, ...newRows.map((row) => deepClone(row)));
+    setRows(nextRows);
+    latestRowsRef.current = nextRows;
+    setRowHeights((prev) => {
+      const nextHeights = prev.slice();
+      const inserts = heights && heights.length === newRows.length
+        ? heights
+        : newRows.map(() => minRowHeight);
+      inserts.forEach((h, offset) => {
+        nextHeights.splice(safeIndex + offset, 0, h ?? minRowHeight);
+      });
+      return nextHeights;
+    });
+    commit(nextRows, columns);
+  }
+
+  function removeRows(range: { start: number; end: number }) {
+    const start = Math.max(0, range.start);
+    const end = Math.min(rows.length - 1, range.end);
+    if (end < start) return;
+    const nextRows = rows.filter((_row, idx) => idx < start || idx > end);
+    const nextHeights = rowHeights.filter((_height, idx) => idx < start || idx > end);
+    setRows(nextRows);
+    latestRowsRef.current = nextRows;
+    setRowHeights(nextHeights);
+    setSelection(null);
+    commit(nextRows, columns);
+  }
+
+  function createNewColumnSpec(baseName = "New column"): ColumnSpec<T> {
+    const key = uniqueColumnKey(columns, "new_field");
+    return { key, name: baseName, type: "singleLineText", width: 160 } as ColumnSpec<T>;
+  }
+
+  function insertColumnAtIndex(index: number, column?: ColumnSpec<T>) {
+    const newColumn = column ?? createNewColumnSpec();
+    const safeIndex = clamp(index, 0, columns.length);
+    const nextCols = columns.slice();
+    nextCols.splice(safeIndex, 0, { ...newColumn });
+    const nextRows = rows.map((row) => ({
+      ...row,
+      [newColumn.key as string]: defaultValueForType(newColumn.type)
+    }));
+    setColumns(nextCols);
+    setRows(nextRows);
+    latestRowsRef.current = nextRows;
+    setColWidths((prev) => {
+      const next = prev.slice();
+      next.splice(safeIndex, 0, clamp(newColumn.width ?? 160, minColumnWidth, 800));
+      return next;
+    });
+    commit(nextRows, nextCols);
+  }
+
+  function dropColumnStyles(row: any, key: string) {
+    if (!row?.[STYLE_FIELD]) return row;
+    const styles = { ...row[STYLE_FIELD] };
+    delete styles[key];
+    if (Object.keys(styles).length) {
+      row[STYLE_FIELD] = styles;
+    } else {
+      delete row[STYLE_FIELD];
+    }
+    return row;
+  }
+
+  function removeColumnsByIndex(indices: number[]) {
+    if (!indices.length) return;
+    const unique = Array.from(new Set(indices.filter((idx) => idx >= 0 && idx < columns.length))).sort((a, b) => a - b);
+    if (!unique.length) return;
+    const keysToRemove = unique.map((idx) => columns[idx]?.key as string).filter(Boolean);
+    const nextCols = columns.filter((_col, idx) => !unique.includes(idx));
+    const nextRows = rows.map((row) => {
+      const nextRow: any = { ...row };
+      for (const key of keysToRemove) {
+        delete nextRow[key];
+        dropColumnStyles(nextRow, key);
+      }
+      return nextRow as T;
+    });
+    setColumns(nextCols);
+    setRows(nextRows);
+    latestRowsRef.current = nextRows;
+    setColWidths((prev) => prev.filter((_w, idx) => !unique.includes(idx)));
+    commit(nextRows, nextCols);
+  }
+
+  function getCellStyle(r: number, c: number): CellStyle | null {
+    const row = rows[r] as any;
+    const col = columns[c];
+    if (!row || !col) return null;
+    const styles = row[STYLE_FIELD] as Record<string, CellStyle> | undefined;
+    return styles?.[col.key as string] ?? null;
+  }
+
+  function applyCellStyleToSelection(sel: Selection, partial: Partial<CellStyle>) {
+    if (!sel) return;
+    const next = deepClone(rows);
+    for (let r = sel.r0; r <= sel.r1; r++) {
+      const row = next[r] as any;
+      const styles = { ...(row[STYLE_FIELD] ?? {}) };
+      for (let c = sel.c0; c <= sel.c1; c++) {
+        const col = columns[c];
+        if (!col) continue;
+        const key = col.key as string;
+        const merged = { ...(styles[key] ?? {}), ...partial };
+        if (!merged.background && !merged.color) {
+          delete styles[key];
+        } else {
+          styles[key] = merged;
+        }
+      }
+      if (Object.keys(styles).length) {
+        row[STYLE_FIELD] = styles;
+      } else {
+        delete row[STYLE_FIELD];
+      }
+    }
+    setRows(next);
+    latestRowsRef.current = next;
+    commit(next, columns);
+  }
+
+  function clearStylesFromSelection(sel: Selection) {
+    if (!sel) return;
+    const next = deepClone(rows);
+    for (let r = sel.r0; r <= sel.r1; r++) {
+      const row = next[r] as any;
+      if (!row[STYLE_FIELD]) continue;
+      const styles = { ...row[STYLE_FIELD] };
+      for (let c = sel.c0; c <= sel.c1; c++) {
+        const col = columns[c];
+        if (!col) continue;
+        delete styles[col.key as string];
+      }
+      if (Object.keys(styles).length) {
+        row[STYLE_FIELD] = styles;
+      } else {
+        delete row[STYLE_FIELD];
+      }
+    }
+    setRows(next);
+    latestRowsRef.current = next;
+    commit(next, columns);
+  }
+
+  function selectionToMatrix(sel: Selection): string[][] {
+    const matrix: string[][] = [];
+    for (let r = sel.r0; r <= sel.r1; r++) {
+      const row: string[] = [];
+      for (let c = sel.c0; c <= sel.c1; c++) {
+        const v = getCellValue(r, c);
+        row.push(v == null ? "" : String(v));
+      }
+      matrix.push(row);
+    }
+    return matrix;
+  }
+
+  function clearSelectionCells(sel: Selection) {
+    if (!sel) return;
+    const next = deepClone(rows);
+    for (let r = sel.r0; r <= sel.r1; r++) {
+      for (let c = sel.c0; c <= sel.c1; c++) {
+        const col = columns[c];
+        if (!col || col.readOnly) continue;
+        (next[r] as any)[col.key as keyof T] = defaultValueForType(col.type);
+      }
+    }
+    setRows(next);
+    latestRowsRef.current = next;
+    commit(next, columns);
+  }
+
+  function applyMatrixAt(matrix: string[][], baseR: number, baseC: number) {
+    const next = deepClone(rows);
+    for (let i = 0; i < matrix.length; i++) {
+      for (let j = 0; j < matrix[i].length; j++) {
+        const r = baseR + i;
+        const c = baseC + j;
+        if (r < next.length && c < columns.length) {
+          const col = columns[c];
+          if (!col.readOnly) {
+            (next[r] as any)[col.key as keyof T] = coerceValue(matrix[i][j], col);
+          }
+        }
+      }
+    }
+    setRows(next);
+    latestRowsRef.current = next;
+    commit(next, columns);
+  }
+
+  async function copySelectionToClipboard(sel: Selection) {
+    if (!sel || typeof navigator === "undefined" || !navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(matrixToTsv(selectionToMatrix(sel)));
+    } catch {
+      /* noop */
+    }
+  }
+
+  async function cutSelectionRange(sel: Selection) {
+    if (!sel) return;
+    await copySelectionToClipboard(sel);
+    clearSelectionCells(sel);
+  }
+
+  async function pasteFromClipboard(sel: Selection) {
+    if (!sel || typeof navigator === "undefined" || !navigator.clipboard) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) return;
+      const matrix = tsvToMatrix(text);
+      applyMatrixAt(matrix, sel.r0, sel.c0);
+    } catch {
+      /* noop */
+    }
+  }
+
+  function handleCellContextMenu(e: React.MouseEvent, r: number, c: number) {
+    const within =
+      selection &&
+      r >= selection.r0 &&
+      r <= selection.r1 &&
+      c >= selection.c0 &&
+      c <= selection.c1;
+    const nextSelection = within ? selection! : { r0: r, r1: r, c0: c, c1: c };
+    if (!within) {
+      setSelection(nextSelection);
+      setActiveCell({ r, c });
+    }
+    cellMenu.open(e, nextSelection);
+  }
+
   /* Expand / collapse details (with optional button) */
   function toggleExpand(idx: number) {
     setExpanded((prev) => ({ ...prev, [idx]: !prev[idx] }));
@@ -832,47 +1053,24 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   /* Insert / delete rows/columns */
   function addRow() {
-    const template: any = {};
-    for (const c of columns) template[c.key as string] = defaultValueForType(c.type);
-    const next = rows.concat([template]);
-    setRows(next);
-    commit(next, columns);
+    insertRowsAt(rows.length, [createBlankRow()]);
   }
   function duplicateSelectedRows() {
     if (!selection) return;
     const { r0, r1 } = selection;
-    const copies = rows.slice(r0, r1 + 1).map((x) => deepClone(x));
-    const next = rows.slice(0, r1 + 1).concat(copies).concat(rows.slice(r1 + 1));
-    setRows(next);
-    commit(next, columns);
+    const copies = rows.slice(r0, r1 + 1);
+    const heights = rowHeights.slice(r0, r1 + 1);
+    insertRowsAt(r1 + 1, copies as T[], heights);
   }
-  function deleteSelectedRows() {
-    if (!selection) return;
-    const { r0, r1 } = selection;
-    const next = rows.filter((_r, idx) => idx < r0 || idx > r1);
-    setRows(next);
-    commit(next, columns);
-    setSelection(null);
+  function deleteSelectedRows(sel: Selection = selection) {
+    if (!sel) return;
+    removeRows({ start: sel.r0, end: sel.r1 });
   }
   function addColumn() {
-    const key = uniqueColumnKey(columns, "new_field");
-    const nextCol: ColumnSpec<T> = { key, name: "New column", type: "singleLineText", width: 160 };
-    const nextCols = columns.concat([nextCol]);
-    const nextRows = rows.map((r) => ({ ...r, [key]: "" }));
-    setColumns(nextCols);
-    setRows(nextRows);
-    commit(nextRows, nextCols);
+    insertColumnAtIndex(columns.length);
   }
   function deleteColumn(idx: number) {
-    const key = columns[idx].key as string;
-    const nextCols = columns.filter((_c, i) => i !== idx);
-    const nextRows = rows.map((r) => {
-      const { [key]: _drop, ...rest } = r;
-      return rest as T;
-    });
-    setColumns(nextCols);
-    setRows(nextRows);
-    commit(nextRows, nextCols);
+    removeColumnsByIndex([idx]);
   }
   function changeColumnType(idx: number, type: ColumnType) {
     const next = deepClone(columns);
@@ -889,11 +1087,100 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     }));
     setColumns(next);
     setRows(updatedRows);
+    latestRowsRef.current = updatedRows;
     commit(updatedRows, next);
   }
 
-  /* Right-click context menu for headers */
-  const menu = useContextMenu();
+  function startColumnDrag(idx: number, e: React.DragEvent) {
+    columnDragRef.current = { from: idx };
+    e.dataTransfer.effectAllowed = "move";
+    try {
+      e.dataTransfer.setData("text/plain", String(idx));
+    } catch {
+      /* no-op for browsers that disallow setData */
+    }
+  }
+
+  function onColumnDragOver(idx: number, e: React.DragEvent) {
+    if (!columnDragRef.current) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }
+
+  function onColumnDrop(idx: number, e: React.DragEvent) {
+    if (!columnDragRef.current) return;
+    e.preventDefault();
+    const from = columnDragRef.current.from;
+    columnDragRef.current = null;
+    if (from === idx) return;
+    const nextCols = columns.slice();
+    const nextWidths = colWidths.slice();
+    const [movedCol] = nextCols.splice(from, 1);
+    const [movedWidth] = nextWidths.splice(from, 1);
+    const placingAtEnd = idx >= columns.length;
+    let target = placingAtEnd ? nextCols.length : idx;
+    if (!placingAtEnd && from < idx) target = Math.max(0, idx - 1);
+    if (target < 0) target = 0;
+    if (target > nextCols.length) target = nextCols.length;
+    nextCols.splice(target, 0, movedCol);
+    nextWidths.splice(target, 0, movedWidth);
+    setColumns(nextCols);
+    setColWidths(nextWidths);
+    setSelection(null);
+    setActiveCell(null);
+    setEditing(null);
+    commit(rows, nextCols);
+  }
+
+  function endColumnDrag() {
+    columnDragRef.current = null;
+  }
+
+  function startRowDrag(idx: number, e: React.DragEvent) {
+    rowDragRef.current = { from: idx };
+    e.dataTransfer.effectAllowed = "move";
+    try {
+      e.dataTransfer.setData("text/plain", String(idx));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function onRowDragOver(idx: number, e: React.DragEvent) {
+    if (!rowDragRef.current) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }
+
+  function onRowDrop(idx: number, e: React.DragEvent) {
+    if (!rowDragRef.current) return;
+    e.preventDefault();
+    const from = rowDragRef.current.from;
+    rowDragRef.current = null;
+    if (from === idx) return;
+    const nextRows = rows.slice();
+    const nextHeights = rowHeights.slice();
+    const [movedRow] = nextRows.splice(from, 1);
+    const [movedHeight] = nextHeights.splice(from, 1);
+    const placingAtEnd = idx >= rows.length;
+    let target = placingAtEnd ? nextRows.length : idx;
+    if (!placingAtEnd && from < idx) target = Math.max(0, idx - 1);
+    if (target < 0) target = 0;
+    if (target > nextRows.length) target = nextRows.length;
+    nextRows.splice(target, 0, movedRow);
+    nextHeights.splice(target, 0, movedHeight);
+    setRows(nextRows);
+    latestRowsRef.current = nextRows;
+    setRowHeights(nextHeights);
+    setSelection(null);
+    setActiveCell(null);
+    setEditing(null);
+    commit(nextRows, columns);
+  }
+
+  function endRowDrag() {
+    rowDragRef.current = null;
+  }
 
   /* Search box filtering (Ctrl+F) */
   const visibleRowIndexes = React.useMemo(() => {
@@ -1019,7 +1306,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       ref: (el: any) => (editorRef.current = el),
       onBlur: commitEdit,
       className: "absolute inset-0 z-20 w-full h-full px-2 py-1 text-sm bg-white dark:bg-neutral-900 outline-none ring-2 ring-blue-500",
-      defaultValue: (col.type === "longText" ? String(val ?? "") : undefined)
+      defaultValue: (col.type === "longText" ? String(val ?? "") : undefined),
+      onKeyDown: handleEditorKeyDown,
+      onChange: (e: any) => setCellValue(r, c, e.target.value)
     };
 
     // Editor per type
@@ -1030,7 +1319,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
             type: "checkbox",
             checked: Boolean(val),
             onChange: (e: any) => setCellValue(r, c, e.target.checked),
-            onBlur: commitEdit
+            onBlur: commitEdit,
+            onKeyDown: handleEditorKeyDown
           })
         );
       case "number":
@@ -1040,13 +1330,18 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           ...commonProps,
           type: "number",
           step: col.type === "percent" ? "1" : "any",
-          defaultValue: String(val ?? "")
+          defaultValue: String(val ?? ""),
+          onChange: (e: any) => setCellValue(r, c, coerceValue(e.target.value, col))
         });
       case "date":
         return h("input", {
           ...commonProps,
           type: "date",
-          defaultValue: val ? new Date(val).toISOString().slice(0, 10) : ""
+          defaultValue: val ? new Date(val).toISOString().slice(0, 10) : "",
+          onChange: (e: any) => {
+            const inputValue = e.target.value ? new Date(e.target.value).toISOString() : null;
+            setCellValue(r, c, inputValue);
+          }
         });
       case "longText":
         return h("textarea", {
@@ -1138,9 +1433,15 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           ),
           style: { width: `${colWidths[c]}px`, minWidth: `${colWidths[c]}px`, maxWidth: `${colWidths[c]}px` },
           onDoubleClick: () => setHeaderEditing(c),
-          onContextMenu: (e: React.MouseEvent) => menu.open(e, c),
+          onContextMenu: (e: React.MouseEvent) => headerMenu.open(e, c),
           role: "columnheader",
-          "data-c": c
+          "data-c": c,
+          draggable: true,
+          onDragStart: (e: React.DragEvent) => startColumnDrag(c, e),
+          onDragOver: (e: React.DragEvent) => onColumnDragOver(c, e),
+          onDrop: (e: React.DragEvent) => onColumnDrop(c, e),
+          onDragEnd: () => endColumnDrag(),
+          title: String(col.name)
         },
         isEditing
           ? h("input", {
@@ -1153,13 +1454,14 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
                 if (e.key === "Escape") setHeaderEditing(null);
               }
             })
-          : h(React.Fragment, null,
-              h("span", null, createHeaderAbbreviation(String(col.name))),
-              h("span", { className: "text-zinc-600 dark:text-zinc-300 ml-2" }, String(col.name))
+          : h("div", { className: "flex items-center gap-2 truncate" },
+              renderColumnIcon(col.type),
+              h("span", { className: "truncate text-zinc-700 dark:text-zinc-200 font-medium" }, String(col.name))
             ),
         // header resizer
         h("div", {
           className: mergeClasses(cx("resizer", ""), "absolute right-0 top-0 h-full w-1 cursor-col-resize"),
+          draggable: false,
           onMouseDown: (e: React.MouseEvent) => startColResize(c, e)
         })
       );
@@ -1173,7 +1475,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     h("button", {
       className: mergeClasses(cx("plusButton", ""), "absolute -right-10 top-1/2 -translate-y-1/2 rounded-full border px-2 py-1 text-xs bg-white dark:bg-neutral-900"),
       onClick: addColumn,
-      title: "Add column"
+      title: "Add column",
+      onDragOver: (e: React.DragEvent) => onColumnDragOver(columns.length, e),
+      onDrop: (e: React.DragEvent) => onColumnDrop(columns.length, e)
     }, "+")
   );
 
@@ -1194,27 +1498,47 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           key: rowKey(row, r),
           className: mergeClasses(cx("row", "flex relative")),
           style: { height: `${rowHeights[r]}px` },
-          role: "row"
+          role: "row",
+          onDragOver: (e: React.DragEvent) => onRowDragOver(r, e),
+          onDrop: (e: React.DragEvent) => onRowDrop(r, e)
         },
+        h("button", {
+          className: "absolute -left-16 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border bg-white dark:bg-neutral-900 flex items-center justify-center text-zinc-400 hover:text-zinc-600",
+          draggable: true,
+          onDragStart: (e: React.DragEvent) => { e.stopPropagation(); startRowDrag(r, e); },
+          onDragEnd: () => endRowDrag(),
+          title: "Drag to reorder row"
+        }, h(FaGripVertical, { className: "h-3 w-3" })),
         ...columns.map((col, c) => {
           const active = activeCell && activeCell.r === r && activeCell.c === c;
           const inSel = selection && r >= selection.r0 && r <= selection.r1 && c >= selection.c0 && c <= selection.c1;
+          const style: React.CSSProperties = {
+            width: `${colWidths[c]}px`,
+            minWidth: `${colWidths[c]}px`,
+            maxWidth: `${colWidths[c]}px`,
+            userSelect: "none",
+            backgroundColor: undefined,
+            color: undefined
+          };
+          const decorated = getCellStyle(r, c);
+          if (decorated?.background) style.backgroundColor = decorated.background;
+          if (decorated?.color) style.color = decorated.color;
+          if (!decorated?.background && inSel) {
+            style.backgroundColor = "rgba(59,130,246,0.08)";
+          } else if (inSel) {
+            style.boxShadow = "inset 0 0 0 2px rgba(59,130,246,0.35)";
+          }
           return h("div",
             {
               key: colKey(col, c),
               className: mergeClasses(cx("cell", baseCellClass), "px-2 py-1 overflow-hidden", active && "ring-2 ring-blue-500"),
-              style: {
-                width: `${colWidths[c]}px`,
-                minWidth: `${colWidths[c]}px`,
-                maxWidth: `${colWidths[c]}px`,
-                userSelect: "none",
-                background: inSel ? "rgba(59,130,246,0.08)" : undefined
-              },
+              style,
               role: "gridcell",
               "data-r": r,
               "data-c": c,
               onMouseDown: (e: React.MouseEvent) => startDrag(r, c, e),
-              onDoubleClick: () => beginEdit(r, c)
+              onDoubleClick: () => beginEdit(r, c),
+              onContextMenu: (e: React.MouseEvent) => handleCellContextMenu(e, r, c)
             },
             editing && editing.r === r && editing.c === c
               ? renderCellEditor(r, c)
@@ -1252,19 +1576,21 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     h("div", { className: "flex items-center justify-center py-3" },
       h("button", {
         className: mergeClasses(cx("plusButton", ""), "rounded-full border px-3 py-1 text-sm bg-white dark:bg-neutral-900"),
-        onClick: addRow
+        onClick: addRow,
+        onDragOver: (e: React.DragEvent) => onRowDragOver(rows.length, e),
+        onDrop: (e: React.DragEvent) => onRowDrop(rows.length, e)
       }, "+ Add row")
     )
   );
 
   /* Context menu UI */
-  const contextMenu = menu.menu && h("div", {
+  const headerContextMenu = headerMenu.menu && h("div", {
     className: mergeClasses(cx("contextMenu",""), "fixed z-50 rounded-lg border bg-white dark:bg-neutral-900 shadow-xl p-2 text-sm"),
-    style: { left: `${menu.menu.x}px`, top: `${menu.menu.y}px` },
-    onMouseLeave: () => menu.close()
+    style: { left: `${headerMenu.menu.x}px`, top: `${headerMenu.menu.y}px` },
+    onMouseLeave: () => headerMenu.close()
   },
-    h("button", { className: "block w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { deleteColumn(menu.menu!.columnIndex); menu.close(); } }, "Delete column"),
-    h("button", { className: "block w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { setHeaderEditing(menu.menu!.columnIndex); menu.close(); } }, "Rename column"),
+    h("button", { className: "block w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { deleteColumn(headerMenu.menu!.columnIndex); headerMenu.close(); } }, "Delete column"),
+    h("button", { className: "block w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { setHeaderEditing(headerMenu.menu!.columnIndex); headerMenu.close(); } }, "Rename column"),
     h("div", { className: "border-t my-1" }),
     h("div", { className: "px-3 py-1 text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400" }, "Change type"),
     h("div", { className: "max-h-56 overflow-auto" },
@@ -1272,11 +1598,61 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         h("button", {
           key: opt.value,
           className: "block w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-neutral-800",
-          onClick: () => { changeColumnType(menu.menu!.columnIndex, opt.value); menu.close(); }
-        }, opt.label)
+          onClick: () => { changeColumnType(headerMenu.menu!.columnIndex, opt.value); headerMenu.close(); }
+        }, h("span", { className: "flex items-center gap-2" },
+            renderColumnIcon(opt.value),
+            h("span", null, opt.label)
+          ))
       )
     )
   );
+
+  const cellContextMenu = cellMenu.menu && (() => {
+    const sel = cellMenu.menu!.selection;
+    const sample = getCellStyle(sel.r0, sel.c0) || { background: "#ffffff", color: "#000000" };
+    const fillValue = typeof sample.background === "string" ? sample.background : "#ffffff";
+    const textValue = typeof sample.color === "string" ? sample.color : "#000000";
+    return h("div", {
+      className: "fixed z-50 rounded-lg border bg-white dark:bg-neutral-900 shadow-xl p-2 text-sm min-w-[200px]",
+      style: { left: `${cellMenu.menu!.x}px`, top: `${cellMenu.menu!.y}px` },
+      onMouseLeave: () => cellMenu.close()
+    },
+      h("div", { className: "flex flex-col gap-1" },
+        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: async () => { await cutSelectionRange(sel); cellMenu.close(); } }, "Cut"),
+        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: async () => { await copySelectionToClipboard(sel); cellMenu.close(); } }, "Copy"),
+        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: async () => { await pasteFromClipboard(sel); cellMenu.close(); } }, "Paste"),
+        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { clearSelectionCells(sel); cellMenu.close(); } }, "Delete"),
+        h("div", { className: "border-t my-1" }),
+        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertRowsAt(sel.r0, [createBlankRow()]); cellMenu.close(); } }, "Insert row above"),
+        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertRowsAt(sel.r1 + 1, [createBlankRow()]); cellMenu.close(); } }, "Insert row below"),
+        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertColumnAtIndex(sel.c0); cellMenu.close(); } }, "Insert column left"),
+        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertColumnAtIndex(sel.c1 + 1); cellMenu.close(); } }, "Insert column right"),
+        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { removeRows({ start: sel.r0, end: sel.r1 }); cellMenu.close(); } }, "Delete row"),
+        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { const indices = Array.from({ length: sel.c1 - sel.c0 + 1 }, (_v, i) => sel.c0 + i); removeColumnsByIndex(indices); cellMenu.close(); } }, "Delete column")
+      ),
+      h("div", { className: "border-t my-2" }),
+      h("div", { className: "px-3 py-1 text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400" }, "Colors"),
+      h("div", { className: "flex items-center gap-3 px-3 pb-2" },
+        h("label", { className: "flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-300" },
+          "Fill",
+          h("input", {
+            type: "color",
+            value: fillValue,
+            onChange: (e: any) => applyCellStyleToSelection(sel, { background: e.target.value })
+          })
+        ),
+        h("label", { className: "flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-300" },
+          "Text",
+          h("input", {
+            type: "color",
+            value: textValue,
+            onChange: (e: any) => applyCellStyleToSelection(sel, { color: e.target.value })
+          })
+        )
+      ),
+      h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800 w-full", onClick: () => { clearStylesFromSelection(sel); cellMenu.close(); } }, "Clear colors")
+    );
+  })();
 
   /* Toolbar (undo/redo, duplicate/delete rows, search) */
   const toolbar = h("div", {
@@ -1320,16 +1696,70 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     h("button", { className: "rounded-full border px-3 py-1 text-sm", onClick: () => setSearchTerm("") }, "Clear")
   );
 
+  const primaryViews = availableViews.filter((view) => view.group === "primary");
+  const secondaryViews = availableViews.filter((view) => view.group === "secondary");
+
+  const renderViewButton = (view: (typeof availableViews)[number]) => {
+    const isActive = activeView === view.instanceId;
+    return h("button", {
+      key: view.instanceId,
+      type: "button",
+      className: mergeClasses(
+        "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
+        isActive
+          ? "bg-blue-500/10 text-blue-600 dark:text-blue-300"
+          : "hover:bg-zinc-100 dark:hover:bg-neutral-800 text-zinc-600 dark:text-zinc-200",
+        sidebarCollapsed && "justify-center px-0"
+      ),
+      onClick: () => setActiveView(view.instanceId),
+      title: view.displayName
+    },
+      h(view.icon, { className: mergeClasses("h-4 w-4", view.colorClass) }),
+      !sidebarCollapsed && h("span", { className: "truncate" }, view.displayName)
+    );
+  };
+
+  const sidebarToggle = h("button", {
+    type: "button",
+    className: "mb-3 inline-flex items-center justify-center rounded-lg border px-2 py-1 text-xs hover:bg-zinc-100 dark:hover:bg-neutral-800",
+    onClick: () => setSidebarCollapsed((v) => !v),
+    title: sidebarCollapsed ? "Expand views" : "Collapse views"
+  }, sidebarCollapsed ? "»" : "«");
+
+  const sidebarElement = h("aside", {
+    className: mergeClasses(
+      "rounded-2xl border bg-white dark:bg-neutral-950/80 p-3 transition-all",
+      sidebarCollapsed ? "w-16" : "w-60",
+      "shrink-0"
+    )
+  },
+    sidebarToggle,
+    h("div", { className: "flex flex-col gap-1" },
+      ...primaryViews.map(renderViewButton),
+      secondaryViews.length ? h("div", { className: "border-t my-2" }) : null,
+      ...secondaryViews.map(renderViewButton)
+    )
+  );
+
+  const tableContent = h("div", { className: "relative overflow-auto rounded-xl border" },
+    header,
+    body
+  );
+
   /* Container */
-  return h("div",
-    { className: mergeClasses(cx("container","rounded-2xl border p-3 bg-white dark:bg-neutral-950/80")) },
+  const mainContent = h("div",
+    { className: mergeClasses(cx("container","rounded-2xl border p-3 bg-white dark:bg-neutral-950/80 flex-1")) },
     toolbar,
     searchBox,
-    h("div", { className: "relative overflow-auto rounded-xl border" },
-      header,
-      body,
-      contextMenu
-    )
+    tableContent
+  );
+
+  return h("div",
+    { className: "flex gap-4 items-start" },
+    sidebarElement,
+    mainContent,
+    headerContextMenu,
+    cellContextMenu
   );
 }
 
