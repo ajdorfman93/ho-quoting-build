@@ -134,7 +134,7 @@ type CellStyle = {
 
 const STYLE_FIELD = "__styles";
 
-type HiddenColumnEntry<T> = {
+type HiddenColumnEntry<T extends Record<string, any> = any> = {
   column: ColumnSpec<T>;
   index: number;
   values: any[];
@@ -142,7 +142,7 @@ type HiddenColumnEntry<T> = {
   width: number;
 };
 
-type ConfirmAction<T> =
+type ConfirmAction<T extends Record<string, any> = any> =
   | { type: "deleteRows"; range: { start: number; end: number; count: number } }
   | { type: "deleteColumns"; indices: number[]; columns: Array<ColumnSpec<T>> };
 
@@ -1140,7 +1140,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   }
 
   function insertColumnAtIndex(index: number, column?: ColumnSpec<T>) {
-    let newColumn = column;
+    let newColumn: ColumnSpec<T> | null = column ?? null;
     if (!newColumn) {
       newColumn = promptNewColumnSpec();
       if (!newColumn) return;
