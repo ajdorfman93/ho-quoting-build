@@ -2106,11 +2106,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     if (columnIndex < 0) return new Map<number, string>();
     const column = columns[columnIndex];
     const map = new Map<number, string>();
-      const resolveColor = (label: string, index: number) => {
-        if (!label) return undefined;
-        const paletteIndex = Math.abs(label.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0)) % ROW_COLOR_PALETTE.length;
-        return ROW_COLOR_PALETTE[paletteIndex] ?? ROW_COLOR_PALETTE[index % ROW_COLOR_PALETTE.length];
-      };
+    const resolveColor = (label: string, index: number) => {
+      if (!label) return undefined;
+      const paletteIndex = Math.abs(label.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0)) % ROW_COLOR_PALETTE.length;
+      return ROW_COLOR_PALETTE[paletteIndex] ?? ROW_COLOR_PALETTE[index % ROW_COLOR_PALETTE.length];
+    };
     const optionColor = (label: string) => {
       const lower = label.toLowerCase();
       const options =
