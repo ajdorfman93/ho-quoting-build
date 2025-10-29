@@ -210,6 +210,85 @@ function renderColumnIcon(type: ColumnType) {
   return Icon ? h(Icon, { className: "w-4 h-4 shrink-0 text-zinc-500 dark:text-zinc-300" }) : null;
 }
 
+const FIELD_CONFIGURATION_TYPES = new Set<ColumnType>([
+  "attachment",
+  "lastModifiedTime",
+  "linkToRecord",
+  "lookup",
+  "percent",
+  "user"
+]);
+
+function normalizeFieldConfig(type: ColumnType, config: ColumnSpec["config"] | undefined): NonNullable<ColumnSpec["config"]> {
+  const base = deepClone(config ?? {});
+  switch (type) {
+    case "percent": {
+      const percent = { ...(base.percent ?? {}) };
+      percent.decimals = Number.isFinite(percent.decimals) ? percent.decimals : 0;
+      percent.locale = percent.locale ?? "local";
+      percent.showThousands = percent.showThousands ?? true;
+      percent.asProgressBar = percent.asProgressBar ?? false;
+      percent.allowNegative = percent.allowNegative ?? false;
+      if (percent.defaultPercent != null && !Number.isFinite(percent.defaultPercent)) {
+        delete percent.defaultPercent;
+      }
+      base.percent = percent;
+      break;
+    }
+    case "user": {
+      const user = { ...(base.user ?? {}) };
+      user.multiple = user.multiple ?? false;
+      user.notifyOnAdd = user.notifyOnAdd ?? true;
+      user.defaultUserIds = Array.isArray(user.defaultUserIds) ? user.defaultUserIds : [];
+      base.user = user;
+      break;
+    }
+    case "attachment": {
+      const attachment = { ...(base.attachment ?? {}) };
+      attachment.accept = Array.isArray(attachment.accept) ? attachment.accept : [];
+      attachment.maxFiles = typeof attachment.maxFiles === "number" ? attachment.maxFiles : null;
+      attachment.storage = attachment.storage ?? "cloud";
+      attachment.showGallery = attachment.showGallery ?? true;
+      attachment.generateThumbnails = attachment.generateThumbnails ?? true;
+      base.attachment = attachment;
+      break;
+    }
+    case "lastModifiedTime": {
+      const configValue = { ...(base.lastModifiedTime ?? {}) };
+      configValue.include = configValue.include ?? "all";
+      configValue.fields = Array.isArray(configValue.fields) ? configValue.fields : [];
+      configValue.format = { ...(configValue.format ?? {}) };
+      base.lastModifiedTime = configValue;
+      break;
+    }
+    case "linkToRecord": {
+      const linkToRecord = { ...(base.linkToRecord ?? {}) };
+      linkToRecord.targetTable = linkToRecord.targetTable ?? "Linked Records";
+      linkToRecord.multiple = linkToRecord.multiple ?? true;
+      linkToRecord.limitToViewId = linkToRecord.limitToViewId ?? null;
+      linkToRecord.filterEnabled = linkToRecord.filterEnabled ?? false;
+      linkToRecord.aiAssist = linkToRecord.aiAssist ?? false;
+      linkToRecord.allowCreate = linkToRecord.allowCreate ?? true;
+      base.linkToRecord = linkToRecord;
+      break;
+    }
+    case "lookup": {
+      const lookup = { ...(base.lookup ?? {}) };
+      lookup.sourceLinkedField = lookup.sourceLinkedField ?? "";
+      lookup.sourceField = lookup.sourceField ?? "";
+      lookup.filterEnabled = lookup.filterEnabled ?? false;
+      lookup.sortEnabled = lookup.sortEnabled ?? false;
+      lookup.limitEnabled = lookup.limitEnabled ?? false;
+      lookup.limit = typeof lookup.limit === "number" && lookup.limit > 0 ? lookup.limit : null;
+      base.lookup = lookup;
+      break;
+    }
+    default:
+      break;
+  }
+  return base;
+}
+
 export interface SelectOption {
   id: string;
   label: string;
@@ -342,13 +421,52 @@ export interface ColumnSpec<T extends Record<string, any> = any> {
       thousandSeparator?: "local" | "comma-period" | "period-comma" | "space-comma" | "space-period";
       decimals?: number;
     };
-    percent?: { decimals?: number };
+    percent?: {
+      decimals?: number;
+      locale?: string;
+      showThousands?: boolean;
+      asProgressBar?: boolean;
+      allowNegative?: boolean;
+      defaultPercent?: number;
+    };
     rating?: { max?: number; icon?: "star" | "heart" | "circle" };
     date?: { format?: string }; // display format only
     multipleSelect?: { options: SelectOption[] };
     singleSelect?: { options: SelectOption[] };
     checkbox?: { style?: "checkbox" | "toggle" };
-    attachment?: { accept?: string };
+    attachment?: {
+      accept?: string[];
+      maxFiles?: number | null;
+      storage?: "cloud" | "inline";
+      showGallery?: boolean;
+      generateThumbnails?: boolean;
+    };
+    user?: {
+      multiple?: boolean;
+      notifyOnAdd?: boolean;
+      defaultUserIds?: string[];
+    };
+    lastModifiedTime?: {
+      include?: "all" | "specific";
+      fields?: string[];
+      format?: { dateStyle?: "short" | "medium" | "long"; timeStyle?: "short" | "medium" | "long"; timezone?: string };
+    };
+    linkToRecord?: {
+      targetTable?: string;
+      multiple?: boolean;
+      limitToViewId?: string | null;
+      filterEnabled?: boolean;
+      aiAssist?: boolean;
+      allowCreate?: boolean;
+    };
+    lookup?: {
+      sourceLinkedField?: string;
+      sourceField?: string;
+      filterEnabled?: boolean;
+      sortEnabled?: boolean;
+      limitEnabled?: boolean;
+      limit?: number | null;
+    };
   };
   /** For computed columns */
   formula?: (row: T, rowIndex: number, rows: T[]) => any;
@@ -1252,6 +1370,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     rect: DOMRect | null;
   } | null>(null);
   const [headerEditing, setHeaderEditing] = React.useState<number | null>(null);
+  const [fieldConfigPanel, setFieldConfigPanel] = React.useState<{
+    columnIndex: number;
+    anchorElement: HTMLElement | null;
+    anchorRect: DOMRect | null;
+    draftName: string;
+    draftConfig: NonNullable<ColumnSpec<T>["config"]>;
+  } | null>(null);
   const [detailsModal, setDetailsModal] = React.useState<{ rowIndex: number } | null>(null);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState("");
