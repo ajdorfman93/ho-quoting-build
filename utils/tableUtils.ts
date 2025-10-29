@@ -2201,6 +2201,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   function changeColumnType(idx: number, type: ColumnType) {
     const next = deepClone(columns);
     const current = next[idx];
+    if (!current) return;
     const columnKey = current?.key as string;
 
     let derivedOptions: SelectOption[] = [];
