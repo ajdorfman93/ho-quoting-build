@@ -3405,9 +3405,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           h("div", { className: "flex flex-1 items-center gap-3" },
             h("span", {
               className: mergeClasses(
-                "h-2.5 w-2.5 rounded-full transition",
+                "h-2.5 w-2.5 rounded-full transition ring-2 ring-transparent",
                 entry.visible
-                  ? "bg-emerald-400 shadow-[0_0_0_3px_rgba(16,185,129,0.25)]"
+                  ? "bg-emerald-400 ring-emerald-300/70"
                   : "bg-zinc-500/40"
               )
             }),
@@ -3432,7 +3432,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     role: "menu",
     "aria-label": "Field visibility"
   },
-    h("div", { className: "pb-3" },
+    h("div", { className: "pb-3 space-y-2" },
       h("p", { className: "px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Fields"),
       h("div", { className: "relative" },
         h(FaSearch, { className: "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" }),
@@ -3446,6 +3446,15 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           className: "w-full rounded-xl border border-zinc-300 bg-white py-2 pl-9 pr-3 text-sm text-zinc-700 placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
           "aria-label": "Find a field"
         })
+      ),
+      h("div", { className: "flex items-center justify-between px-1 text-xs text-zinc-500 dark:text-neutral-400" },
+        h("span", null, `${filteredFieldEntries.length} ${filteredFieldEntries.length === 1 ? "field" : "fields"}`),
+        hiddenColumns.length
+          ? h("span", { className: "inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300" },
+              h(FaEyeSlash, { className: "h-3 w-3" }),
+              `${hiddenColumns.length} hidden`
+            )
+          : h("span", { className: "text-emerald-500 dark:text-emerald-300" }, "All visible")
       )
     ),
     h("div", { className: "max-h-72 space-y-1 overflow-y-auto pr-1" },
