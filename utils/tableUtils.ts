@@ -1013,7 +1013,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     commit(nextRows, columns);
   }
 
-  function removeRows(range: { start: number; end: number }) {
+  function performRemoveRows(range: { start: number; end: number }) {
     const start = Math.max(0, range.start);
     const end = Math.min(rows.length - 1, range.end);
     if (end < start) return;
@@ -1024,6 +1024,17 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     setRowHeights(nextHeights);
     setSelection(null);
     commit(nextRows, columns);
+  }
+
+  function requestRemoveRows(range: { start: number; end: number }) {
+    const start = Math.max(0, range.start);
+    const end = Math.min(rows.length - 1, range.end);
+    if (end < start) return;
+    const count = end - start + 1;
+    setConfirmAction({
+      type: "deleteRows",
+      range: { start, end, count }
+    });
   }
 
   function createNewColumnSpec(baseName = "New column"): ColumnSpec<T> {
@@ -1195,7 +1206,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     return row;
   }
 
-  function removeColumnsByIndex(indices: number[]) {
+  function performRemoveColumnsByIndex(indices: number[]) {
     if (!indices.length) return;
     const unique = Array.from(new Set(indices.filter((idx) => idx >= 0 && idx < columns.length))).sort((a, b) => a - b);
     if (!unique.length) return;
@@ -1216,6 +1227,14 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     commit(nextRows, nextCols);
   }
 
+  function requestRemoveColumns(indices: number[]) {
+    const unique = Array.from(new Set(indices.filter((idx) => idx >= 0 && idx < columns.length))).sort((a, b) => a - b);
+    if (!unique.length) return;
+    setConfirmAction({
+      type: "deleteColumns",
+      indices: unique
+    });
+  }
   function getCellStyle(r: number, c: number): CellStyle | null {
     const row = rows[r] as any;
     const col = columns[c];
@@ -1413,7 +1432,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         const { r0, r1, c0, c1 } = selection;
         if (c0 === 0 && c1 === columns.length - 1) {
           e.preventDefault();
-          removeRows({ start: r0, end: r1 });
+          requestRemoveRows({ start: r0, end: r1 });
         } else {
           e.preventDefault();
           clearSelectionCells(selection);
@@ -1429,7 +1448,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       document.removeEventListener("paste", onPaste);
       document.removeEventListener("keydown", onKey);
     };
-  }, [selection, activeCell, columns.length, applyMatrixAt, clearSelectionCells, removeRows, undo, redo, selectionToMatrix]);
+  }, [selection, activeCell, columns.length, applyMatrixAt, clearSelectionCells, requestRemoveRows, undo, redo, selectionToMatrix]);
 
   React.useEffect(() => {
     if (!detailsModal) return;
@@ -1514,13 +1533,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   }
   function deleteSelectedRows(sel: Selection = selection) {
     if (!sel) return;
-    removeRows({ start: sel.r0, end: sel.r1 });
+    requestRemoveRows({ start: sel.r0, end: sel.r1 });
   }
   function addColumn() {
     insertColumnAtIndex(columns.length);
   }
   function deleteColumn(idx: number) {
-    removeColumnsByIndex([idx]);
+    requestRemoveColumns([idx]);
   }
   function normalizeColumnForType(col: ColumnSpec<T>, type: ColumnType) {
     const copy = deepClone(col);
@@ -2426,8 +2445,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertRowsAt(sel.r1 + 1, [createBlankRow()]); cellMenu.close(); } }, "Insert row below"),
         h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertColumnAtIndex(sel.c0); cellMenu.close(); } }, "Insert column left"),
         h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertColumnAtIndex(sel.c1 + 1); cellMenu.close(); } }, "Insert column right"),
-        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { removeRows({ start: sel.r0, end: sel.r1 }); cellMenu.close(); } }, "Delete row"),
-        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { const indices = Array.from({ length: sel.c1 - sel.c0 + 1 }, (_v, i) => sel.c0 + i); removeColumnsByIndex(indices); cellMenu.close(); } }, "Delete column")
+        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { requestRemoveRows({ start: sel.r0, end: sel.r1 }); cellMenu.close(); } }, "Delete row"),
+        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { const indices = Array.from({ length: sel.c1 - sel.c0 + 1 }, (_v, i) => sel.c0 + i); requestRemoveColumns(indices); cellMenu.close(); } }, "Delete column")
       ),
       h("div", { className: "border-t my-2" }),
       h("div", { className: "px-3 py-1 text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400" }, "Text"),
