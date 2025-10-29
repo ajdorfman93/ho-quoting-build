@@ -77,3 +77,16 @@
         Last modified time      //users will be able to See the date and time each record was last modified and name the column
         Created by              //users will be able to See the user who created each record and name the column
         Last modified by        //users will be able to See the user who last modified each record and name the column
+///////////////////////
+
+//////////////////////
+    add icons for each of the column types listed above.
+    use icons from a public icon library like FontAwesome or Material Icons.
+    fix table is missing a lot of functions:
+    1. right click selected cells to open context menu with options to cut, copy, paste, delete, insert row above, insert row below, insert column left, insert column right, delete row, delete column.
+    2. color controls for cell background color and text color.
+    3. click and drag to reorder columns.
+    4. click and drag to reorder rows.
+    5. finish cell edit by pressing enter key.
+    6. cancel cell edit by pressing escape key.
+    7. show icon in column header before the column name based on column type.
