@@ -1,4 +1,4 @@
-﻿// utils/tableUtils.ts
+// utils/tableUtils.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as React from "react";
 import {
@@ -3132,6 +3132,269 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const baseCellClass = "relative border border-zinc-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm select-none transition-colors hover:border-blue-300 dark:hover:border-blue-500";
   const baseHeaderClass = "relative border border-zinc-300 dark:border-neutral-700 bg-zinc-100 dark:bg-neutral-800 text-xs font-semibold uppercase tracking-wide select-none";
 
+  interface MultipleSelectEditorProps {
+    options: SelectOption[];
+    selectedValues: SelectOption[];
+    onChange: (nextValues: SelectOption[]) => void;
+    onDone: () => void;
+  }
+
+  function MultipleSelectEditor({
+    options,
+    selectedValues,
+    onChange,
+    onDone
+  }: MultipleSelectEditorProps) {
+    const [searchTerm, setSearchTerm] = React.useState("");
+    const filteredOpts = React.useMemo(
+      () =>
+        options.filter((option) =>
+          option.label.toLowerCase().includes(searchTerm.toLowerCase())
+        ),
+      [options, searchTerm]
+    );
+
+    const toggleOption = React.useCallback(
+      (option: SelectOption) => {
+        const isSelected = selectedValues.some((value) => value.id === option.id);
+        const nextArr = isSelected
+          ? selectedValues.filter((value) => value.id !== option.id)
+          : [...selectedValues, option];
+        onChange(nextArr);
+      },
+      [onChange, selectedValues]
+    );
+
+    const removeOption = React.useCallback(
+      (option: SelectOption) => {
+        onChange(selectedValues.filter((value) => value.id !== option.id));
+      },
+      [onChange, selectedValues]
+    );
+
+    return h(
+      "div",
+      {
+        className:
+          "absolute inset-0 z-20 flex flex-col bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-2xl",
+        style: { minHeight: "280px" }
+      },
+      selectedValues.length > 0
+        ? h(
+            "div",
+            {
+              className: "flex flex-wrap gap-1.5 px-3 py-2 border-b border-[#2a2a2a]"
+            },
+            ...selectedValues.map((option) => {
+              const bgColor = option.color || "#4a5568";
+              return h(
+                "span",
+                {
+                  key: option.id,
+                  className:
+                    "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-white",
+                  style: { backgroundColor: bgColor }
+                },
+                option.label,
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    className: "ml-1 hover:opacity-70",
+                    onClick: (event: any) => {
+                      event.stopPropagation();
+                      removeOption(option);
+                    }
+                  },
+                  "×"
+                )
+              );
+            })
+          )
+        : null,
+      h(
+        "div",
+        { className: "px-3 py-2 border-b border-[#2a2a2a]" },
+        h("input", {
+          type: "text",
+          className:
+            "w-full bg-[#0a0a0a] text-white text-sm px-3 py-1.5 rounded border border-[#3a3a3a] focus:border-[#4a9eff] focus:outline-none placeholder-gray-500",
+          placeholder: "Find an option",
+          value: searchTerm,
+          onChange: (event: any) => setSearchTerm(event.target.value),
+          autoFocus: true
+        })
+      ),
+      h(
+        "div",
+        {
+          className: "flex-1 overflow-y-auto px-2 py-1",
+          style: { maxHeight: "200px" }
+        },
+        filteredOpts.length > 0
+          ? filteredOpts.map((option) => {
+              const isSelected = selectedValues.some((value) => value.id === option.id);
+              const bgColor = option.color || "#4a5568";
+              return h(
+                "button",
+                {
+                  key: option.id,
+                  type: "button",
+                  className:
+                    "w-full text-left px-3 py-2 rounded hover:bg-[#2a2a2a] transition-colors flex items-center gap-2",
+                  onClick: () => toggleOption(option)
+                },
+                h(
+                  "span",
+                  {
+                    className:
+                      "inline-block rounded-md px-2 py-1 text-xs font-medium text-white",
+                    style: { backgroundColor: bgColor }
+                  },
+                  option.label
+                ),
+                isSelected
+                  ? h(
+                      "span",
+                      { className: "ml-auto text-[#4a9eff] text-xs" },
+                    "✓"
+                    )
+                  : null
+              );
+            })
+          : h(
+              "div",
+              { className: "px-3 py-2 text-sm text-gray-500" },
+              "No options found"
+            )
+      ),
+      h(
+        "div",
+        { className: "px-3 py-2 border-t border-[#2a2a2a] flex justify-end" },
+        h(
+          "button",
+          {
+            type: "button",
+            className: "px-3 py-1 text-xs rounded bg-[#4a9eff] text-white hover:bg-[#3a8eef]",
+            onClick: onDone
+          },
+          "Done"
+        )
+      )
+    );
+  }
+
+  interface SingleSelectEditorProps {
+    options: SelectOption[];
+    currentValue: SelectOption | null;
+    onSelect: (nextValue: SelectOption | null) => void;
+  }
+
+  function SingleSelectEditor({
+    options,
+    currentValue,
+    onSelect
+  }: SingleSelectEditorProps) {
+    const [searchTerm, setSearchTerm] = React.useState("");
+    const filteredOpts = React.useMemo(
+      () =>
+        options.filter((option) =>
+          option.label.toLowerCase().includes(searchTerm.toLowerCase())
+        ),
+      [options, searchTerm]
+    );
+
+    return h(
+      "div",
+      {
+        className:
+          "absolute inset-0 z-20 flex flex-col bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-2xl",
+        style: { minHeight: "280px" }
+      },
+      currentValue
+        ? h(
+            "div",
+            {
+              className: "px-3 py-2 border-b border-[#2a2a2a] flex items-center justify-between"
+            },
+            h(
+              "span",
+              {
+                className: "inline-block rounded-md px-2 py-1 text-xs font-medium text-white",
+                style: { backgroundColor: currentValue.color || "#4a5568" }
+              },
+              currentValue.label
+            ),
+            h(
+              "button",
+              {
+                type: "button",
+                className: "text-gray-400 hover:text-white text-xs",
+                onClick: () => onSelect(null)
+              },
+              "Clear"
+            )
+          )
+        : null,
+      h(
+        "div",
+        { className: "px-3 py-2 border-b border-[#2a2a2a]" },
+        h("input", {
+          type: "text",
+          className:
+            "w-full bg-[#0a0a0a] text-white text-sm px-3 py-1.5 rounded border border-[#3a3a3a] focus:border-[#4a9eff] focus:outline-none placeholder-gray-500",
+          placeholder: "Find an option",
+          value: searchTerm,
+          onChange: (event: any) => setSearchTerm(event.target.value),
+          autoFocus: true
+        })
+      ),
+      h(
+        "div",
+        {
+          className: "flex-1 overflow-y-auto px-2 py-1",
+          style: { maxHeight: "200px" }
+        },
+        filteredOpts.length > 0
+          ? filteredOpts.map((option) => {
+              const isSelected = currentValue?.id === option.id;
+              const bgColor = option.color || "#4a5568";
+              return h(
+                "button",
+                {
+                  key: option.id,
+                  type: "button",
+                  className:
+                    "w-full text-left px-3 py-2 rounded hover:bg-[#2a2a2a] transition-colors flex items-center gap-2",
+                  onClick: () => onSelect(option)
+                },
+                h(
+                  "span",
+                  {
+                    className:
+                      "inline-block rounded-md px-2 py-1 text-xs font-medium text-white",
+                    style: { backgroundColor: bgColor }
+                  },
+                  option.label
+                ),
+                isSelected
+                  ? h(
+                      "span",
+                      { className: "ml-auto text-[#4a9eff] text-xs" },
+                    "✓"
+                    )
+                  : null
+              );
+            })
+          : h(
+              "div",
+              { className: "px-3 py-2 text-sm text-gray-500" },
+              "No options found"
+            )
+      )
+    );
+  }
+
   function renderCellEditor(r: number, c: number) {
     const col = columns[c];
     const val = getCellValue(r, c);
@@ -3190,163 +3453,24 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       case "multipleSelect": {
         const opts = col.config?.multipleSelect?.options ?? [];
         const selectedValues = Array.isArray(val) ? (val as SelectOption[]) : [];
-        const [searchTerm, setSearchTerm] = React.useState("");
-        const filteredOpts = opts.filter((o) => 
-          o.label.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-        
-        const toggleOption = (option: SelectOption) => {
-          const isSelected = selectedValues.some((v) => v.id === option.id);
-          const nextArr = isSelected
-            ? selectedValues.filter((v) => v.id !== option.id)
-            : [...selectedValues, option];
-          setCellValue(r, c, nextArr);
-        };
-        
-        const removeOption = (option: SelectOption) => {
-          const nextArr = selectedValues.filter((v) => v.id !== option.id);
-          setCellValue(r, c, nextArr);
-        };
-        
-        return h("div", { 
-          className: "absolute inset-0 z-20 flex flex-col bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-2xl",
-          style: { minHeight: "280px" }
-        },
-          // Selected items display
-          selectedValues.length > 0 ? h("div", { 
-            className: "flex flex-wrap gap-1.5 px-3 py-2 border-b border-[#2a2a2a]" 
-          },
-            ...selectedValues.map((o) => {
-              const bgColor = o.color || "#4a5568";
-              return h("span", {
-                key: o.id,
-                className: "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-white",
-                style: { backgroundColor: bgColor }
-              },
-                o.label,
-                h("button", {
-                  type: "button",
-                  className: "ml-1 hover:opacity-70",
-                  onClick: (e: any) => {
-                    e.stopPropagation();
-                    removeOption(o);
-                  }
-                }, "├ù")
-              );
-            })
-          ) : null,
-          // Search input
-          h("div", { className: "px-3 py-2 border-b border-[#2a2a2a]" },
-            h("input", {
-              type: "text",
-              className: "w-full bg-[#0a0a0a] text-white text-sm px-3 py-1.5 rounded border border-[#3a3a3a] focus:border-[#4a9eff] focus:outline-none placeholder-gray-500",
-              placeholder: "Find an option",
-              value: searchTerm,
-              onChange: (e: any) => setSearchTerm(e.target.value),
-              autoFocus: true
-            })
-          ),
-          // Options list
-          h("div", { 
-            className: "flex-1 overflow-y-auto px-2 py-1",
-            style: { maxHeight: "200px" }
-          },
-            filteredOpts.length > 0
-              ? filteredOpts.map((o) => {
-                  const isSelected = selectedValues.some((v) => v.id === o.id);
-                  const bgColor = o.color || "#4a5568";
-                  return h("button", {
-                    key: o.id,
-                    type: "button",
-                    className: "w-full text-left px-3 py-2 rounded hover:bg-[#2a2a2a] transition-colors flex items-center gap-2",
-                    onClick: () => toggleOption(o)
-                  },
-                    h("span", {
-                      className: "inline-block rounded-md px-2 py-1 text-xs font-medium text-white",
-                      style: { backgroundColor: bgColor }
-                    }, o.label),
-                    isSelected ? h("span", { className: "ml-auto text-[#4a9eff] text-xs" }, "Γ£ô") : null
-                  );
-                })
-              : h("div", { className: "px-3 py-2 text-sm text-gray-500" }, "No options found")
-          ),
-          // Footer
-          h("div", { className: "px-3 py-2 border-t border-[#2a2a2a] flex justify-end" },
-            h("button", {
-              type: "button",
-              className: "px-3 py-1 text-xs rounded bg-[#4a9eff] text-white hover:bg-[#3a8eef]",
-              onClick: commitEdit
-            }, "Done")
-          )
-        );
+        return h(MultipleSelectEditor, {
+          options: opts,
+          selectedValues,
+          onChange: (nextValues: SelectOption[]) => setCellValue(r, c, nextValues),
+          onDone: commitEdit
+        });
       }
       case "singleSelect": {
         const opts = col.config?.singleSelect?.options ?? [];
         const currentValue = val as SelectOption | null;
-        const [searchTerm, setSearchTerm] = React.useState("");
-        const filteredOpts = opts.filter((o) => 
-          o.label.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-        
-        const selectOption = (option: SelectOption | null) => {
-          setCellValue(r, c, option);
-          commitEdit();
-        };
-        
-        return h("div", { 
-          className: "absolute inset-0 z-20 flex flex-col bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-2xl",
-          style: { minHeight: "280px" }
-        },
-          // Current selection display
-          currentValue ? h("div", { 
-            className: "px-3 py-2 border-b border-[#2a2a2a] flex items-center justify-between" 
-          },
-            h("span", {
-              className: "inline-block rounded-md px-2 py-1 text-xs font-medium text-white",
-              style: { backgroundColor: currentValue.color || "#4a5568" }
-            }, currentValue.label),
-            h("button", {
-              type: "button",
-              className: "text-gray-400 hover:text-white text-xs",
-              onClick: () => selectOption(null)
-            }, "Clear")
-          ) : null,
-          // Search input
-          h("div", { className: "px-3 py-2 border-b border-[#2a2a2a]" },
-            h("input", {
-              type: "text",
-              className: "w-full bg-[#0a0a0a] text-white text-sm px-3 py-1.5 rounded border border-[#3a3a3a] focus:border-[#4a9eff] focus:outline-none placeholder-gray-500",
-              placeholder: "Find an option",
-              value: searchTerm,
-              onChange: (e: any) => setSearchTerm(e.target.value),
-              autoFocus: true
-            })
-          ),
-          // Options list
-          h("div", { 
-            className: "flex-1 overflow-y-auto px-2 py-1",
-            style: { maxHeight: "200px" }
-          },
-            filteredOpts.length > 0
-              ? filteredOpts.map((o) => {
-                  const isSelected = currentValue?.id === o.id;
-                  const bgColor = o.color || "#4a5568";
-                  return h("button", {
-                    key: o.id,
-                    type: "button",
-                    className: "w-full text-left px-3 py-2 rounded hover:bg-[#2a2a2a] transition-colors flex items-center gap-2",
-                    onClick: () => selectOption(o)
-                  },
-                    h("span", {
-                      className: "inline-block rounded-md px-2 py-1 text-xs font-medium text-white",
-                      style: { backgroundColor: bgColor }
-                    }, o.label),
-                    isSelected ? h("span", { className: "ml-auto text-[#4a9eff] text-xs" }, "Γ£ô") : null
-                  );
-                })
-              : h("div", { className: "px-3 py-2 text-sm text-gray-500" }, "No options found")
-          )
-        );
+        return h(SingleSelectEditor, {
+          options: opts,
+          currentValue,
+          onSelect: (option: SelectOption | null) => {
+            setCellValue(r, c, option);
+            commitEdit();
+          }
+        });
       }
       case "attachment":
         return h("input", {
@@ -3888,7 +4012,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       className: "rounded-full border px-4 py-1 text-sm bg-white dark:bg-neutral-900 disabled:opacity-50",
       disabled: isLoadMorePending || !onLoadMoreRows,
       onClick: handleLoadMoreRows
-    }, isLoadMorePending ? "LoadingΓÇª" : "Load more rows")
+    }, isLoadMorePending ? "Loading…" : "Load more rows")
   ) : null;
 
   const body = h("div",
@@ -4413,7 +4537,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
             type: "button",
             className: "ml-2 text-xs text-zinc-400 hover:text-rose-500",
             onClick: () => handleFilterRemove(filter.columnKey)
-          }, "├ù")
+          }, "×")
         );
       })
     ) : null,
@@ -4459,7 +4583,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
                   : "border-zinc-300 text-zinc-500 dark:border-neutral-700 dark:text-neutral-300"
               ),
               onClick: () => handleSortApply(String(col.key ?? idx), "asc")
-            }, "A ΓåÆ Z"),
+            }, "A → Z"),
             h("button", {
               type: "button",
               className: mergeClasses(
@@ -4469,7 +4593,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
                   : "border-zinc-300 text-zinc-500 dark:border-neutral-700 dark:text-neutral-300"
               ),
               onClick: () => handleSortApply(String(col.key ?? idx), "desc")
-            }, "Z ΓåÆ A")
+            }, "Z → A")
           )
         )
       )
@@ -4727,7 +4851,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   },
     h("input", {
       className: "w-64 rounded-2xl border px-3 py-2 text-sm",
-      placeholder: "Search in tableΓÇª",
+      placeholder: "Search in table…",
       value: searchTerm,
       onChange: (e: any) => setSearchTerm(e.target.value)
     }),
@@ -4898,6 +5022,9 @@ function uniqueColumnKey(cols: ColumnSpec[], base: string) {
   while (keys.has(k)) { i += 1; k = `${base}_${i}`; }
   return k;
 }
+
+
+
 
 
 
