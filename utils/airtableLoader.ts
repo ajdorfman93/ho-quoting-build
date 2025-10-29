@@ -1,0 +1,697 @@
+import fs from "fs/promises";
+import path from "path";
+import { ColumnSpec, ColumnType, SelectOption } from "@/utils/tableUtils";
+
+const DATA_DIR = path.join(process.cwd(), "airtable", "csv-json");
+const AUTOMATIONS_DIR = path.join(process.cwd(), "airtable", "js");
+
+const RECORD_ID_REGEX = /^rec[0-9A-Za-z]{14}$/;
+const PERCENT_REGEX = /%$/;
+const SEPARATOR_REGEX = /[,;|]/;
+
+type GenericRow = Record<string, any>;
+
+export interface FieldRelationship {
+  fieldName: string;
+  fieldKey: string;
+  targetTable?: string;
+  type: "link" | "lookup" | "computed";
+  confidence: number;
+  description: string;
+}
+
+export interface AirtableFieldMeta {
+  originalName: string;
+  key: string;
+  type: ColumnType;
+  config?: ColumnSpec<GenericRow>["config"];
+  readOnly?: boolean;
+  width?: number;
+  sampleValues: string[];
+  nonEmptyCount: number;
+  emptyCount: number;
+  uniqueValueCount: number;
+  notes: string[];
+  formattingRules: string[];
+  relationship?: FieldRelationship;
+  isPrimaryId?: boolean;
+}
+
+export interface AirtableTableDefinition {
+  name: string;
+  slug: string;
+  fileName: string;
+  viewName?: string | null;
+  columns: ColumnSpec<GenericRow>[];
+  rows: GenericRow[];
+  fieldMeta: AirtableFieldMeta[];
+  relationships: FieldRelationship[];
+  summary: {
+    rowCount: number;
+    fieldCount: number;
+    linkedFieldCount: number;
+    selectFieldCount: number;
+    lastAnalyzed: string;
+    primaryIdField?: string;
+  };
+}
+
+export interface AirtableAutomation {
+  name: string;
+  fileName: string;
+  trigger?: string;
+  description?: string;
+  tablesInvolved: string[];
+  actions: string[];
+  rawComment?: string;
+  scriptSummary: string;
+}
+
+export interface AirtableProject {
+  tables: AirtableTableDefinition[];
+  automations: AirtableAutomation[];
+  lastGenerated: string;
+}
+
+interface RawTable {
+  name: string;
+  slug: string;
+  fileName: string;
+  viewName?: string | null;
+  records: GenericRow[];
+}
+
+interface FieldInferenceResult {
+  meta: AirtableFieldMeta;
+  column: ColumnSpec<GenericRow>;
+}
+
+const SELECT_COLORS = [
+  "#0E7AFE",
+  "#E83A3A",
+  "#7A5BFF",
+  "#FF8A00",
+  "#00A985",
+  "#C23FFF",
+  "#FFB400",
+  "#0081F2",
+  "#F857A6",
+  "#3ECF8E"
+];
+
+export async function loadAirtableProject(): Promise<AirtableProject> {
+  const rawTables = await readRawTables();
+  const recordIdIndex = buildRecordIdIndex(rawTables);
+  const tables = rawTables.map((table) => buildTableDefinition(table, recordIdIndex));
+  const automations = await readAutomations();
+  return {
+    tables,
+    automations,
+    lastGenerated: new Date().toISOString()
+  };
+}
+
+async function readRawTables(): Promise<RawTable[]> {
+  const entries = await safeReadDir(DATA_DIR);
+  const jsonFiles = entries.filter((name) => name.toLowerCase().endsWith(".json")).sort();
+  const tables: RawTable[] = [];
+
+  for (const fileName of jsonFiles) {
+    const filePath = path.join(DATA_DIR, fileName);
+    const content = await fs.readFile(filePath, "utf-8");
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      continue;
+    }
+    if (!Array.isArray(parsed)) continue;
+    const { tableName, viewName } = parseTableAndView(fileName);
+    tables.push({
+      name: tableName,
+      slug: slugify(tableName),
+      fileName,
+      viewName,
+      records: parsed as GenericRow[]
+    });
+  }
+
+  return tables;
+}
+
+function parseTableAndView(fileName: string): { tableName: string; viewName: string | null } {
+  const base = fileName.replace(/\.json$/i, "");
+  const parts = base.split("-");
+  if (parts.length >= 2 && parts[parts.length - 1].toLowerCase().includes("view")) {
+    const viewName = titleCase(parts.pop() ?? "");
+    const tableName = titleCase(parts.join(" "));
+    return { tableName, viewName };
+  }
+  return {
+    tableName: titleCase(base.replace(/[_-]+/g, " ")),
+    viewName: null
+  };
+}
+
+async function readAutomations(): Promise<AirtableAutomation[]> {
+  const entries = await safeReadDir(AUTOMATIONS_DIR);
+  const jsFiles = entries.filter((name) => name.toLowerCase().endsWith(".js")).sort();
+  const automations: AirtableAutomation[] = [];
+
+  for (const fileName of jsFiles) {
+    const filePath = path.join(AUTOMATIONS_DIR, fileName);
+    const content = await fs.readFile(filePath, "utf-8");
+    automations.push(parseAutomationFile(fileName, content));
+  }
+
+  return automations;
+}
+
+function parseAutomationFile(fileName: string, content: string): AirtableAutomation {
+  const displayName = titleCase(fileName.replace(/\.js$/i, "").replace(/[_-]+/g, " "));
+  const commentLines: string[] = [];
+  const lines = content.split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("//")) {
+      if (commentLines.length === 0 && trimmed.length === 0) continue;
+      break;
+    }
+    commentLines.push(trimmed.replace(/^\/\/\s?/, ""));
+  }
+  const rawComment = commentLines.join("\n").trim() || undefined;
+  const triggerLine = commentLines.find((line) => line.toLowerCase().includes("trigger"));
+  const actionLines = commentLines.filter((line) => line.toLowerCase().includes("action") || line.toLowerCase().includes("update") || line.toLowerCase().includes("create"));
+
+  const tablesInvolved = Array.from(
+    new Set(
+      [...content.matchAll(/base\.getTable\(\s*["'`](.+?)["'`]\s*\)/g)].map((match) => match[1])
+    )
+  );
+
+  const scriptSummary = buildScriptSummary(content);
+
+  return {
+    name: displayName,
+    fileName,
+    trigger: triggerLine,
+    description: rawComment,
+    tablesInvolved,
+    actions: actionLines,
+    rawComment,
+    scriptSummary
+  };
+}
+
+function buildScriptSummary(content: string): string {
+  const actions: string[] = [];
+  if (content.includes("createRecordAsync")) actions.push("creates linked records");
+  if (content.includes("updateRecordAsync")) actions.push("updates related records");
+  if (content.includes("deleteRecordAsync")) actions.push("removes records");
+  if (content.includes("selectRecordsAsync")) actions.push("reads source tables");
+  if (content.includes("filter(") || content.includes(".filter(")) actions.push("filters collections");
+  if (content.includes("for (") || content.includes(".forEach(")) actions.push("iterates across match sets");
+  if (content.includes("await")) actions.push("runs asynchronous Airtable API calls");
+
+  return actions.length ? `Script ${actions.join(", ").replace(/, ([^,]*)$/, ", and $1")}.` : "Script reads and processes Airtable tables.";
+}
+
+async function safeReadDir(dir: string): Promise<string[]> {
+  try {
+    return await fs.readdir(dir);
+  } catch {
+    return [];
+  }
+}
+
+function buildRecordIdIndex(tables: RawTable[]): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const table of tables) {
+    for (const record of table.records) {
+      for (const value of Object.values(record)) {
+        if (typeof value === "string" && RECORD_ID_REGEX.test(value)) {
+          if (!index.has(value)) index.set(value, table.name);
+        }
+      }
+    }
+  }
+  return index;
+}
+
+function buildTableDefinition(table: RawTable, recordIdIndex: Map<string, string>): AirtableTableDefinition {
+  const fieldOrder = inferFieldOrder(table.records);
+  const keyRegistry = new Set<string>();
+
+  const primaryIdField = detectPrimaryIdField(table, recordIdIndex);
+
+  const fieldResults = fieldOrder.map((fieldName, index) =>
+    inferField({
+      tableName: table.name,
+      fieldName,
+      records: table.records,
+      recordIdIndex,
+      index,
+      keyRegistry,
+      isPrimaryId: primaryIdField === fieldName
+    })
+  );
+
+  const columns = fieldResults.map((result) => result.column);
+  const fieldMeta = fieldResults.map((result) => result.meta);
+
+  const rows = table.records.map((record, idx) => {
+    const row: GenericRow = {};
+    row.id = resolveRowId(record, table.slug, idx, primaryIdField);
+    for (const { meta } of fieldResults) {
+      row[meta.key] = normalizeCellValue(record[meta.originalName], meta);
+    }
+    return row;
+  });
+
+  const relationships = fieldMeta
+    .map((meta) => meta.relationship)
+    .filter((rel): rel is FieldRelationship => Boolean(rel));
+
+  return {
+    name: table.name,
+    slug: table.slug,
+    fileName: table.fileName,
+    viewName: table.viewName,
+    columns,
+    rows,
+    fieldMeta,
+    relationships,
+    summary: {
+      rowCount: rows.length,
+      fieldCount: columns.length,
+      linkedFieldCount: relationships.length,
+      selectFieldCount: fieldMeta.filter((meta) => meta.type === "singleSelect" || meta.type === "multipleSelect").length,
+      lastAnalyzed: new Date().toISOString(),
+      primaryIdField: primaryIdField ?? undefined
+    }
+  };
+}
+
+function inferFieldOrder(records: GenericRow[]): string[] {
+  const order = new Map<string, number>();
+  records.slice(0, 50).forEach((record) => {
+    Object.keys(record).forEach((key) => {
+      if (!order.has(key)) order.set(key, order.size);
+    });
+  });
+  return [...order.entries()].sort((a, b) => a[1] - b[1]).map(([key]) => key);
+}
+
+function detectPrimaryIdField(table: RawTable, recordIdIndex: Map<string, string>): string | null {
+  const candidateScores = new Map<string, number>();
+  for (const record of table.records) {
+    for (const [field, value] of Object.entries(record)) {
+      if (typeof value === "string" && RECORD_ID_REGEX.test(value)) {
+        const score = candidateScores.get(field) ?? 0;
+        candidateScores.set(field, score + 1);
+        if (!recordIdIndex.has(value)) recordIdIndex.set(value, table.name);
+      } else if (typeof value === "string" && field.toLowerCase().includes("record id")) {
+        const score = candidateScores.get(field) ?? 0;
+        candidateScores.set(field, score + 0.5);
+      }
+    }
+  }
+
+  let bestField: string | null = null;
+  let bestScore = 0;
+  const threshold = Math.max(1, Math.floor(table.records.length * 0.6));
+  for (const [field, score] of candidateScores) {
+    if (score >= threshold && score >= bestScore) {
+      bestScore = score;
+      bestField = field;
+    }
+  }
+  return bestField;
+}
+
+function inferField(params: {
+  tableName: string;
+  fieldName: string;
+  records: GenericRow[];
+  recordIdIndex: Map<string, string>;
+  index: number;
+  keyRegistry: Set<string>;
+  isPrimaryId: boolean;
+}): FieldInferenceResult {
+  const { tableName, fieldName, records, recordIdIndex, index, keyRegistry, isPrimaryId } = params;
+  const values = records.map((record) => record[fieldName]).filter((value) => value !== null && value !== undefined && value !== "");
+  const stringValues = values
+    .map((value) => (typeof value === "string" ? value.trim() : String(value)))
+    .filter((value) => value.length > 0);
+
+  const nonEmptyCount = values.length;
+  const emptyCount = records.length - nonEmptyCount;
+  const uniqueStrings = new Set(stringValues.map((value) => normalizeWhitespace(value)));
+  const uniqueValueCount = uniqueStrings.size;
+  const sampleValues = stringValues.slice(0, 5);
+  const avgLength =
+    stringValues.reduce((sum, value) => sum + value.length, 0) / Math.max(1, stringValues.length);
+
+  const lowerField = fieldName.toLowerCase();
+  const notes: string[] = [];
+  const formattingRules: string[] = [];
+
+  let type: ColumnType = "singleLineText";
+  let readOnly = false;
+  let config: ColumnSpec<GenericRow>["config"] | undefined;
+  let width = 180;
+  let relationship: FieldRelationship | undefined;
+
+  const selectOptions: SelectOption[] = [];
+
+  const boolMappings = stringValues.map((value) => evaluateBoolean(value)).filter((value) => value !== null);
+  const percentMatches = stringValues.filter((value) => PERCENT_REGEX.test(value) || lowerField.includes("percent") || lowerField.includes("%") || lowerField.includes("markup"));
+  const currencyMatches = stringValues.filter((value) => /^\s*[$€£]/.test(value) || lowerField.includes("price") || lowerField.includes("cost") || lowerField.includes("amount") || lowerField.includes("total"));
+
+  const numericParsed = stringValues.map((value) => parseNumber(value)).filter((value) => Number.isFinite(value));
+  const numericRatio = stringValues.length ? numericParsed.length / stringValues.length : 0;
+
+  const linkCandidates = stringValues.filter((value) => RECORD_ID_REGEX.test(value));
+  const linkRatio = stringValues.length ? linkCandidates.length / stringValues.length : 0;
+
+  const multiValueSplits = stringValues.map((value) => splitMultiValue(value)).filter((parts) => parts.length > 1);
+
+  if (nonEmptyCount === 0) {
+    type = "singleLineText";
+    notes.push("No sample data detected; defaulting to single line text.");
+  } else if (boolMappings.length === stringValues.length) {
+    type = "checkbox";
+    width = 110;
+    notes.push("All values map cleanly to boolean semantics.");
+  } else if (linkRatio >= 0.6 || (linkCandidates.length && lowerField.includes("record"))) {
+    type = "linkToRecord";
+    readOnly = true;
+    width = 220;
+    const targetTable = detectLinkTarget(linkCandidates, recordIdIndex);
+    relationship = {
+      fieldName,
+      fieldKey: "",
+      targetTable,
+      type: "link",
+      confidence: linkRatio,
+      description: targetTable
+        ? `Values match Airtable record IDs from the ${targetTable} table.`
+        : "Values match Airtable record ID format."
+    };
+    notes.push("Detected Airtable record IDs; treated as linked record field.");
+  } else if (detectDateConfidence(stringValues) > 0.6 || lowerField.includes("date")) {
+    type = "date";
+    width = 180;
+    notes.push("Values parse as dates.");
+  } else if (stringValues.every((value) => value.includes("@")) || lowerField.includes("email")) {
+    type = "email";
+    width = 220;
+    notes.push("All values contain '@'; treated as email field.");
+  } else if (stringValues.every((value) => /\d/.test(value) && value.length >= 7 && /^[\d\s().+-]+$/.test(value)) || lowerField.includes("phone")) {
+    type = "phone";
+    width = 170;
+    notes.push("Detected phone number patterns.");
+  } else if (stringValues.every((value) => value.includes("http://") || value.includes("https://")) || lowerField.includes("url")) {
+    type = "url";
+    width = 240;
+    formattingRules.push("Ensure values include protocol (https://).");
+  } else if (percentMatches.length >= Math.max(1, Math.floor(stringValues.length * 0.6))) {
+    type = "percent";
+    width = 140;
+    config = { percent: { decimals: detectDecimalPlaces(stringValues) } };
+    formattingRules.push("Store percent values as whole numbers (e.g., 45 for 45%).");
+    notes.push("Percent indicators detected in values or field name.");
+  } else if (currencyMatches.length >= Math.max(1, Math.floor(stringValues.length * 0.6))) {
+    type = "currency";
+    width = 160;
+    config = { currency: { currency: "USD", decimals: detectDecimalPlaces(stringValues) } };
+    formattingRules.push("Currency formatted as USD by default.");
+    notes.push("Currency symbols or price naming detected.");
+  } else if (numericRatio >= 0.8) {
+    type = "number";
+    width = 140;
+    config = { number: { decimals: detectDecimalPlaces(stringValues) } };
+    notes.push("Majority of values parse cleanly as numbers.");
+  } else if (multiValueSplits.length && averageSplitCount(multiValueSplits) > 1.2) {
+    type = "multipleSelect";
+    width = 220;
+    const flatOptions = multiValueSplits.flat().map((value) => sanitizeOptionValue(value));
+    const uniqueOptions = Array.from(new Set(flatOptions)).slice(0, 60);
+    selectOptions.push(...uniqueOptions.map((label, idx) => createSelectOption(label, idx)));
+    config = { multipleSelect: { options: selectOptions } };
+    formattingRules.push("Values normalized from comma or delimiter separated text.");
+    notes.push("Detected multi-value entries; modeled as multiple select.");
+  } else if (uniqueValueCount > 1 && uniqueValueCount <= 15 && avgLength < 45) {
+    type = "singleSelect";
+    width = 200;
+    const options = Array.from(uniqueStrings)
+      .slice(0, 60)
+      .map((label, idx) => createSelectOption(label, idx));
+    selectOptions.push(...options);
+    config = { singleSelect: { options } };
+    notes.push("Limited discrete value set detected; treated as single select.");
+  } else if (avgLength > 120 || lowerField.includes("description") || lowerField.includes("notes") || lowerField.includes("comment")) {
+    type = "longText";
+    width = 320;
+    notes.push("Average text length suggests long text field.");
+  }
+
+  if (!config && (type === "singleSelect" || type === "multipleSelect")) {
+    const options = Array.from(uniqueStrings)
+      .slice(0, 60)
+      .map((label, idx) => createSelectOption(label, idx));
+    if (type === "singleSelect") config = { singleSelect: { options } };
+    if (type === "multipleSelect") config = { multipleSelect: { options } };
+  }
+
+  if (relationship) {
+    relationship.fieldKey = createFieldKey(fieldName, keyRegistry);
+  }
+
+  if (!relationship && (lowerField.includes("composite key") || lowerField.includes("auto number") || lowerField.includes("calculation"))) {
+    relationship = {
+      fieldName,
+      fieldKey: createFieldKey(fieldName, keyRegistry),
+      type: "computed",
+      confidence: 0.5,
+      description: "Field likely generated via Airtable formula or automation."
+    };
+    readOnly = true;
+    type = type === "singleLineText" ? "formula" : type;
+    notes.push("Field name suggests computed value.");
+  }
+
+  if (isPrimaryId) {
+    notes.push("Designated as primary record identifier.");
+    readOnly = true;
+  }
+
+  const key = relationship?.fieldKey ?? createFieldKey(fieldName, keyRegistry);
+
+  const meta: AirtableFieldMeta = {
+    originalName: fieldName,
+    key,
+    type,
+    config,
+    readOnly,
+    width,
+    sampleValues,
+    nonEmptyCount,
+    emptyCount,
+    uniqueValueCount,
+    notes,
+    formattingRules,
+    relationship,
+    isPrimaryId
+  };
+
+  const column: ColumnSpec<GenericRow> = {
+    key,
+    name: fieldName,
+    type,
+    config,
+    width,
+    readOnly
+  };
+
+  return { meta, column };
+}
+
+function normalizeCellValue(value: unknown, meta: AirtableFieldMeta): unknown {
+  if (value === null || value === undefined) return "";
+
+  switch (meta.type) {
+    case "checkbox": {
+      const evaluated = typeof value === "boolean" ? value : evaluateBoolean(String(value));
+      if (evaluated !== null) return evaluated;
+      if (typeof value === "number") return value !== 0;
+      return false;
+    }
+    case "percent": {
+      if (typeof value === "number") return value;
+      const numeric = parseNumber(String(value).replace(PERCENT_REGEX, ""));
+      return Number.isFinite(numeric) ? numeric : 0;
+    }
+    case "number":
+    case "currency": {
+      if (typeof value === "number") return value;
+      const numeric = parseNumber(String(value));
+      return Number.isFinite(numeric) ? numeric : value;
+    }
+    case "date": {
+      if (typeof value === "string") {
+        const parsed = Date.parse(value);
+        if (Number.isFinite(parsed)) return new Date(parsed).toISOString();
+      }
+      if (value instanceof Date) return value.toISOString();
+      return String(value);
+    }
+    case "multipleSelect": {
+      if (Array.isArray(value)) {
+        return value.map((entry, idx) => createSelectOption(String(entry), idx));
+      }
+      const parts = splitMultiValue(String(value));
+      return parts.map((entry, idx) => createSelectOption(entry, idx));
+    }
+    case "singleSelect": {
+      if (typeof value === "object" && value !== null && "label" in (value as any)) {
+        return value;
+      }
+      return String(value);
+    }
+    default:
+      return value;
+  }
+}
+
+function splitMultiValue(value: string): string[] {
+  if (!value) return [];
+  let normalized = value.trim();
+  normalized = normalized.replace(/^"+|"+$/g, "");
+  normalized = normalized.replace(/""/g, '"');
+  if (normalized.includes("\",\"")) {
+    return normalized
+      .split(/"\s*,\s*"/)
+      .map((part) => part.replace(/^"+|"+$/g, "").trim())
+      .filter(Boolean);
+  }
+  if (normalized.includes("\n")) {
+    return normalized
+      .split(/\r?\n/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+  }
+  return normalized
+    .split(SEPARATOR_REGEX)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function resolveRowId(record: GenericRow, slug: string, index: number, primaryField: string | null): string {
+  if (primaryField && typeof record[primaryField] === "string" && record[primaryField]) {
+    return String(record[primaryField]);
+  }
+  for (const value of Object.values(record)) {
+    if (typeof value === "string" && RECORD_ID_REGEX.test(value)) return value;
+  }
+  return `${slug}-${index + 1}`;
+}
+
+function normalizeWhitespace(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function evaluateBoolean(value: string): boolean | null {
+  const normalized = value.trim().toLowerCase();
+  if (["true", "yes", "y", "1", "checked", "show"].includes(normalized)) return true;
+  if (["false", "no", "n", "0", "unchecked", "hide"].includes(normalized)) return false;
+  return null;
+}
+
+function parseNumber(value: string): number {
+  const sanitized = value.replace(/[^0-9.\-]/g, "");
+  if (!sanitized) return NaN;
+  const numeric = Number.parseFloat(sanitized);
+  return Number.isFinite(numeric) ? numeric : NaN;
+}
+
+function detectLinkTarget(values: string[], index: Map<string, string>): string | undefined {
+  const tally = new Map<string, number>();
+  for (const value of values) {
+    const table = index.get(value);
+    if (table) tally.set(table, (tally.get(table) ?? 0) + 1);
+  }
+  let top: string | undefined;
+  let best = 0;
+  for (const [tableName, score] of tally) {
+    if (score > best) {
+      best = score;
+      top = tableName;
+    }
+  }
+  return top;
+}
+
+function detectDecimalPlaces(values: string[]): number {
+  const decimals = values
+    .map((value) => {
+      const match = value.match(/\.([0-9]+)/);
+      return match ? match[1].length : 0;
+    })
+    .filter((count) => count > 0);
+  if (!decimals.length) return 0;
+  return Math.max(0, Math.min(4, Math.max(...decimals)));
+}
+
+function detectDateConfidence(values: string[]): number {
+  if (!values.length) return 0;
+  const valid = values.filter((value) => Number.isFinite(Date.parse(value))).length;
+  return valid / values.length;
+}
+
+function averageSplitCount(collection: string[][]): number {
+  if (!collection.length) return 0;
+  const total = collection.reduce((sum, parts) => sum + parts.length, 0);
+  return total / collection.length;
+}
+
+function createFieldKey(fieldName: string, registry: Set<string>): string {
+  let candidate = fieldName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  if (!candidate) candidate = "field";
+  candidate = candidate.replace(/^_+|_+$/g, "");
+  if (/^\d/.test(candidate)) candidate = `f_${candidate}`;
+  let key = candidate;
+  let suffix = 1;
+  while (registry.has(key) || !key) {
+    key = `${candidate || "field"}_${suffix}`;
+    suffix += 1;
+  }
+  registry.add(key);
+  return key;
+}
+
+function createSelectOption(label: string, index: number): SelectOption {
+  const trimmed = label.trim();
+  const id = trimmed || `option_${index}`;
+  const color = SELECT_COLORS[index % SELECT_COLORS.length];
+  return { id, label: trimmed || id, color };
+}
+
+function sanitizeOptionValue(value: string): string {
+  return value.replace(/^"+|"+$/g, "").trim();
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function titleCase(value: string): string {
+  return value
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
