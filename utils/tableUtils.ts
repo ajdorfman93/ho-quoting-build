@@ -11,8 +11,6 @@ import {
   FaCalendarAlt,
   FaCheckSquare,
   FaChevronDown,
-  FaChevronLeft,
-  FaChevronRight,
   FaClone,
   FaClock,
   FaColumns,
@@ -509,8 +507,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     () => VIEW_DEFINITIONS.map((def) => ({ ...def, instanceId: def.id, displayName: def.name })),
     []
   );
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
   const [activeView, setActiveView] = React.useState(() => availableViews[0]?.instanceId ?? "grid");
+  const [viewsDropdownOpen, setViewsDropdownOpen] = React.useState(false);
+  const viewsTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const viewsDropdownRef = React.useRef<HTMLDivElement | null>(null);
+  const viewsDropdownId = React.useId();
   const columnDragRef = React.useRef<{ from: number } | null>(null);
   const rowDragRef = React.useRef<{ from: number } | null>(null);
   const editOriginalRef = React.useRef<any>(null);
@@ -540,6 +541,32 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       setActiveView(availableViews[0]?.instanceId ?? "grid");
     }
   }, [availableViews, activeView]);
+
+  React.useEffect(() => {
+    if (!viewsDropdownOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (
+        viewsDropdownRef.current?.contains(target) ||
+        viewsTriggerRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setViewsDropdownOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setViewsDropdownOpen(false);
+      }
+    };
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [viewsDropdownOpen]);
 
   const commit = React.useCallback((nextRows: T[] = rows, nextCols: ColumnSpec<T>[] = columns) => {
     push({ rows: nextRows, columns: nextCols });
@@ -1464,7 +1491,26 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   }
 
   function applyMatrixAt(matrix: string[][], baseR: number, baseC: number) {
-    const next = deepClone(rows);
+    if (!matrix.length) return;
+    let next = deepClone(rows);
+    const requiredRowCount = Math.max(next.length, baseR + matrix.length);
+    if (requiredRowCount > next.length) {
+      const additions: T[] = [];
+      for (let idx = next.length; idx < requiredRowCount; idx++) {
+        additions.push(createBlankRow() as T);
+      }
+      if (additions.length) {
+        next = next.concat(additions);
+        setRowHeights((prev) => {
+          if (prev.length >= requiredRowCount) return prev;
+          const nextHeights = prev.slice();
+          while (nextHeights.length < requiredRowCount) {
+            nextHeights.push(minRowHeight);
+          }
+          return nextHeights;
+        });
+      }
+    }
     for (let i = 0; i < matrix.length; i++) {
       for (let j = 0; j < matrix[i].length; j++) {
         const r = baseR + i;
@@ -2717,6 +2763,49 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   })();
 
 
+  const primaryViews = availableViews.filter((view) => view.group === "primary");
+  const secondaryViews = availableViews.filter((view) => view.group === "secondary");
+
+  const renderViewButton = (view: (typeof availableViews)[number]) => {
+    const isActive = activeView === view.instanceId;
+    return h("button", {
+      key: view.instanceId,
+      type: "button",
+      role: "menuitemradio",
+      "aria-checked": isActive,
+      className: mergeClasses(
+        "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
+        isActive
+          ? "bg-blue-500/10 text-blue-600 dark:text-blue-300"
+          : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-neutral-800"
+      ),
+      onClick: () => {
+        setActiveView(view.instanceId);
+        setViewsDropdownOpen(false);
+      },
+      title: view.displayName,
+      "aria-label": view.displayName
+    },
+      h(view.icon, { className: mergeClasses("h-4 w-4 shrink-0", view.colorClass) }),
+      h("span", { className: "truncate" }, view.displayName)
+    );
+  };
+
+  const viewsDropdownElement = viewsDropdownOpen ? h("div", {
+    id: viewsDropdownId,
+    ref: viewsDropdownRef,
+    className: "absolute right-0 top-full z-40 mt-2 w-64 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+    role: "menu",
+    "aria-label": "Table views"
+  },
+    h("p", { className: "px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Table views"),
+    h("div", { className: "flex flex-col gap-1" },
+      ...primaryViews.map(renderViewButton)
+    ),
+    secondaryViews.length ? h("div", { className: "my-2 h-px bg-zinc-200 dark:bg-neutral-800" }) : null,
+    secondaryViews.length ? h("div", { className: "flex flex-col gap-1" }, ...secondaryViews.map(renderViewButton)) : null
+  ) : null;
+
   /* Toolbar (undo/redo, duplicate/delete rows, search) */
   const toolbar = h("div", {
     className: mergeClasses(cx("toolbar",""), "flex items-center gap-2 py-2")
@@ -2744,7 +2833,24 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     h("button", {
       className: "rounded-full border px-3 py-1 text-sm",
       onClick: () => setSearchOpen((v) => !v)
-    }, "Search (Ctrl+F)")
+    }, "Search (Ctrl+F)"),
+    h("div", {
+      className: "ml-auto relative"
+    },
+      h("button", {
+        ref: viewsTriggerRef,
+        type: "button",
+        className: "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition hover:bg-zinc-100 dark:hover:bg-neutral-800",
+        onClick: () => setViewsDropdownOpen((open) => !open),
+        "aria-haspopup": "menu",
+        "aria-expanded": viewsDropdownOpen ? "true" : "false",
+        "aria-controls": viewsDropdownOpen ? viewsDropdownId : undefined
+      },
+        "Create new...",
+        h(FaChevronDown, { className: mergeClasses("h-3 w-3 transition-transform", viewsDropdownOpen && "rotate-180") })
+      ),
+      viewsDropdownElement
+    )
   );
 
   const searchBox = searchOpen && h("div", {
@@ -2759,63 +2865,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     h("button", { className: "rounded-full border px-3 py-1 text-sm", onClick: () => setSearchTerm("") }, "Clear")
   );
 
-  const primaryViews = availableViews.filter((view) => view.group === "primary");
-  const secondaryViews = availableViews.filter((view) => view.group === "secondary");
-
-  const renderViewButton = (view: (typeof availableViews)[number]) => {
-    const isActive = activeView === view.instanceId;
-    return h("button", {
-      key: view.instanceId,
-      type: "button",
-      className: mergeClasses(
-        "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
-        isActive
-          ? "bg-blue-500/10 text-blue-600 dark:text-blue-300"
-          : "hover:bg-zinc-100 dark:hover:bg-neutral-800 text-zinc-600 dark:text-zinc-200",
-        sidebarCollapsed && "justify-center px-0"
-      ),
-      onClick: () => setActiveView(view.instanceId),
-      title: view.displayName,
-      "aria-pressed": isActive,
-      "aria-label": view.displayName
-    },
-      h(view.icon, { className: mergeClasses("h-4 w-4", view.colorClass) }),
-      !sidebarCollapsed && h("span", { className: "truncate" }, view.displayName)
-    );
-  };
-
-  const sidebarToggleIcon = sidebarCollapsed ? FaChevronRight : FaChevronLeft;
-  const sidebarHeader = h("div", { className: "mb-3 flex items-center justify-between gap-2" },
-    !sidebarCollapsed && h("span", { className: "text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Views"),
-    h("button", {
-      type: "button",
-      className: "inline-flex items-center gap-2 rounded-lg border px-2 py-1 text-xs hover:bg-zinc-100 dark:hover:bg-neutral-800 transition-colors",
-      onClick: () => setSidebarCollapsed((v) => !v),
-      title: sidebarCollapsed ? "Expand views" : "Collapse views",
-      "aria-label": sidebarCollapsed ? "Expand views sidebar" : "Collapse views sidebar",
-      "aria-expanded": String(!sidebarCollapsed)
-    },
-      h(sidebarToggleIcon, { className: "h-4 w-4" }),
-      !sidebarCollapsed && h("span", { className: "font-medium text-zinc-500 dark:text-neutral-300" }, "Hide")
-    )
-  );
-
-  const sidebarElement = h("aside", {
-    className: mergeClasses(
-      "rounded-2xl border bg-white dark:bg-neutral-950/80 p-3 transition-all",
-      sidebarCollapsed ? "w-16" : "w-60",
-      "shrink-0"
-    ),
-    "aria-label": "Table views",
-    "data-collapsed": sidebarCollapsed ? "true" : "false"
-  },
-    sidebarHeader,
-    h("div", { className: mergeClasses("flex flex-col gap-1", sidebarCollapsed && "items-center") },
-      ...primaryViews.map(renderViewButton),
-      secondaryViews.length ? h("div", { className: "my-2 h-px bg-zinc-200 dark:bg-neutral-800" }) : null,
-      ...secondaryViews.map(renderViewButton)
-    )
-  );
   const tableContent = h("div", { className: "relative overflow-auto rounded-xl border", ref: tableContainerRef, onScroll: handleScroll },
     header,
     body,
@@ -2909,7 +2958,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   return h("div",
     { className: "flex gap-4 items-start" },
-    sidebarElement,
     mainContent,
     headerContextMenu,
     confirmModalElement,

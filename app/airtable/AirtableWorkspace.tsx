@@ -292,13 +292,14 @@ function DataPanel({
     setLoadingRows(false);
   }, [table.slug]);
 
-  const tableShortcuts = React.useMemo(() => {
-    const names = tables.slice(0, 6).map((item) => ({
-      slug: item.slug,
-      label: item.name,
-    }));
-    return names;
-  }, [tables]);
+  const tableShortcuts = React.useMemo(
+    () =>
+      tables.map((item) => ({
+        slug: item.slug,
+        label: item.name,
+      })),
+    [tables],
+  );
 
   const viewItems = React.useMemo<ViewItem[]>(() => {
     const primaryView = table.viewName ?? "Grid view";
@@ -463,7 +464,7 @@ function DataPanel({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col gap-4">
-        <nav className="flex flex-wrap gap-2 rounded-xl border border-slate-900 bg-[#0c172f]/90 p-3 text-sm">
+        <nav className="flex gap-2 overflow-x-auto rounded-xl border border-slate-900 bg-[#0c172f]/90 p-3 text-sm">
           {tableShortcuts.map((entry) => {
             const isActive = entry.slug === activeTableSlug;
             return (
@@ -472,7 +473,7 @@ function DataPanel({
                 type="button"
                 onClick={() => onSelectTable(entry.slug)}
                 className={cn(
-                  "rounded-lg px-3 py-1.5 transition",
+                  "rounded-lg px-3 py-1.5 transition whitespace-nowrap",
                   isActive
                     ? "bg-slate-200 text-slate-900 shadow"
                     : "bg-transparent text-slate-300 hover:bg-slate-800/60",
