@@ -1171,10 +1171,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
  * 7) Layout math for selection rectangle and handle
  * ---------------------------------------------------------*/
 
+const SELECTION_VERTICAL_OFFSET = -40;
+
 function selectionBoxStyle(sel: Selection, colW: number[], rowH: number[], headerH: number) {
   if (!sel) return {};
   const { r0, r1, c0, c1 } = sel;
-  const top = headerH + sum(rowH, 0, r0);
+  const top = headerH + sum(rowH, 0, r0) + SELECTION_VERTICAL_OFFSET;
   const left = sum(colW, 0, c0);
   const height = sum(rowH, r0, r1 + 1);
   const width = sum(colW, c0, c1 + 1);
