@@ -16,20 +16,14 @@ import {
   FaChevronDown,
   FaChevronUp,
   FaCircle,
-  FaEyeSlash,
-  FaFilter,
   FaFolderPlus,
-  FaLayerGroup,
   FaLink,
   FaListUl,
-  FaPalette,
   FaHistory,
   FaPlus,
   FaSearch,
   FaShareAlt,
-  FaSortAmountDown,
   FaThLarge,
-  FaUndoAlt,
   FaRocket,
 } from "react-icons/fa";
 
@@ -68,6 +62,9 @@ export default function AirtableWorkspace({ project }: { project: AirtableProjec
   const [activeTableSlug, setActiveTableSlug] = React.useState<string | null>(
     project.tables[0]?.slug ?? null,
   );
+  const [tableOrder, setTableOrder] = React.useState<string[]>(
+    () => project.tables.map((table) => table.slug),
+  );
 
   const initialState = React.useMemo<Record<string, TableState>>(() => {
     const entries = project.tables.map((table) => [
@@ -89,10 +86,40 @@ export default function AirtableWorkspace({ project }: { project: AirtableProjec
     }
   }, [project.tables, initialState, activeTableSlug]);
 
+  React.useEffect(() => {
+    const nextSlugs = project.tables.map((table) => table.slug);
+    setTableOrder((prev) => {
+      const filtered = prev.filter((slug) => nextSlugs.includes(slug));
+      nextSlugs.forEach((slug) => {
+        if (!filtered.includes(slug)) {
+          filtered.push(slug);
+        }
+      });
+      const isSame =
+        filtered.length === prev.length && filtered.every((slug, index) => slug === prev[index]);
+      return isSame ? prev : filtered;
+    });
+  }, [project.tables]);
+
   const activeTable = React.useMemo<AirtableTableDefinition | null>(() => {
     if (!activeTableSlug) return null;
     return project.tables.find((table) => table.slug === activeTableSlug) ?? null;
   }, [project.tables, activeTableSlug]);
+
+  const orderedTables = React.useMemo(() => {
+    const slugLookup = new Map(project.tables.map((table) => [table.slug, table]));
+    const ordered: AirtableTableDefinition[] = [];
+    tableOrder.forEach((slug) => {
+      const entry = slugLookup.get(slug);
+      if (entry) ordered.push(entry);
+    });
+    project.tables.forEach((table) => {
+      if (!ordered.some((existing) => existing.slug === table.slug)) {
+        ordered.push(table);
+      }
+    });
+    return ordered;
+  }, [project.tables, tableOrder]);
 
   const tableView = React.useMemo(() => {
     if (!activeTable) return null;
@@ -119,12 +146,13 @@ export default function AirtableWorkspace({ project }: { project: AirtableProjec
       <main className="flex flex-1 flex-col gap-5 overflow-hidden px-4 py-6 md:px-8 lg:px-12">
         {activeNav === "data" && activeTable && tableView ? (
           <DataPanel
-            tables={project.tables}
+            tables={orderedTables}
             table={activeTable}
             state={tableView.state}
             setState={tableView.onChange}
             activeTableSlug={activeTable.slug}
             onSelectTable={(slug) => setActiveTableSlug(slug)}
+            onReorderTables={(nextOrder) => setTableOrder(nextOrder)}
           />
         ) : null}
 
@@ -234,6 +262,7 @@ function DataPanel({
   setState,
   activeTableSlug,
   onSelectTable,
+  onReorderTables,
 }: {
   tables: AirtableTableDefinition[];
   table: AirtableTableDefinition;
@@ -241,14 +270,17 @@ function DataPanel({
   setState: (next: TableState) => void;
   activeTableSlug: string;
   onSelectTable: (slug: string) => void;
+  onReorderTables: (nextOrder: string[]) => void;
 }) {
   const [viewQuery, setViewQuery] = React.useState("");
   const [collapsedSidebar, setCollapsedSidebar] = React.useState(false);
   const [loadingRows, setLoadingRows] = React.useState(false);
+  const tabDragSlug = React.useRef<string | null>(null);
+  const [tabDragOverSlug, setTabDragOverSlug] = React.useState<string | null>(null);
   const gridClassNames = React.useMemo(
     () => ({
       container:
-        "flex flex-1 flex-col overflow-visible rounded-xl border border-[#121c34] bg-[#0c152a]/90 shadow-[0_30px_60px_rgba(2,8,20,0.55)]",
+        "flex flex-1 flex-col overflow-hidden rounded-xl border border-[#121c34] bg-[#0c152a]/90 shadow-[0_30px_60px_rgba(2,8,20,0.55)]",
       headerRow:
         "flex relative bg-[#101c38] border-b border-[#16254a] text-xs font-semibold uppercase tracking-wide text-slate-300",
       headerCell:
@@ -258,8 +290,9 @@ function DataPanel({
       row: "flex relative",
       plusButton:
         "rounded-full border border-slate-800 bg-[#0f1a32] px-3 py-1 text-xs text-slate-300 hover:bg-slate-800/70",
-      toolbar: "hidden",
-      search: "hidden",
+      toolbar:
+        "relative z-20 mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[#121f3c] bg-[#101c38]/90 px-3 py-2 text-xs text-slate-300",
+      search: "mb-3 flex items-center gap-2 text-xs text-slate-200",
       selection: "border-2 border-cyan-500 shadow-[0_0_10px_rgba(34,211,238,0.35)]",
       contextMenu:
         "rounded-lg border border-slate-700 bg-[#0f192f] text-slate-200 shadow-[0_16px_32px_rgba(4,16,36,0.6)]",
@@ -352,6 +385,61 @@ function DataPanel({
     if (!query) return viewItems;
     return viewItems.filter((view) => view.label.toLowerCase().includes(query));
   }, [viewItems, viewQuery]);
+
+  const reorderTabs = React.useCallback(
+    (targetSlug: string | null) => {
+      const dragged = tabDragSlug.current;
+      if (!dragged) return;
+      if (dragged === targetSlug) return;
+      const currentOrder = tables.map((item) => item.slug);
+      const fromIndex = currentOrder.indexOf(dragged);
+      if (fromIndex === -1) return;
+      const nextOrder = currentOrder.slice();
+      nextOrder.splice(fromIndex, 1);
+      if (targetSlug == null) {
+        nextOrder.push(dragged);
+      } else {
+        let toIndex = currentOrder.indexOf(targetSlug);
+        if (toIndex === -1) {
+          toIndex = nextOrder.length;
+        }
+        if (toIndex > fromIndex) {
+          toIndex -= 1;
+        }
+        nextOrder.splice(toIndex, 0, dragged);
+      }
+      tabDragSlug.current = null;
+      setTabDragOverSlug(null);
+      onReorderTables(nextOrder);
+    },
+    [onReorderTables, tables],
+  );
+
+  const handleTabDragStart = React.useCallback((slug: string, event: React.DragEvent<HTMLButtonElement>) => {
+    tabDragSlug.current = slug;
+    setTabDragOverSlug(slug);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", slug);
+  }, []);
+
+  const handleTabDragOver = React.useCallback((slug: string, event: React.DragEvent<HTMLButtonElement>) => {
+    if (!tabDragSlug.current) return;
+    if (tabDragSlug.current === slug) return;
+    event.preventDefault();
+    setTabDragOverSlug(slug);
+  }, []);
+
+  const handleTabDrop = React.useCallback((slug: string | null, event: React.DragEvent) => {
+    if (!tabDragSlug.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    reorderTabs(slug);
+  }, [reorderTabs]);
+
+  const handleTabDragEnd = React.useCallback(() => {
+    tabDragSlug.current = null;
+    setTabDragOverSlug(null);
+  }, []);
 
   return (
     <section className="flex min-h-0 flex-1 gap-5 overflow-hidden">
@@ -464,20 +552,39 @@ function DataPanel({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col gap-4">
-        <nav className="flex gap-2 overflow-x-auto rounded-xl border border-slate-900 bg-[#0c172f]/90 p-3 text-sm">
+        <nav
+          className="flex gap-2 overflow-x-auto rounded-xl border border-slate-900 bg-[#0c172f]/90 p-3 text-sm"
+          onDragOver={(event) => {
+            if (tabDragSlug.current) {
+              event.preventDefault();
+            }
+          }}
+          onDrop={(event) => handleTabDrop(null, event)}
+        >
           {tableShortcuts.map((entry) => {
             const isActive = entry.slug === activeTableSlug;
+            const isDragSource = tabDragSlug.current === entry.slug;
+            const isDragTarget = tabDragOverSlug === entry.slug && !isDragSource;
             return (
               <button
                 key={entry.slug}
                 type="button"
                 onClick={() => onSelectTable(entry.slug)}
+                draggable
+                onDragStart={(event) => handleTabDragStart(entry.slug, event)}
+                onDragOver={(event) => handleTabDragOver(entry.slug, event)}
+                onDrop={(event) => handleTabDrop(entry.slug, event)}
+                onDragEnd={handleTabDragEnd}
                 className={cn(
-                  "rounded-lg px-3 py-1.5 transition whitespace-nowrap",
+                  "rounded-lg px-3 py-1.5 transition whitespace-nowrap cursor-pointer select-none",
                   isActive
                     ? "bg-slate-200 text-slate-900 shadow"
                     : "bg-transparent text-slate-300 hover:bg-slate-800/60",
+                  isDragSource && "opacity-60",
+                  isDragTarget && "ring-2 ring-cyan-400/80",
                 )}
+                aria-pressed={isActive}
+                aria-grabbed={tabDragSlug.current === entry.slug}
               >
                 {entry.label}
               </button>
@@ -509,6 +616,7 @@ function RecordToolbar({ table }: { table: AirtableTableDefinition }) {
   const summary = table.summary;
   const [snapshotsOpen, setSnapshotsOpen] = React.useState(false);
   const snapshotsRef = React.useRef<HTMLDivElement | null>(null);
+  const viewLabel = table.viewName ?? "Grid view";
 
   const formattedLastAnalyzed = React.useMemo(() => {
     const raw = summary.lastAnalyzed;
@@ -578,44 +686,8 @@ function RecordToolbar({ table }: { table: AirtableTableDefinition }) {
       <div className="flex flex-wrap items-center gap-2">
         <span className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-[#141f3b] px-3 py-1.5 text-sm text-slate-200">
           <FaThLarge className="h-3.5 w-3.5 text-slate-400" aria-hidden />
-          Grid view
-          <FaChevronDown className="h-3 w-3 text-slate-500" aria-hidden />
+          {viewLabel}
         </span>
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-transparent px-3 py-1.5 text-xs uppercase tracking-wide text-slate-400 transition hover:bg-[#121f3c]"
-        >
-          <FaEyeSlash className="h-3.5 w-3.5" aria-hidden />
-          Hide fields
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-transparent px-3 py-1.5 text-xs uppercase tracking-wide text-slate-400 transition hover:bg-[#121f3c]"
-        >
-          <FaFilter className="h-3.5 w-3.5" aria-hidden />
-          Filter
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-transparent px-3 py-1.5 text-xs uppercase tracking-wide text-slate-400 transition hover:bg-[#121f3c]"
-        >
-          <FaLayerGroup className="h-3.5 w-3.5" aria-hidden />
-          Group
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-transparent px-3 py-1.5 text-xs uppercase tracking-wide text-slate-400 transition hover:bg-[#121f3c]"
-        >
-          <FaSortAmountDown className="h-3.5 w-3.5" aria-hidden />
-          Sort
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-transparent px-3 py-1.5 text-xs uppercase tracking-wide text-slate-400 transition hover:bg-[#121f3c]"
-        >
-          <FaPalette className="h-3.5 w-3.5" aria-hidden />
-          Color
-        </button>
         <div className="relative" ref={snapshotsRef}>
           <button
             type="button"
@@ -668,10 +740,6 @@ function RecordToolbar({ table }: { table: AirtableTableDefinition }) {
         <span className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-[#121f3c] px-2 py-1">
           <FaShareAlt className="h-3 w-3" aria-hidden />
           Share and sync
-        </span>
-        <span className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-[#121f3c] px-2 py-1">
-          <FaUndoAlt className="h-3 w-3" aria-hidden />
-          Undo
         </span>
         <span className="text-slate-500">{summary.rowCount.toLocaleString()} records</span>
       </div>

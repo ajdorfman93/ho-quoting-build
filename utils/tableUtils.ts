@@ -270,6 +270,8 @@ export interface InteractiveTableProps<T extends Record<string, any> = any> {
     container: string;
     grid: string;
     headerRow: string;
+    rowNumberHeader: string;
+    rowNumberCell: string;
     row: string;
     cell: string;
     headerCell: string;
@@ -725,6 +727,7 @@ const ALL_TYPES: Array<{ value: ColumnType; label: string }> = [
  * ---------------------------------------------------------*/
 
 type Selection = { r0: number; c0: number; r1: number; c1: number } | null;
+const ROW_NUMBER_COLUMN_WIDTH = 52;
 
 export function renderInteractiveTable<T extends Record<string, any> = any>(
   props: InteractiveTableProps<T>
@@ -795,9 +798,16 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const [rowHeightPreset, setRowHeightPreset] = React.useState<RowHeightPreset>("short");
   const rowHeightPresetRef = React.useRef<RowHeightPreset>("short");
   const [wrapHeaders, setWrapHeaders] = React.useState(false);
+  const selectAllCheckboxRef = React.useRef<HTMLInputElement | null>(null);
+  const [hoveredRowHeader, setHoveredRowHeader] = React.useState<number | null>(null);
   React.useEffect(() => {
     rowHeightPresetRef.current = rowHeightPreset;
   }, [rowHeightPreset]);
+  React.useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      selectAllCheckboxRef.current.indeterminate = selectAllIndeterminate;
+    }
+  }, [selectAllIndeterminate]);
   const [filterDraftColumn, setFilterDraftColumn] = React.useState<string>("");
   const [filterDraftOperator, setFilterDraftOperator] = React.useState<"contains" | "equals">("contains");
   const [filterDraftValue, setFilterDraftValue] = React.useState("");
@@ -821,6 +831,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const sortMenuPlacement = useAutoDropdownPlacement(sortMenuOpen, sortButtonRef, sortMenuRef, { offset: 8 });
   const colorMenuPlacement = useAutoDropdownPlacement(colorMenuOpen, colorButtonRef, colorMenuRef, { offset: 8 });
   const rowHeightMenuPlacement = useAutoDropdownPlacement(rowHeightMenuOpen, rowHeightButtonRef, rowHeightMenuRef, { offset: 8 });
+  const activeViewDefinition = React.useMemo(
+    () => availableViews.find((view) => view.instanceId === activeView),
+    [availableViews, activeView]
+  );
+  const ActiveViewIcon = (activeViewDefinition?.icon ?? FaThLarge) as React.ComponentType<{ className?: string }>;
+  const activeViewLabel = activeViewDefinition?.displayName ?? "Grid view";
 
   // sync from history index changes
   React.useEffect(() => {
@@ -1262,9 +1278,88 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     dragRef.current = null;
   }
 
+  function selectColumnByIndex(index: number) {
+    if (index < 0 || index >= columns.length) return;
+    const lastRow = rows.length > 0 ? rows.length - 1 : 0;
+    const alreadySelected =
+      selection &&
+      selection.c0 === index &&
+      selection.c1 === index &&
+      selection.r0 === 0 &&
+      selection.r1 >= lastRow;
+    if (alreadySelected) {
+      setSelection(null);
+      setActiveCell(null);
+      dragRef.current = null;
+      return;
+    }
+    const nextSelection: Selection = {
+      r0: 0,
+      c0: index,
+      r1: rows.length > 0 ? lastRow : 0,
+      c1: index
+    };
+    setSelection(nextSelection);
+    setActiveCell(rows.length ? { r: 0, c: index } : null);
+    dragRef.current = null;
+  }
+
+  function selectRowByIndex(index: number) {
+    if (index < 0 || index >= rows.length) return;
+    if (!columns.length) return;
+    const lastColumn = columns.length - 1;
+    const alreadySelected =
+      selection &&
+      selection.c0 === 0 &&
+      selection.c1 === lastColumn &&
+      index >= selection.r0 &&
+      index <= selection.r1;
+    const isSingleRow = alreadySelected && selection.r0 === selection.r1;
+    if (isSingleRow) {
+      setSelection(null);
+      setActiveCell(null);
+      dragRef.current = null;
+      return;
+    }
+    setSelection({
+      r0: index,
+      r1: index,
+      c0: 0,
+      c1: lastColumn
+    });
+    setActiveCell({ r: index, c: 0 });
+    dragRef.current = null;
+  }
+
+  function toggleSelectAllRows() {
+    if (!columns.length || !rows.length) {
+      setSelection(null);
+      setActiveCell(null);
+      dragRef.current = null;
+      return;
+    }
+    const lastRow = rows.length - 1;
+    const lastColumn = columns.length - 1;
+    if (isAllRowsSelected) {
+      setSelection(null);
+      setActiveCell(null);
+      dragRef.current = null;
+      return;
+    }
+    setSelection({
+      r0: 0,
+      r1: lastRow,
+      c0: 0,
+      c1: lastColumn
+    });
+    setActiveCell({ r: 0, c: 0 });
+    dragRef.current = null;
+  }
+
   /* Resize columns */
   function startColResize(idx: number, e: React.MouseEvent) {
     e.preventDefault();
+    e.stopPropagation();
     const startX = e.clientX;
     const startW = colWidths[idx];
     setColumnResizeHover(idx);
@@ -2697,7 +2792,25 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const bodyColumnIndices = headerColumnIndices;
   const isLoadMorePending = typeof loadingMoreRows === "boolean" ? loadingMoreRows : internalLoadMorePending;
   const resizeGuideContainerHeight = tableContainerRef.current?.scrollHeight ?? (headerHeight + totalVisibleRowHeight + 120);
-  const resizeGuideContainerWidth = tableContainerRef.current?.scrollWidth ?? Math.max(totalColumnWidth, viewport.width + 120);
+  const resizeGuideContainerWidth = tableContainerRef.current?.scrollWidth ?? Math.max(totalColumnWidth + ROW_NUMBER_COLUMN_WIDTH, viewport.width + 120);
+  const totalRowCount = rows.length;
+  const totalColumnCount = columns.length;
+  const lastRowIndex = totalRowCount > 0 ? totalRowCount - 1 : 0;
+  const lastColumnIndex = totalColumnCount > 0 ? totalColumnCount - 1 : 0;
+  const isRowSelectionRange = Boolean(
+    selection &&
+      totalColumnCount > 0 &&
+      selection.c0 === 0 &&
+      selection.c1 === lastColumnIndex
+  );
+  const isAllRowsSelected = Boolean(
+    isRowSelectionRange &&
+      selection &&
+      totalRowCount > 0 &&
+      selection.r0 === 0 &&
+      selection.r1 >= lastRowIndex
+  );
+  const selectAllIndeterminate = Boolean(isRowSelectionRange && selection && !isAllRowsSelected);
   const columnHandleTop = columnResizeGuide ? Math.max(0, Math.min(resizeGuideContainerHeight - 25, (columnResizeGuide.cursor ?? viewport.scrollTop) - 12)) : 0;
   const rowHandleLeft = rowResizeGuide ? Math.max(0, Math.min(resizeGuideContainerWidth - 25, (rowResizeGuide.cursor ?? viewport.scrollLeft) - 12)) : 0;
 
@@ -2845,11 +2958,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const columnPlaceholderWidth = columnDragHover ? (colWidths[columnDragHover.from] ?? minColumnWidth) : null;
   const columnPlaceholderHeader = columnPlaceholderLeft != null && columnPlaceholderWidth != null ? h("div", {
     className: "pointer-events-none absolute rounded border-2 border-dashed border-blue-400 bg-blue-400/10",
-    style: { left: `${columnPlaceholderLeft}px`, top: 4, height: `${headerHeight - 8}px`, width: `${columnPlaceholderWidth}px` }
+    style: { left: `${ROW_NUMBER_COLUMN_WIDTH + columnPlaceholderLeft}px`, top: 4, height: `${headerHeight - 8}px`, width: `${columnPlaceholderWidth}px` }
   }) : null;
   const columnPlaceholderBody = columnPlaceholderLeft != null && columnPlaceholderWidth != null ? h("div", {
     className: "pointer-events-none absolute border-2 border-dashed border-blue-400 bg-blue-400/10",
-    style: { left: `${columnPlaceholderLeft}px`, top: 0, bottom: 0, width: `${columnPlaceholderWidth}px` }
+    style: { left: `${ROW_NUMBER_COLUMN_WIDTH + columnPlaceholderLeft}px`, top: 0, bottom: 0, width: `${columnPlaceholderWidth}px` }
   }) : null;
 
   const rowPlaceholderTop = rowDragHover ? sum(rowHeights, 0, rowDragHover.to) : null;
@@ -2885,7 +2998,40 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     })
   ) : null;
 
-  const headerContent: React.ReactNode[] = [];
+  const headerContent: React.ReactNode[] = [
+    h("div", {
+      key: "row-number-header",
+      className: mergeClasses(
+        cx("rowNumberHeader", baseHeaderClass),
+        "sticky left-0 z-40 flex items-center justify-center px-2"
+      ),
+      style: {
+        width: `${ROW_NUMBER_COLUMN_WIDTH}px`,
+        minWidth: `${ROW_NUMBER_COLUMN_WIDTH}px`,
+        maxWidth: `${ROW_NUMBER_COLUMN_WIDTH}px`,
+        height: "100%"
+      },
+      onClick: (event: React.MouseEvent) => {
+        event.stopPropagation();
+        toggleSelectAllRows();
+      }
+    },
+      h("input", {
+        ref: selectAllCheckboxRef,
+        type: "checkbox",
+        className: "h-4 w-4 cursor-pointer accent-blue-500",
+        checked: isAllRowsSelected,
+        onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+          event.stopPropagation();
+          toggleSelectAllRows();
+        },
+        onClick: (event: React.MouseEvent<HTMLInputElement>) => {
+          event.stopPropagation();
+        },
+        "aria-label": "Select all rows"
+      })
+    )
+  ];
   if (columnSpacerLeft > 0) {
     headerContent.push(h("div", { key: "header-left-spacer", style: { flex: "0 0 auto", width: `${columnSpacerLeft}px`, height: "100%" } }));
   }
@@ -2896,13 +3042,19 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const isDraggingColumnHeader = columnDragHover && columnDragHover.from === c;
     const isColumnEdgeActive = columnResizeHover === c || (columnResizeGuide && columnResizeGuide.index === c);
     const isColumnResizing = !!(columnResizeGuide?.active && columnResizeGuide.index === c);
+    const columnFullySelected = !!selection &&
+      selection.c0 <= c &&
+      selection.c1 >= c &&
+      selection.r0 === 0 &&
+      (rows.length === 0 ? selection.r1 === 0 : selection.r1 >= rows.length - 1);
     headerContent.push(h("div",
       {
         key: colKey(col, c),
         className: mergeClasses(
           cx("headerCell", baseHeaderClass),
           "flex items-center gap-2 px-3 transition-transform",
-          isDraggingColumnHeader && "opacity-60 scale-[0.98] bg-blue-50/60 dark:bg-neutral-800/50"
+          isDraggingColumnHeader && "opacity-60 scale-[0.98] bg-blue-50/60 dark:bg-neutral-800/50",
+          columnFullySelected && "bg-blue-100 text-blue-700 dark:bg-neutral-700/80 dark:text-blue-100"
         ),
         style: (() => {
           const base: React.CSSProperties = {
@@ -2923,6 +3075,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         role: "columnheader",
         "data-c": c,
         draggable: true,
+        onClick: (event: React.MouseEvent) => {
+          const target = event.target as HTMLElement | null;
+          if (target?.closest("[data-header-menu-trigger='true']")) return;
+          if (target?.closest("[data-resize-handle='true']")) return;
+          selectColumnByIndex(c);
+        },
         onDragStart: (e: React.DragEvent) => startColumnDrag(c, e),
         onDragOver: (e: React.DragEvent) => onColumnDragOver(c, e),
         onDrop: (e: React.DragEvent) => onColumnDrop(c, e),
@@ -2994,7 +3152,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
                 onMouseLeave: () => cancelHoverOpen(),
                 "aria-haspopup": "menu",
                 "aria-expanded": headerMenu.menu?.columnIndex === c ? "true" : "false",
-                title: "Column options"
+                title: "Column options",
+                "data-header-menu-trigger": "true"
               }, h(FaChevronDown, { className: "h-3.5 w-3.5" }))
             );
           })(),
@@ -3006,6 +3165,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           isColumnResizing ? "w-2.5 bg-blue-500/90" : isColumnEdgeActive ? "w-2.5 bg-blue-400/70" : "w-1 bg-transparent"
         ),
         draggable: false,
+        "data-resize-handle": "true",
         onMouseDown: (e: React.MouseEvent) => startColResize(c, e),
         onMouseEnter: (e: React.MouseEvent) => {
           setColumnResizeHover(c);
@@ -3044,7 +3204,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const header = h("div",
     {
       className: mergeClasses(cx("headerRow", "flex relative bg-zinc-100 dark:bg-neutral-800 border-b border-zinc-300 dark:border-neutral-700")),
-      style: { height: `${headerHeight}px`, minWidth: `${Math.max(totalColumnWidth, columns.length ? totalColumnWidth : 0)}px` }
+      style: { height: `${headerHeight}px`, minWidth: `${Math.max(totalColumnWidth + ROW_NUMBER_COLUMN_WIDTH, ROW_NUMBER_COLUMN_WIDTH)}px` }
     },
     ...headerContent
   );
@@ -3095,6 +3255,49 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         title: isRowReorderLocked ? "Reorder disabled while sorted or grouped" : "Drag to reorder row"
       }, h(FaGripVertical, { className: "h-4 w-4" }))
     ];
+    const isRowSelected = isRowSelectionRange && selection && r >= selection.r0 && r <= selection.r1;
+    const showRowCheckbox = hoveredRowHeader === r || Boolean(isRowSelected);
+    rowChildren.push(
+      h("div", {
+        key: `row-number-${r}`,
+        className: mergeClasses(
+          cx("rowNumberCell", ""),
+          "sticky left-0 z-30 flex h-full cursor-pointer select-none items-center justify-center border-b border-r border-zinc-300 bg-white px-2 text-xs font-medium text-zinc-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300",
+          isRowSelected && "bg-blue-50/70 text-blue-600 dark:bg-neutral-800/70 dark:text-blue-100"
+        ),
+        style: {
+          width: `${ROW_NUMBER_COLUMN_WIDTH}px`,
+          minWidth: `${ROW_NUMBER_COLUMN_WIDTH}px`,
+          maxWidth: `${ROW_NUMBER_COLUMN_WIDTH}px`
+        },
+        role: "button",
+        tabIndex: 0,
+        "aria-label": `Select row ${r + 1}`,
+        "aria-pressed": isRowSelected ? "true" : "false",
+        onClick: () => selectRowByIndex(r),
+        onKeyDown: (ev: React.KeyboardEvent<HTMLDivElement>) => {
+          if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            selectRowByIndex(r);
+          }
+        },
+        onMouseEnter: () => setHoveredRowHeader(r),
+        onMouseLeave: () => setHoveredRowHeader((prev) => (prev === r ? null : prev))
+      },
+        showRowCheckbox
+          ? h("input", {
+              type: "checkbox",
+              className: "h-4 w-4 cursor-pointer accent-blue-500",
+              readOnly: true,
+              checked: Boolean(isRowSelected),
+              onClick: (ev: React.MouseEvent<HTMLInputElement>) => {
+                ev.stopPropagation();
+                selectRowByIndex(r);
+              }
+            })
+          : h("span", { className: "text-xs font-medium" }, String(r + 1))
+      )
+    );
     if (columnSpacerLeft > 0) {
       rowChildren.push(h("div", { key: `row-${r}-left-spacer`, style: { flex: "0 0 auto", width: `${columnSpacerLeft}px`, height: "100%" } }));
     }
@@ -3300,7 +3503,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       ref: gridRef,
       onMouseMove,
       onMouseUp: endDrag,
-      style: { minWidth: `${Math.max(totalColumnWidth, columns.length ? totalColumnWidth : 0)}px` }
+      style: { minWidth: `${Math.max(totalColumnWidth + ROW_NUMBER_COLUMN_WIDTH, ROW_NUMBER_COLUMN_WIDTH)}px` }
     },
     rowsContainer,
     columnPlaceholderBody,
@@ -4114,7 +4317,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           "aria-expanded": viewsDropdownOpen ? "true" : "false",
           "aria-controls": viewsDropdownOpen ? viewsDropdownId : undefined
         },
-          "Create new...",
+          h("span", { className: "inline-flex items-center gap-2" },
+            h(ActiveViewIcon, { className: "h-3.5 w-3.5" }),
+            h("span", { className: "font-semibold" }, `${activeViewLabel}`)
+          ),
           h(FaChevronDown, { className: mergeClasses("h-3 w-3 transition-transform", viewsDropdownOpen && "rotate-180") })
         ),
         viewsDropdownElement
@@ -4245,7 +4451,7 @@ function selectionBoxStyle(sel: Selection, colW: number[], rowH: number[], heade
   if (!sel) return {};
   const { r0, r1, c0, c1 } = sel;
   const top = headerH + sum(rowH, 0, r0) + SELECTION_VERTICAL_OFFSET;
-  const left = sum(colW, 0, c0);
+  const left = ROW_NUMBER_COLUMN_WIDTH + sum(colW, 0, c0);
   const height = sum(rowH, r0, r1 + 1);
   const width = sum(colW, c0, c1 + 1);
   return { top, left, height, width };
