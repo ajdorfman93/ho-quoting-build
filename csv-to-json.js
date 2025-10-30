@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 /**
  * csv-to-json.js — CSV → JSON (files or directories)
+ *
+ * Updates in this build:
+ * - **Empty cells ALWAYS emit []** (no empty strings), for every header.
+ * - All headers included for every row.
  * - Encoding: UTF-8 (BOM/none), UTF-16 LE/BE; strips BOM
  * - CSV parsing with quotes/escaped quotes
  * - Default pretty=2; use --pretty=0 to minify
- * - All headers required; blanks → "" (or [] for array fields)
- * - Arrays: CSV-aware splitting + City/State comma rule
+ * - Arrays: CSV-aware splitting + City/State comma rule (', ' + two uppercase letters)
  * - Plain text unless --infer-types
+ * - Directory mode (recursive) supported
  */
-//      node csv-to-json.js airtable/csv
 
-
+//                  node csv-to-json.js airtable/csv
 
 import fs from 'fs';
 import path from 'path';
@@ -43,6 +46,7 @@ const firstPositional = () => {
 if (hasFlag('help','h') || argv.length === 0) {
   console.log(`
 CSV → JSON (file or directory)
+* Empty cells emit [] (never "").
 
 File:
   node csv-to-json.js -i input.csv
@@ -84,7 +88,11 @@ if (!arrayFieldsRaw) {
   arrayFieldsRaw = [
     'Quote Line Items','Quote Line Items 2',
     'Openings','Openings 2','Openings 3','Openings 4',
-    'Hardware Set','Hardware Sets','Components','Items','Item Ids','Quote Line Item Ids'
+    'Hardware','Hardware 2',
+    'Hardware Set','Hardware Sets',
+    'Hardware Set Items','Hardware Set Item',
+    'Components','Items','Item Ids','Quote Line Item Ids',
+    'Projects'
   ].join(',');
 }
 const arrayFields = new Set(arrayFieldsRaw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
@@ -101,7 +109,6 @@ const decodeBufferSmart = buf => {
   }
   return buf.toString('utf8');
 };
-const readTextSmart = fp => decodeBufferSmart(fs.readFileSync(fp));
 
 /* -------------------- CSV helpers ---------------------- */
 const detectDelimiterFromLine = line => {
@@ -116,7 +123,6 @@ const detectDelimiterFromLine = line => {
 };
 const splitLines = s => s.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
 
-/** parseRow: CSV row → fields (handles quotes/escaped quotes) */
 function parseRow(line, delimiter) {
   const out = [];
   let field = '';
@@ -139,7 +145,6 @@ function parseRow(line, delimiter) {
 }
 
 /* ---------- Array tokenization helpers (smart) --------- */
-/** isCityStateComma: true if the comma at pos is the "City, ST" kind (ST=two uppercase letters) */
 function isCityStateComma(s, pos) {
   if (pos < 0 || pos >= s.length || s[pos] !== ',') return false;
   const after = s.slice(pos + 1);
@@ -147,53 +152,35 @@ function isCityStateComma(s, pos) {
   const a = after.charCodeAt(1), b = after.charCodeAt(2);
   const isUpper = c => c >= 65 && c <= 90;
   if (!isUpper(a) || !isUpper(b)) return false;
-  // If next char exists and is alphanumeric, it's probably *not* a clean postal code;
-  // BUT we still consider this a City/State comma to protect cases like "_Montreal, QB".
   return true;
 }
 
-/** unwrapQuotesOnce: remove exactly one pair of wrapping quotes (straight or smart) */
 function unwrapQuotesOnce(s) {
   if (s == null) return '';
   let v = String(s).trim();
   if (v.length >= 2 && v[0] === '"' && v[v.length - 1] === '"') v = v.slice(1, -1);
   else if (v.length >= 2 && v[0] === '“' && v[v.length - 1] === '”') v = v.slice(1, -1);
-  // normalize doubled or backslash-escaped quotes
   v = v.replace(/\\"/g, '"').replace(/""/g, '"');
-  // strip a trailing underscore that’s right before a list divider artifact (Airtable export quirk)
   v = v.replace(/_$/, '');
   return v.trim();
 }
 
-/**
- * splitArraySmart:
- * 1) If the whole string looks like a CSV list with quoted items, reuse a CSV tokenizer per item.
- * 2) Otherwise, split on commas that are NOT City/State commas.
- */
 function splitArraySmart(val) {
   const s = String(val).trim();
   if (s === '') return [];
-
-  // Fast-path: if it contains quoted items separated by commas, trust CSV tokenization.
-  // E.g.:  "Home 2 ..., OH", "Home 2 ..., OH - 12"
   const looksQuotedList = /(^"|, ")/.test(s) && s.includes('"');
   if (looksQuotedList) {
-    // tokenizing with CSV rule
-    const tokens = parseRow(s, ',').map(t => unwrapQuotesOnce(t)).filter(t => t !== '');
-    return tokens;
+    return parseRow(s, ',').map(t => unwrapQuotesOnce(t)).filter(t => t !== '');
   }
-
-  // Otherwise, manual scan with City/State protection
   const out = [];
   let buf = '';
   for (let i = 0; i < s.length; i++) {
     const ch = s[i];
     if (ch === ',') {
-      if (isCityStateComma(s, i)) { buf += ch; } // keep comma inside City, ST
+      if (isCityStateComma(s, i)) { buf += ch; }
       else {
         out.push(buf.trim());
         buf = '';
-        // optional whitespace after a real divider
         if (i + 1 < s.length && s[i + 1] === ' ') i++;
       }
     } else {
@@ -207,14 +194,11 @@ function splitArraySmart(val) {
 /* -------------------- Value coercion ------------------- */
 function coerceValue(key, raw) {
   const k = key.toLowerCase();
-  if (raw == null) return arrayFields.has(k) ? [] : '';
+  if (raw == null) return [];                           // EMPTY → []
   const base = unwrapQuotesOnce(raw);
-  if (arrayFields.has(k)) {
-    const arr = splitArraySmart(base);
-    return arr;
-  }
-  if (!inferTypes) return base;
-  if (base === '') return '';
+  if (base === '') return [];                           // EMPTY → []
+  if (arrayFields.has(k)) return splitArraySmart(base); // arrays
+  if (!inferTypes) return base;                         // scalars: plain text
   if (/^-?\d+$/.test(base)) { const n = parseInt(base, 10); if (Number.isSafeInteger(n)) return n; }
   if (/^-?\d*\.\d+$/.test(base)) { const f = parseFloat(base); if (!Number.isNaN(f)) return f; }
   if (/^(true|false)$/i.test(base)) return /^true$/i.test(base);
@@ -224,7 +208,6 @@ function coerceValue(key, raw) {
 
 /* -------------------- Conversion ----------------------- */
 function convertCSVStringToJSON(str) {
-  // normalize encoding & strip BOM
   const norm = stripBOMChar(str);
   const lines = splitLines(norm);
   let headerLineIdx = -1;
@@ -235,7 +218,6 @@ function convertCSVStringToJSON(str) {
   const delim = detectDelimiterFromLine(headerLine);
   let headers = parseRow(headerLine, delim).map(h => stripBOMChar(h).trim());
 
-  // Dedup headers if necessary
   const seen = new Map();
   headers = headers.map((h, idx) => {
     const key = h || `Column ${idx + 1}`;
@@ -286,9 +268,8 @@ async function handleFile(inputFilePath, outPath, ndjson) {
   if (ndjson) {
     for (const r of rows) {
       for (const h of headers) {
-        if (!Object.prototype.hasOwnProperty.call(r, h) || r[h] == null || r[h] === '') {
-          r[h] = arrayFields.has(h.toLowerCase()) ? [] : '';
-        }
+        if (!Object.prototype.hasOwnProperty.call(r, h) || r[h] == null) r[h] = [];
+        if (r[h] === '') r[h] = []; // force [] for empties
       }
       outStream.write(JSON.stringify(r));
       outStream.write(os.EOL);
@@ -298,11 +279,7 @@ async function handleFile(inputFilePath, outPath, ndjson) {
       const full = {};
       for (const h of headers) {
         let v = r[h];
-        if (arrayFields.has(h.toLowerCase())) {
-          if (v == null || v === '' || (Array.isArray(v) && v.length === 0)) v = [];
-        } else {
-          if (v == null) v = '';
-        }
+        if (v == null || v === '') v = [];   // ALWAYS [] for empties
         full[h] = v;
       }
       return full;
