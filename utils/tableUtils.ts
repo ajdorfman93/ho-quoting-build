@@ -34,6 +34,7 @@ import {
   FaPaperclip,
   FaPalette,
   FaPencilAlt,
+  FaPlus,
   FaPercent,
   FaPhoneAlt,
   FaProjectDiagram,
@@ -1753,6 +1754,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       if (!target) return;
 
       const insideSelectDropdown = Boolean(target.closest("[data-select-dropdown]"));
+      const insideRecordDropdown = Boolean(target.closest("[data-linked-record-dropdown]"));
       const insideHeaderContextMenu = Boolean(target.closest("[data-header-context-menu]"));
       const headerAnchor = headerMenuState?.anchorElement ?? null;
       const insideHeaderAnchor = headerAnchor ? headerAnchor.contains(target) : false;
@@ -1789,13 +1791,20 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         return;
       }
 
+      if (recordLinkDropdown) {
+        if (!insideRecordDropdown) {
+          commitEdit();
+        }
+        return;
+      }
+
       if (editing && !insideCellEditor) {
         commitEdit();
       }
     };
     window.addEventListener("pointerdown", handlePointerDown, true);
     return () => window.removeEventListener("pointerdown", handlePointerDown, true);
-  }, [editing, selectDropdown, headerMenuState, closeHeaderMenu, cellMenuState, closeCellMenu, confirmAction, cancelDeletion, detailsModal, setDetailsModal, commitEdit, fieldConfigPanel, closeFieldConfigPanel]);
+  }, [editing, selectDropdown, recordLinkDropdown, headerMenuState, closeHeaderMenu, cellMenuState, closeCellMenu, confirmAction, cancelDeletion, detailsModal, setDetailsModal, commitEdit, fieldConfigPanel, closeFieldConfigPanel]);
 
   React.useEffect(() => {
     if (fieldConfigPanel && !columns[fieldConfigPanel.columnIndex]) {
@@ -2202,15 +2211,30 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         mode: col.type === "singleSelect" ? "single" : "multiple",
         search: ""
       });
+      setRecordLinkDropdown(null);
+      return;
+    }
+    if (col.type === "linkToRecord") {
+      setRecordLinkDropdown({
+        r,
+        c,
+        search: "",
+        expanded: false,
+        addedRecords: []
+      });
+      setSelectDropdown(null);
       return;
     }
     setSelectDropdown(null);
+    setRecordLinkDropdown(null);
     // focus happens after input is rendered
     setTimeout(() => editorRef.current?.focus(), 0);
   }
   function commitEdit() {
     if (!editing) return;
     setSelectDropdown(null);
+    setRecordLinkDropdown(null);
+    setRecordLinkDropdownAnchor(null);
     const { r, c } = editing;
     editOriginalRef.current = null;
     setEditing(null);
@@ -2220,6 +2244,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   function cancelEdit() {
     if (!editing) return;
     setSelectDropdown(null);
+    setRecordLinkDropdown(null);
+    setRecordLinkDropdownAnchor(null);
     const { r, c } = editing;
     const col = columns[c];
     const previous = deepClone(editOriginalRef.current);
@@ -4701,6 +4727,199 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         onSelect: handleSelect,
         onCancel: () => cancelEdit()
       })
+    );
+  })() : null;
+
+  const recordLinkDropdownElement = recordLinkDropdown ? (() => {
+    const { r, c, search, addedRecords } = recordLinkDropdown;
+    const column = columns[c];
+    if (!column) return null;
+    const anchorElement = recordLinkDropdownAnchor?.element ?? undefined;
+    const anchorRect = recordLinkDropdownAnchor?.rect ?? undefined;
+    if (!anchorElement && !anchorRect) return null;
+    const config = column.config?.linkToRecord ?? {};
+    const allowCreate = config.allowCreate ?? true;
+    const multiple = config.multiple ?? true;
+    const baseRecords = Array.isArray(config.records) ? config.records : [];
+    const extraRecords = Array.isArray(addedRecords) ? addedRecords : [];
+    const deduped = new Map<string, LinkedRecordOption>();
+    const registerRecord = (record: LinkedRecordOption | null | undefined) => {
+      if (!record || !record.id) return;
+      if (!deduped.has(record.id)) {
+        deduped.set(record.id, {
+          id: record.id,
+          title: record.title ?? record.id,
+          meta: record.meta && typeof record.meta === "object" ? record.meta : undefined
+        });
+      }
+    };
+    [...baseRecords, ...extraRecords].forEach(registerRecord);
+    if (deduped.size === 0) {
+      const seen = new Set<string>();
+      rows.forEach((row) => {
+        const raw = (row as any)[column.key as keyof T];
+        const collect = (entry: unknown) => {
+          if (!entry) return;
+          if (typeof entry === "string") {
+            if (seen.has(entry)) return;
+            seen.add(entry);
+            registerRecord({ id: entry, title: entry });
+            return;
+          }
+          if (typeof entry === "object") {
+            const maybe = entry as { id?: string; title?: string; name?: string };
+            const id = maybe.id ?? maybe.title ?? maybe.name;
+            if (!id || seen.has(id)) return;
+            seen.add(id);
+            registerRecord({ id, title: maybe.title ?? maybe.name ?? id });
+          }
+        };
+        if (Array.isArray(raw)) raw.forEach(collect);
+        else collect(raw);
+      });
+    }
+    const recordsList = Array.from(deduped.values());
+    const selectedIds = new Set<string>();
+    const rawValue = getCellValue(r, c);
+    const pushId = (value: unknown) => {
+      if (value == null) return;
+      if (typeof value === "string") {
+        selectedIds.add(value);
+      } else if (typeof value === "object" && "id" in (value as Record<string, unknown>)) {
+        const id = (value as Record<string, unknown>).id;
+        if (typeof id === "string") selectedIds.add(id);
+      } else {
+        selectedIds.add(String(value));
+      }
+    };
+    if (Array.isArray(rawValue)) rawValue.forEach(pushId);
+    else pushId(rawValue);
+
+    const normalizedSearch = search.trim().toLowerCase();
+    const matchesSearch = (record: LinkedRecordOption) => {
+      if (!normalizedSearch) return true;
+      if (record.title.toLowerCase().includes(normalizedSearch)) return true;
+      if (record.meta) {
+        return Object.values(record.meta).some((value) =>
+          String(value).toLowerCase().includes(normalizedSearch)
+        );
+      }
+      return false;
+    };
+    const filteredRecords = recordsList.filter(matchesSearch);
+    const dropdownMinWidth = Math.max(320, anchorRect?.width ?? 320);
+
+    const toggleRecord = (record: LinkedRecordOption) => {
+      const nextIds = new Set(selectedIds);
+      if (multiple) {
+        if (nextIds.has(record.id)) nextIds.delete(record.id);
+        else nextIds.add(record.id);
+      } else {
+        nextIds.clear();
+        nextIds.add(record.id);
+      }
+      const payload = multiple ? Array.from(nextIds) : Array.from(nextIds)[0] ?? null;
+      setCellValue(r, c, payload ?? (multiple ? [] : null));
+      if (!multiple) {
+        commitEdit();
+      }
+    };
+
+    const handleCreateRecord = () => {
+      if (!allowCreate || typeof window === "undefined") return;
+      const suggestion = search.trim();
+      const result = window.prompt("Name for the new linked record:", suggestion);
+      if (!result) return;
+      const title = result.trim();
+      if (!title) return;
+      const generatedId = `rec_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      const newRecord: LinkedRecordOption = {
+        id: generatedId,
+        title,
+        meta: { Source: "Created in grid" }
+      };
+      setRecordLinkDropdown((prev) => (prev ? {
+        ...prev,
+        search: "",
+        addedRecords: [...prev.addedRecords.filter((entry) => entry.id !== newRecord.id), newRecord]
+      } : prev));
+      const nextIds = multiple ? new Set([...selectedIds, generatedId]) : new Set<string>([generatedId]);
+      const payload = multiple ? Array.from(nextIds) : generatedId;
+      setCellValue(r, c, payload ?? (multiple ? [] : null));
+      if (!multiple) {
+        commitEdit();
+      }
+    };
+
+    const optionNodes = filteredRecords.length
+      ? filteredRecords.map((record) => {
+          const isSelected = selectedIds.has(record.id);
+          return h("button", {
+            key: record.id,
+            type: "button",
+            className: mergeClasses(
+              "flex w-full flex-col gap-1 rounded-lg border px-3 py-2 text-left text-sm transition",
+              isSelected
+                ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:border-blue-400/50 dark:text-blue-200"
+                : "border-transparent hover:border-blue-200 hover:bg-blue-50 dark:hover:bg-neutral-800"
+            ),
+            onClick: () => toggleRecord(record)
+          },
+            h("div", { className: "flex items-center justify-between gap-3" },
+              h("span", { className: "font-semibold" }, record.title),
+              isSelected ? h(FaCheck, { className: "h-4 w-4 text-blue-500 dark:text-blue-300" }) : null
+            ),
+            record.meta
+              ? h("div", {
+                  className: "text-xs text-zinc-500 dark:text-neutral-400"
+                }, Object.entries(record.meta)
+                  .map(([key, value]) => `${key}: ${value}`)
+                  .join(" • "))
+              : null
+          );
+        })
+      : [
+          h("div", {
+            key: "empty",
+            className: "rounded-lg border border-dashed border-zinc-300 px-3 py-4 text-center text-xs text-zinc-500 dark:border-neutral-700 dark:text-neutral-400"
+          }, normalizedSearch ? `No records found for "${search.trim()}".` : "No linked records available.")
+        ];
+
+    return h(FloatingMenuSurface, {
+      key: "link-record-dropdown",
+      className: "fixed z-50 rounded-xl border border-zinc-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-900",
+      anchorElement,
+      anchorRect,
+      align: "start",
+      side: "bottom",
+      offset: 6,
+      style: { minWidth: `${dropdownMinWidth}px`, maxWidth: "420px" },
+      "data-linked-record-dropdown": "true"
+    },
+      h("div", { className: "flex flex-col gap-3 p-3" },
+        h("div", { className: "relative" },
+          h("input", {
+            type: "search",
+            value: search,
+            onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+              const value = event.currentTarget.value;
+              setRecordLinkDropdown((prev) => (prev ? { ...prev, search: value } : prev));
+            },
+            placeholder: "Find a record",
+            className: "w-full rounded-lg border border-zinc-300 px-3 py-2 pl-8 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+          }),
+          h(FaSearch, { className: "pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 dark:text-neutral-500" })
+        ),
+        h("div", { className: "max-h-72 overflow-y-auto space-y-1" }, ...optionNodes),
+        allowCreate ? h("button", {
+          type: "button",
+          className: "inline-flex items-center justify-center gap-2 rounded-full border border-blue-500 px-3 py-1.5 text-sm font-semibold text-blue-600 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 dark:border-blue-400 dark:text-blue-200 dark:hover:bg-blue-500/10",
+          onClick: handleCreateRecord
+        },
+          h(FaPlus, { className: "h-3.5 w-3.5" }),
+          "Create new linked record"
+        ) : null
+      )
     );
   })() : null;
 
