@@ -1642,18 +1642,30 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   }, []);
 
   const applyFieldConfigChanges = React.useCallback((columnIndex: number, name: string, config: NonNullable<ColumnSpec<T>["config"]>) => {
+    let nextSnapshot: ColumnSpec<T>[] | null = null;
     setColumns((prev) => {
       const current = prev[columnIndex];
       if (!current) return prev;
       const next = deepClone(prev);
       const target = next[columnIndex];
-      target.name = name || target.name;
+      const nextName = name || target.name;
       const sanitized = deepClone(config);
-      target.config = Object.keys(sanitized).length ? sanitized : undefined;
-      commit(latestRowsRef.current, next);
+      const normalizedConfig = Object.keys(sanitized).length ? sanitized : undefined;
+      const unchangedName = current.name === nextName;
+      const currentConfigSerialized = current.config ? JSON.stringify(current.config) : "";
+      const nextConfigSerialized = normalizedConfig ? JSON.stringify(normalizedConfig) : "";
+      if (unchangedName && currentConfigSerialized === nextConfigSerialized) {
+        return prev;
+      }
+      target.name = nextName;
+      target.config = normalizedConfig;
+      nextSnapshot = next;
       return next;
     });
-  }, [commit]);
+    if (nextSnapshot) {
+      pendingColumnCommitRef.current = nextSnapshot;
+    }
+  }, []);
 
   const openFieldConfiguration = React.useCallback((columnIndex: number) => {
     const column = columns[columnIndex];
@@ -1683,6 +1695,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const tableContainerRef = React.useRef<HTMLDivElement | null>(null);
   const colWidthsRef = React.useRef(colWidths);
   const rowHeightsRef = React.useRef(rowHeights);
+  const pendingColumnCommitRef = React.useRef<ColumnSpec<T>[] | null>(null);
   const lastSelectDropdownElementRef = React.useRef<HTMLElement | null>(null);
   const lastRecordDropdownElementRef = React.useRef<HTMLElement | null>(null);
 
