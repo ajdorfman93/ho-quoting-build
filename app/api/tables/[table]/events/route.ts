@@ -48,7 +48,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error(`Failed to open event stream for ${params.table}`, error);
+    console.error("Failed to open event stream", error);
     return NextResponse.json(
       { error: "Failed to open event stream" },
       { status: 500 }
