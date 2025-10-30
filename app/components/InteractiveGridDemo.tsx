@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Sortable from "sortablejs";
 import {
   renderInteractiveTable,
   type ColumnSpec,
@@ -298,6 +299,9 @@ export default function InteractiveGridDemo({
   );
   const syncingRef = React.useRef(syncing);
   const ignoreEventsRef = React.useRef(false);
+  const tableTabsContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const tableTabsSortableRef = React.useRef<Sortable | null>(null);
+  const latestTablesRef = React.useRef<TableMetadata[]>(tables);
 
   const replaceState = React.useCallback((next: GridState) => {
     const snapshot = cloneState(next);
@@ -682,6 +686,65 @@ export default function InteractiveGridDemo({
     syncingRef.current = syncing;
   }, [syncing]);
 
+  React.useEffect(() => {
+    latestTablesRef.current = tables;
+  }, [tables]);
+
+  React.useEffect(() => {
+    if (tableSelectorVariant !== "tabs") {
+      if (tableTabsSortableRef.current) {
+        tableTabsSortableRef.current.destroy();
+        tableTabsSortableRef.current = null;
+      }
+      return;
+    }
+    const container = tableTabsContainerRef.current;
+    if (!container) return;
+    tableTabsSortableRef.current?.destroy();
+    const sortable = Sortable.create(container, {
+      animation: 150,
+      draggable: "[data-table-tab='true']",
+      handle: "[data-table-tab='true']",
+      disabled: tables.length < 2,
+      onEnd: () => {
+        const nodes = Array.from(
+          container.querySelectorAll<HTMLElement>("[data-table-tab='true']")
+        );
+        const orderedNames = nodes
+          .map((node) => node.dataset.tableName)
+          .filter((name): name is string => Boolean(name && name.length));
+        if (!orderedNames.length) return;
+        const currentTables = latestTablesRef.current;
+        if (orderedNames.length !== currentTables.length) return;
+        const lookup = new Map(
+          currentTables.map((table) => [table.table_name, table] as const)
+        );
+        const nextTables: TableMetadata[] = [];
+        for (const name of orderedNames) {
+          const table = lookup.get(name);
+          if (!table) {
+            return;
+          }
+          nextTables.push(table);
+        }
+        if (nextTables.length !== currentTables.length) return;
+        const changed = nextTables.some(
+          (table, index) =>
+            table.table_name !== currentTables[index].table_name
+        );
+        if (!changed) return;
+        setTables(nextTables);
+      },
+    });
+    tableTabsSortableRef.current = sortable;
+    return () => {
+      sortable.destroy();
+      if (tableTabsSortableRef.current === sortable) {
+        tableTabsSortableRef.current = null;
+      }
+    };
+  }, [tableSelectorVariant, tables.length]);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -698,6 +761,7 @@ export default function InteractiveGridDemo({
               role="tablist"
               aria-labelledby={tableLabelId}
               className="flex overflow-x-auto flex-wrap gap-2"
+              ref={tableTabsContainerRef}
             >
               {tables.length > 0 ? (
                 tables.map((table) => {
@@ -707,6 +771,8 @@ export default function InteractiveGridDemo({
                       key={table.table_name}
                       type="button"
                       role="tab"
+                      data-table-tab="true"
+                      data-table-name={table.table_name}
                       aria-selected={isActive}
                       className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                         isActive

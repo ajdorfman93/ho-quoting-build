@@ -1879,6 +1879,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       handle: "[data-row-handle='true']",
       draggable: "[data-row-index]",
       onEnd: () => {
+        if (isRowReorderLockedRef.current) {
+          return;
+        }
         const nodes = Array.from(container.querySelectorAll<HTMLElement>("[data-row-index]"));
         const nextVisibleOrder = nodes
           .map((node) => Number(node.dataset.rowIndex))
@@ -3343,129 +3346,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     commit(updatedRows, next);
   }
 
-  function computeColumnDropTarget(from: number, over: number) {
-    const maxIndex = columns.length;
-    const placingAtEnd = over >= maxIndex;
-    let target = placingAtEnd ? maxIndex : over;
-    if (!placingAtEnd && from < over) target = Math.max(0, over - 1);
-    if (target < 0) target = 0;
-    if (target > maxIndex) target = maxIndex;
-    return target;
-  }
-
-  function computeRowDropTarget(from: number, over: number) {
-    const maxIndex = rows.length;
-    const placingAtEnd = over >= maxIndex;
-    let target = placingAtEnd ? maxIndex : over;
-    if (!placingAtEnd && from < over) target = Math.max(0, over - 1);
-    if (target < 0) target = 0;
-    if (target > maxIndex) target = maxIndex;
-    return target;
-  }
-
-  function startColumnDrag(idx: number, e: React.DragEvent) {
-    columnDragRef.current = { from: idx };
-    setColumnDragHover({ from: idx, to: idx });
-    e.dataTransfer.effectAllowed = "move";
-    try {
-      e.dataTransfer.setData("text/plain", String(idx));
-    } catch {
-      /* no-op for browsers that disallow setData */
-    }
-  }
-
-  function onColumnDragOver(idx: number, e: React.DragEvent) {
-    if (!columnDragRef.current) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    const from = columnDragRef.current.from;
-    const target = computeColumnDropTarget(from, idx);
-    setColumnDragHover({ from, to: target });
-  }
-
-  function onColumnDrop(idx: number, e: React.DragEvent) {
-    if (!columnDragRef.current) return;
-    e.preventDefault();
-    const from = columnDragRef.current.from;
-    columnDragRef.current = null;
-    setColumnDragHover(null);
-    if (from === idx) return;
-    const nextCols = columns.slice();
-    const nextWidths = colWidths.slice();
-    const [movedCol] = nextCols.splice(from, 1);
-    const [movedWidth] = nextWidths.splice(from, 1);
-    const placingAtEnd = idx >= columns.length;
-    let target = placingAtEnd ? nextCols.length : idx;
-    if (!placingAtEnd && from < idx) target = Math.max(0, idx - 1);
-    if (target < 0) target = 0;
-    if (target > nextCols.length) target = nextCols.length;
-    nextCols.splice(target, 0, movedCol);
-    nextWidths.splice(target, 0, movedWidth);
-    setColumns(nextCols);
-    setColWidths(nextWidths);
-    setSelection(null);
-    setActiveCell(null);
-    setEditing(null);
-    commit(rows, nextCols);
-  }
-
-  function endColumnDrag() {
-    columnDragRef.current = null;
-    setColumnDragHover(null);
-  }
-
-  function startRowDrag(idx: number, e: React.DragEvent) {
-    rowDragRef.current = { from: idx };
-    setRowDragHover({ from: idx, to: idx });
-    e.dataTransfer.effectAllowed = "move";
-    try {
-      e.dataTransfer.setData("text/plain", String(idx));
-    } catch {
-      /* ignore */
-    }
-  }
-
-  function onRowDragOver(idx: number, e: React.DragEvent) {
-    if (!rowDragRef.current) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    const from = rowDragRef.current.from;
-    const target = computeRowDropTarget(from, idx);
-    setRowDragHover({ from, to: target });
-  }
-
-  function onRowDrop(idx: number, e: React.DragEvent) {
-    if (!rowDragRef.current) return;
-    e.preventDefault();
-    const from = rowDragRef.current.from;
-    rowDragRef.current = null;
-    setRowDragHover(null);
-    if (from === idx) return;
-    const nextRows = rows.slice();
-    const nextHeights = rowHeights.slice();
-    const [movedRow] = nextRows.splice(from, 1);
-    const [movedHeight] = nextHeights.splice(from, 1);
-    const placingAtEnd = idx >= rows.length;
-    let target = placingAtEnd ? nextRows.length : idx;
-    if (!placingAtEnd && from < idx) target = Math.max(0, idx - 1);
-    if (target < 0) target = 0;
-    if (target > nextRows.length) target = nextRows.length;
-    nextRows.splice(target, 0, movedRow);
-    nextHeights.splice(target, 0, movedHeight);
-    setRows(nextRows);
-    latestRowsRef.current = nextRows;
-    setRowHeights(nextHeights);
-    setSelection(null);
-    setActiveCell(null);
-    setEditing(null);
-    commit(nextRows, columns);
-  }
-
-  function endRowDrag() {
-    rowDragRef.current = null;
-    setRowDragHover(null);
-  }
-
   const normalizeSortValue = (value: any): any => {
     if (value == null) return "";
     if (typeof value === "number") return value;
@@ -3610,6 +3490,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   const visibleRowIndexes = filteredRowIndexes;
   const isRowReorderLocked = Boolean(sortConfig || groupConfig);
+  const isRowReorderLockedRef = React.useRef(isRowReorderLocked);
+  React.useEffect(() => {
+    isRowReorderLockedRef.current = isRowReorderLocked;
+  }, [isRowReorderLocked]);
 
   const menuButtonClass = (active: boolean) =>
     mergeClasses(
@@ -4480,7 +4364,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const col = columns[c];
     if (!col) return;
     const isEditing = headerEditing === c;
-    const isDraggingColumnHeader = columnDragHover && columnDragHover.from === c;
     const isColumnEdgeActive = columnResizeHover === c || (columnResizeGuide && columnResizeGuide.index === c);
     const isColumnResizing = !!(columnResizeGuide?.active && columnResizeGuide.index === c);
     const columnFullySelected = !!selection &&
@@ -4495,31 +4378,25 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         className: mergeClasses(
           cx("headerCell", baseHeaderClass),
           "flex items-center gap-2 px-3 transition-transform",
-          isDraggingColumnHeader && "opacity-60 scale-[0.98] bg-blue-50/60 dark:bg-neutral-800/50",
           columnFullySelected && "bg-blue-100 text-blue-700 dark:bg-neutral-700/80 dark:text-blue-100"
         ),
         style: {
           width: `${colWidths[c]}px`,
           minWidth: `${colWidths[c]}px`,
-          maxWidth: `${colWidths[c]}px`,
-          transform: isDraggingColumnHeader ? "scale(0.98)" : undefined
+          maxWidth: `${colWidths[c]}px`
         },
         onDoubleClick: () => setHeaderEditing(c),
         onContextMenu: (e: React.MouseEvent) => headerMenu.open(e, c),
         role: "columnheader",
         "data-c": c,
         "data-header-cell": "true",
-        draggable: true,
+        "data-column-index": String(c),
         onClick: (event: React.MouseEvent) => {
           const target = event.target as HTMLElement | null;
           if (target?.closest("[data-header-menu-trigger='true']")) return;
           if (target?.closest("[data-resize-handle='true']")) return;
           selectColumnByIndex(c);
         },
-        onDragStart: (e: React.DragEvent) => startColumnDrag(c, e),
-        onDragOver: (e: React.DragEvent) => onColumnDragOver(c, e),
-        onDrop: (e: React.DragEvent) => onColumnDrop(c, e),
-        onDragEnd: () => endColumnDrag(),
         title: displayName
       },
       isEditing
@@ -4595,7 +4472,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     headerContent.push(h("div", { key: "header-right-spacer", style: { flex: "0 0 auto", width: `${columnSpacerRight}px`, height: "100%" } }));
   }
   headerContent.push(
-    columnPlaceholderHeader,
     h("div", {
       key: "header-resizer",
       className: "absolute bottom-0 left-0 right-0 h-1 cursor-row-resize",
@@ -4605,15 +4481,14 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       key: "header-add-column",
       className: mergeClasses(cx("plusButton", ""), "absolute -right-10 top-1/2 -translate-y-1/2 rounded-full border px-2 py-1 text-xs bg-white dark:bg-neutral-900"),
       onClick: addColumn,
-      title: "Add column",
-      onDragOver: (e: React.DragEvent) => onColumnDragOver(columns.length, e),
-      onDrop: (e: React.DragEvent) => onColumnDrop(columns.length, e)
+      title: "Add column"
     }, "+")
   );
 
   const header = h("div",
     {
       className: mergeClasses(cx("headerRow", "flex relative bg-zinc-100 dark:bg-neutral-800 border-b border-zinc-300 dark:border-neutral-700")),
+      ref: headerRowRef,
       style: { height: `${headerHeight}px`, minWidth: `${Math.max(totalColumnWidth + ROW_NUMBER_COLUMN_WIDTH, ROW_NUMBER_COLUMN_WIDTH)}px` }
     },
     ...headerContent
@@ -4625,12 +4500,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     if (!row) return null;
     const rowAccentColor = rowColorMap.get(r) ?? null;
     const groupLabel = groupHeaders.get(r) ?? null;
-    const isDraggingRow = rowDragHover && rowDragHover.from === r;
     const isRowEdgeActive = rowResizeHover === r || (rowResizeGuide && rowResizeGuide.index === r);
     const isRowResizing = !!(rowResizeGuide?.active && rowResizeGuide.index === r);
     const rowStyle: React.CSSProperties = {
-      height: `${rowHeights[r]}px`,
-      transform: isDraggingRow ? "scale(0.995)" : undefined
+      height: `${rowHeights[r]}px`
     };
     if (rowAccentColor) {
       const accent = `${rowAccentColor}4D`;
@@ -4647,17 +4520,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           "absolute -left-16 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border bg-white dark:bg-neutral-900 flex items-center justify-center text-zinc-400 hover:text-zinc-600",
           isRowReorderLocked && "cursor-not-allowed opacity-40"
         ),
-        draggable: !isRowReorderLocked,
+        "data-row-handle": "true",
         disabled: isRowReorderLocked,
-        onDragStart: (e: React.DragEvent) => {
-          if (isRowReorderLocked) {
-            e.preventDefault();
-            return;
-          }
-          e.stopPropagation();
-          startRowDrag(r, e);
-        },
-        onDragEnd: () => endRowDrag(),
         title: isRowReorderLocked ? "Reorder disabled while sorted or grouped" : "Drag to reorder row"
       }, h(FaGripVertical, { className: "h-4 w-4" }))
     ];
@@ -4714,8 +4578,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       const active = activeCell && activeCell.r === r && activeCell.c === c;
       const inSel = selection && r >= selection.r0 && r <= selection.r1 && c >= selection.c0 && c <= selection.c1;
       const isEditingCell = editing && editing.r === r && editing.c === c;
-      const isColumnEdgeActive = columnResizeHover === c || (columnResizeGuide && columnResizeGuide.index === c);
-      const isColumnResizing = !!(columnResizeGuide?.active && columnResizeGuide.index === c);
       const style: React.CSSProperties = {
         width: `${colWidths[c]}px`,
         minWidth: `${colWidths[c]}px`,
@@ -4731,11 +4593,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         style.backgroundColor = "rgba(59,130,246,0.08)";
       } else if (inSel) {
         style.boxShadow = "inset 0 0 0 2px rgba(59,130,246,0.35)";
-      }
-      if (columnDragHover && columnDragHover.from === c) {
-        style.opacity = 0.6;
-        style.transform = "scale(0.98)";
-        if (!style.backgroundColor) style.backgroundColor = "rgba(59,130,246,0.1)";
       }
       const cellValue = getCellValue(r, c);
       const displayContent = displayValue(cellValue, col);
@@ -4816,7 +4673,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         className: mergeClasses(
           cx("cell", baseCellClass),
           "px-2 py-1 overflow-hidden transition-transform",
-          columnDragHover && columnDragHover.from === c && "bg-blue-50/50 dark:bg-neutral-800/50",
           active && "ring-2 ring-blue-500"
         ),
         style,
@@ -4862,18 +4718,17 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       key: rowKey(row, r),
       className: mergeClasses(
         cx("row", "flex relative"),
-        "transition-transform",
-        isDraggingRow && "ring-2 ring-blue-300/60 bg-blue-50/70 dark:bg-neutral-800/60"
+        "transition-transform"
       ),
       style: rowStyle,
       role: "row",
-      onDragOver: (e: React.DragEvent) => onRowDragOver(r, e),
-      onDrop: (e: React.DragEvent) => onRowDrop(r, e)
+      "data-row-index": String(r)
     }, ...rowChildren);
   }).filter(Boolean);
 
   const rowsContainer = h("div", {
     key: "rows-container",
+    ref: rowsContainerRef,
     style: { paddingTop: `${rowSpacerTop}px`, paddingBottom: `${rowSpacerBottom}px` }
   }, ...rowElements);
 
@@ -4881,9 +4736,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     h("button", {
       type: "button",
       className: mergeClasses(cx("plusButton", ""), "rounded-full border px-3 py-1 text-sm bg-white dark:bg-neutral-900"),
-      onClick: addRow,
-      onDragOver: (e: React.DragEvent) => onRowDragOver(rows.length, e),
-      onDrop: (e: React.DragEvent) => onRowDrop(rows.length, e)
+      onClick: addRow
     }, "+ Add row")
   );
 
@@ -4908,8 +4761,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       style: { minWidth: `${Math.max(totalColumnWidth + ROW_NUMBER_COLUMN_WIDTH, ROW_NUMBER_COLUMN_WIDTH)}px` }
     },
     rowsContainer,
-    columnPlaceholderBody,
-    rowPlaceholderElement,
     selection && h("div", {
       className: mergeClasses(cx("selection", ""), "pointer-events-none absolute border-2 border-blue-500"),
       style: selectionBoxStyle(selection, colWidths, rowHeights, headerHeight)
