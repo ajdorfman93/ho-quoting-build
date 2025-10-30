@@ -1583,6 +1583,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     anchorRect: DOMRect | null;
     draftName: string;
     draftConfig: NonNullable<ColumnSpec<T>["config"]>;
+    draftType: ColumnType;
   } | null>(null);
   const [detailsModal, setDetailsModal] = React.useState<{ rowIndex: number } | null>(null);
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -1609,6 +1610,14 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   const updateFieldConfigName = React.useCallback((name: string) => {
     setFieldConfigPanel((prev) => (prev ? { ...prev, draftName: name } : prev));
+  }, []);
+
+  const updateFieldConfigType = React.useCallback((type: ColumnType) => {
+    setFieldConfigPanel((prev) => {
+      if (!prev || prev.draftType === type) return prev;
+      const nextConfig = normalizeFieldConfig(type, prev.draftConfig);
+      return { ...prev, draftType: type, draftConfig: nextConfig };
+    });
   }, []);
 
   const applyFieldConfigChanges = React.useCallback((columnIndex: number, name: string, config: NonNullable<ColumnSpec<T>["config"]>) => {
@@ -1643,7 +1652,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       anchorElement,
       anchorRect,
       draftName: column.name,
-      draftConfig
+      draftConfig,
+      draftType: column.type
     });
   }, [columns]);
 
@@ -4174,12 +4184,14 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     })
   ) : null;
 
+  const showSelectAllCheckbox = isAllRowsSelected || selectAllIndeterminate;
+
   const headerContent: React.ReactNode[] = [
     h("div", {
       key: "row-number-header",
       className: mergeClasses(
         cx("rowNumberHeader", baseHeaderClass),
-        "sticky left-0 z-40 flex items-center justify-center px-2",
+        "group sticky left-0 z-40 flex items-center justify-center px-2",
         isAllRowsSelected && "bg-blue-100 text-blue-700 dark:bg-neutral-700/80 dark:text-blue-100",
         selectAllIndeterminate && !isAllRowsSelected && "bg-blue-50/70 dark:bg-neutral-700/60"
       ),
@@ -4206,7 +4218,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       h("input", {
         ref: selectAllCheckboxRef,
         type: "checkbox",
-        className: "h-4 w-4 cursor-pointer accent-blue-500",
+        className: mergeClasses(
+          "h-4 w-4 cursor-pointer accent-blue-500 transition-opacity duration-150",
+          showSelectAllCheckbox
+            ? "opacity-100"
+            : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
+        ),
         checked: isAllRowsSelected,
         onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
           event.stopPropagation();
@@ -4234,6 +4251,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       selection.c1 >= c &&
       selection.r0 === 0 &&
       (rows.length === 0 ? selection.r1 === 0 : selection.r1 >= rows.length - 1);
+    const displayName = col.name === "[]" ? "" : col.name;
     headerContent.push(h("div",
       {
         key: colKey(col, c),
@@ -4265,7 +4283,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         onDragOver: (e: React.DragEvent) => onColumnDragOver(c, e),
         onDrop: (e: React.DragEvent) => onColumnDrop(c, e),
         onDragEnd: () => endColumnDrag(),
-        title: String(col.name)
+        title: displayName
       },
       isEditing
         ? h("input", {
@@ -4296,7 +4314,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
             };
             return h("div", { className: "group flex w-full items-center gap-2 truncate" },
               icon,
-              h("span", { className: "flex-1 truncate text-zinc-700 dark:text-zinc-200 font-medium" }, String(col.name)),
+              h("span", { className: "flex-1 truncate text-zinc-700 dark:text-zinc-200 font-medium" }, displayName),
               h("button", {
                 type: "button",
                 className: "ml-auto inline-flex h-6 w-6 items-center justify-center rounded opacity-0 transition-opacity hover:bg-blue-100 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-neutral-700 pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 focus-visible:opacity-100",
@@ -5073,10 +5091,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   })();
 
   const fieldConfigElement = fieldConfigPanel ? (() => {
-    const { columnIndex, anchorElement, anchorRect, draftConfig, draftName } = fieldConfigPanel;
+    const { columnIndex, anchorElement, anchorRect, draftConfig, draftName, draftType } = fieldConfigPanel;
     const column = columns[columnIndex];
     if (!column) return null;
-    const typeLabel = ALL_TYPES.find((opt) => opt.value === column.type)?.label ?? String(column.type);
+    const currentTypeLabel = ALL_TYPES.find((opt) => opt.value === draftType)?.label ?? String(draftType);
+    const typeIcon = renderColumnIcon(draftType);
+    const typeOptions = ALL_TYPES.map((opt) => h("option", { key: opt.value, value: opt.value }, opt.label));
 
     const renderToggle = (label: string, checked: boolean, onChange: (next: boolean) => void, description?: string) =>
       h("label", {
@@ -5730,7 +5750,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     };
 
     let typeContent: React.ReactNode;
-    switch (column.type) {
+    switch (draftType) {
       case "singleLineText":
         typeContent = buildSingleLineTextContent();
         break;
@@ -5764,7 +5784,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
     const handleSave = () => {
       const trimmedName = draftName.trim() || column.name;
-      const normalized = normalizeFieldConfig(column.type, draftConfig);
+      const normalized = normalizeFieldConfig(draftType, draftConfig);
+      if (draftType !== column.type) {
+        changeColumnType(columnIndex, draftType);
+      }
       applyFieldConfigChanges(columnIndex, trimmedName, normalized);
       closeFieldConfigPanel();
     };
@@ -5780,9 +5803,18 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           className: "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
         })
       ),
-      h("div", { className: "flex items-center gap-2 text-sm text-zinc-500 dark:text-neutral-300" },
-        renderColumnIcon(column.type),
-        h("span", null, typeLabel)
+      h("div", { className: "flex flex-col gap-1 text-sm text-zinc-500 dark:text-neutral-300" },
+        h("span", { className: "text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Field type"),
+        h("div", { className: "flex items-center gap-2" },
+          typeIcon ? h("span", { className: "shrink-0" }, typeIcon) : null,
+          h("select", {
+            value: draftType,
+            onChange: (event: React.ChangeEvent<HTMLSelectElement>) => updateFieldConfigType(event.currentTarget.value as ColumnType),
+            className: "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
+            "aria-label": "Field type",
+            title: currentTypeLabel
+          }, ...typeOptions)
+        )
       )
     );
 
