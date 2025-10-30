@@ -171,6 +171,12 @@ const ROW_HEIGHT_PRESETS = {
 
 type RowHeightPreset = keyof typeof ROW_HEIGHT_PRESETS;
 const ROW_COLOR_PALETTE = ["#22d3ee", "#fb7185", "#f97316", "#22c55e", "#818cf8", "#facc15", "#14b8a6", "#f472b6"] as const;
+const SORTABLE_ANIMATION_MS = 220;
+const SORTABLE_EASING = "cubic-bezier(0.2, 0.7, 0.3, 1)";
+const SORTABLE_SELECTED_CLASS = "grid-multi-selected";
+const SORTABLE_GHOST_CLASS = "grid-ghost";
+const SORTABLE_CHOSEN_CLASS = "grid-chosen";
+const SORTABLE_DRAG_CLASS = "grid-drag";
 
 const VIEW_DEFINITIONS: ViewDefinition[] = [
   { id: "grid", name: "Grid", icon: FaThLarge, colorClass: "text-blue-500", group: "primary" },
@@ -1812,10 +1818,18 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const container = headerRowRef.current;
     if (!container) return;
     const sortable = Sortable.create(container, {
-      animation: 150,
+      animation: SORTABLE_ANIMATION_MS,
+      easing: SORTABLE_EASING,
+      multiDrag: true,
+      selectedClass: SORTABLE_SELECTED_CLASS,
+      ghostClass: SORTABLE_GHOST_CLASS,
+      chosenClass: SORTABLE_CHOSEN_CLASS,
+      dragClass: SORTABLE_DRAG_CLASS,
+      fallbackTolerance: 4,
       draggable: "[data-header-cell='true']",
       handle: "[data-header-cell='true']",
-      filter: "[data-resize-handle='true'], [data-header-menu-trigger='true'], input, textarea, select, button, [contenteditable='true']",
+      filter:
+        "[data-resize-handle='true'], [data-header-menu-trigger='true'], input, textarea, select, button, [contenteditable='true']",
       onEnd: () => {
         const nodes = Array.from(container.querySelectorAll<HTMLElement>("[data-header-cell='true']"));
         const nextVisibleOrder = nodes
@@ -1882,7 +1896,14 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const container = rowsContainerRef.current;
     if (!container) return;
     const sortable = Sortable.create(container, {
-      animation: 150,
+      animation: SORTABLE_ANIMATION_MS,
+      easing: SORTABLE_EASING,
+      multiDrag: true,
+      selectedClass: SORTABLE_SELECTED_CLASS,
+      ghostClass: SORTABLE_GHOST_CLASS,
+      chosenClass: SORTABLE_CHOSEN_CLASS,
+      dragClass: SORTABLE_DRAG_CLASS,
+      fallbackTolerance: 4,
       handle: "[data-row-handle='true']",
       draggable: "[data-row-index]",
       onEnd: () => {
