@@ -102,9 +102,15 @@ export interface AirtableProject {
 
 const PROJECT_CACHE_TTL = 5 * 60 * 1000;
 
-let cachedProject: { project: AirtableProject; fetchedAt: number } | null = null;
-let pendingProject: Promise<AirtableProject> | null = null;
+type ProjectCacheEntry = { project: AirtableProject; fetchedAt: number };
+
+const projectCache = new Map<string, ProjectCacheEntry>();
+const pendingProjects = new Map<string, Promise<AirtableProject>>();
 let tableDefinitionIndex: Map<string, AirtableTableDefinition> | null = null;
+
+function getProjectCacheKey(options?: { includeDatabaseTables?: boolean }) {
+  return options?.includeDatabaseTables === false ? "files-only" : "with-database";
+}
 
 function updateTableDefinitionIndex(project: AirtableProject) {
   tableDefinitionIndex = new Map(
@@ -138,10 +144,14 @@ const SELECT_COLORS = [
   "#3ECF8E"
 ];
 
-async function generateAirtableProject(): Promise<AirtableProject> {
+async function generateAirtableProject(options?: {
+  includeDatabaseTables?: boolean;
+}): Promise<AirtableProject> {
+  const includeDatabaseTables = options?.includeDatabaseTables !== false;
+
   const [fileTables, databaseTables, automations] = await Promise.all([
     readRawTables(),
-    readDatabaseTables(),
+    includeDatabaseTables ? readDatabaseTables() : Promise.resolve<RawTable[]>([]),
     readAutomations()
   ]);
 
@@ -156,33 +166,43 @@ async function generateAirtableProject(): Promise<AirtableProject> {
   };
 }
 
-export async function loadAirtableProject(options?: { force?: boolean }): Promise<AirtableProject> {
+export async function loadAirtableProject(options?: {
+  force?: boolean;
+  includeDatabaseTables?: boolean;
+}): Promise<AirtableProject> {
+  const cacheKey = getProjectCacheKey(options);
   const now = Date.now();
+
   if (!options?.force) {
-    if (cachedProject && now - cachedProject.fetchedAt < PROJECT_CACHE_TTL) {
-      return cachedProject.project;
+    const cached = projectCache.get(cacheKey);
+    if (cached && now - cached.fetchedAt < PROJECT_CACHE_TTL) {
+      return cached.project;
     }
-    if (pendingProject) {
-      return pendingProject;
+    const pending = pendingProjects.get(cacheKey);
+    if (pending) {
+      return pending;
     }
   } else {
-    pendingProject = null;
+    projectCache.delete(cacheKey);
+    pendingProjects.delete(cacheKey);
   }
 
-  const loader = generateAirtableProject()
+  const loader = generateAirtableProject({
+    includeDatabaseTables: options?.includeDatabaseTables,
+  })
     .then((project) => {
-      cachedProject = { project, fetchedAt: Date.now() };
+      projectCache.set(cacheKey, { project, fetchedAt: Date.now() });
       updateTableDefinitionIndex(project);
-      pendingProject = null;
+      pendingProjects.delete(cacheKey);
       return project;
     })
     .catch((error) => {
-      pendingProject = null;
+      pendingProjects.delete(cacheKey);
       throw error;
     });
 
   if (!options?.force) {
-    pendingProject = loader;
+    pendingProjects.set(cacheKey, loader);
   }
 
   return loader;
@@ -192,13 +212,16 @@ export async function findAirtableTableBySource(sourceFile: string): Promise<Air
   const baseName = path.basename(sourceFile).toLowerCase();
 
   if (!tableDefinitionIndex) {
-    await loadAirtableProject();
+    await loadAirtableProject({ includeDatabaseTables: false });
   }
 
   const cachedMatch = tableDefinitionIndex?.get(baseName);
   if (cachedMatch) return cachedMatch;
 
-  const project = await loadAirtableProject({ force: true });
+  const project = await loadAirtableProject({
+    force: true,
+    includeDatabaseTables: false,
+  });
   updateTableDefinitionIndex(project);
   return tableDefinitionIndex?.get(baseName) ?? null;
 }
