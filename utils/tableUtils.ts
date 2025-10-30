@@ -237,12 +237,29 @@ function renderColumnIcon(type: ColumnType) {
 const FIELD_CONFIGURATION_TYPES = new Set<ColumnType>([
   "attachment",
   "singleLineText",
+  "longText",
+  "checkbox",
+  "multipleSelect",
+  "singleSelect",
+  "user",
+  "date",
   "phone",
-  "lastModifiedTime",
-  "linkToRecord",
-  "lookup",
+  "email",
+  "url",
+  "number",
+  "currency",
   "percent",
-  "user"
+  "duration",
+  "rating",
+  "formula",
+  "rollup",
+  "count",
+  "lookup",
+  "linkToRecord",
+  "createdTime",
+  "lastModifiedTime",
+  "createdBy",
+  "lastModifiedBy"
 ]);
 
 function normalizeFieldConfig(type: ColumnType, config: ColumnSpec["config"] | undefined): NonNullable<ColumnSpec["config"]> {

@@ -4,8 +4,30 @@
 import fs from "fs/promises";
 import path from "path";
 import { ColumnSpec, ColumnType, SelectOption } from "@/utils/tableUtils";
-import { listTables, getTableData, type TableRow } from "@/utils/tableService";
 import type { TableMetadata } from "@/utils/schema";
+
+type TableRow = Record<string, any>;
+
+type TableServiceModule = typeof import("./tableService");
+
+let tableServiceModulePromise: Promise<TableServiceModule> | null = null;
+
+async function loadTableServiceModule(): Promise<TableServiceModule | null> {
+  if (tableServiceModulePromise) {
+    try {
+      return await tableServiceModulePromise;
+    } catch {
+      return null;
+    }
+  }
+  tableServiceModulePromise = import("./tableService");
+  try {
+    return await tableServiceModulePromise;
+  } catch {
+    tableServiceModulePromise = null;
+    return null;
+  }
+}
 
 const DATA_DIR = path.join(process.cwd(), "airtable", "csv-json");
 const AUTOMATIONS_DIR = path.join(process.cwd(), "airtable", "js");
@@ -79,6 +101,18 @@ export interface AirtableProject {
   lastGenerated: string;
 }
 
+const PROJECT_CACHE_TTL = 5 * 60 * 1000;
+
+let cachedProject: { project: AirtableProject; fetchedAt: number } | null = null;
+let pendingProject: Promise<AirtableProject> | null = null;
+let tableDefinitionIndex: Map<string, AirtableTableDefinition> | null = null;
+
+function updateTableDefinitionIndex(project: AirtableProject) {
+  tableDefinitionIndex = new Map(
+    project.tables.map((table) => [table.fileName.toLowerCase(), table])
+  );
+}
+
 interface RawTable {
   name: string;
   slug: string;
@@ -105,7 +139,7 @@ const SELECT_COLORS = [
   "#3ECF8E"
 ];
 
-export async function loadAirtableProject(): Promise<AirtableProject> {
+async function generateAirtableProject(): Promise<AirtableProject> {
   const [fileTables, databaseTables, automations] = await Promise.all([
     readRawTables(),
     readDatabaseTables(),
@@ -121,6 +155,53 @@ export async function loadAirtableProject(): Promise<AirtableProject> {
     automations,
     lastGenerated: new Date().toISOString()
   };
+}
+
+export async function loadAirtableProject(options?: { force?: boolean }): Promise<AirtableProject> {
+  const now = Date.now();
+  if (!options?.force) {
+    if (cachedProject && now - cachedProject.fetchedAt < PROJECT_CACHE_TTL) {
+      return cachedProject.project;
+    }
+    if (pendingProject) {
+      return pendingProject;
+    }
+  } else {
+    pendingProject = null;
+  }
+
+  const loader = generateAirtableProject()
+    .then((project) => {
+      cachedProject = { project, fetchedAt: Date.now() };
+      updateTableDefinitionIndex(project);
+      pendingProject = null;
+      return project;
+    })
+    .catch((error) => {
+      pendingProject = null;
+      throw error;
+    });
+
+  if (!options?.force) {
+    pendingProject = loader;
+  }
+
+  return loader;
+}
+
+export async function findAirtableTableBySource(sourceFile: string): Promise<AirtableTableDefinition | null> {
+  const baseName = path.basename(sourceFile).toLowerCase();
+
+  if (!tableDefinitionIndex) {
+    await loadAirtableProject();
+  }
+
+  const cachedMatch = tableDefinitionIndex?.get(baseName);
+  if (cachedMatch) return cachedMatch;
+
+  const project = await loadAirtableProject({ force: true });
+  updateTableDefinitionIndex(project);
+  return tableDefinitionIndex?.get(baseName) ?? null;
 }
 
 async function readRawTables(): Promise<RawTable[]> {
@@ -152,16 +233,19 @@ async function readRawTables(): Promise<RawTable[]> {
 }
 
 async function readDatabaseTables(): Promise<RawTable[]> {
+  const tableService = await loadTableServiceModule();
+  if (!tableService) return [];
+
   let metadata: TableMetadata[] = [];
   try {
-    metadata = await listTables();
+    metadata = await tableService.listTables();
   } catch {
     return [];
   }
 
   const tables: RawTable[] = [];
   for (const entry of metadata) {
-    const table = await buildRawTableFromDatabase(entry);
+    const table = await buildRawTableFromDatabase(entry, tableService.getTableData);
     if (table) tables.push(table);
   }
   return tables;
@@ -178,7 +262,10 @@ function mergeRawTables(fileTables: RawTable[], databaseTables: RawTable[]): Raw
   return Array.from(combined.values());
 }
 
-async function buildRawTableFromDatabase(entry: TableMetadata): Promise<RawTable | null> {
+async function buildRawTableFromDatabase(
+  entry: TableMetadata,
+  getTableDataFn: TableServiceModule["getTableData"]
+): Promise<RawTable | null> {
   const tableName = entry.table_name;
   if (!tableName) return null;
 
@@ -189,7 +276,11 @@ async function buildRawTableFromDatabase(entry: TableMetadata): Promise<RawTable
 
   try {
     do {
-      const { columns: chunkColumns, rows, totalRows: reportedTotal } = await getTableData(tableName, {
+      const {
+        columns: chunkColumns,
+        rows,
+        totalRows: reportedTotal
+      } = await getTableDataFn(tableName, {
         limit: DATABASE_ROW_BATCH_SIZE,
         offset
       });

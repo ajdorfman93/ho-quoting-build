@@ -4,6 +4,7 @@ import type { ColumnSpec } from "./tableUtils";
 import { query, withTransaction } from "./db";
 import { emitTableChange } from "./realtime";
 import { ColumnMetadata, TableMetadata, toColumnKey } from "./schema";
+import { findAirtableTableBySource } from "./airtableLoader";
 
 export type TableRow = Record<string, unknown> & { id: string };
 
@@ -16,13 +17,25 @@ function assertSafeIdentifier(identifier: string): string {
   return identifier;
 }
 
+function normalizeColumnLabel(label: string): string {
+  return label.trim().toLowerCase().replace(/[\s_-]+/g, " ");
+}
+
+function cloneConfig<T>(value: T | undefined | null): T | undefined {
+  if (value === undefined || value === null) return undefined;
+  return JSON.parse(JSON.stringify(value));
+}
+
 function toColumnSpec(meta: ColumnMetadata): ColumnSpec<TableRow> {
+  const rawConfig = (meta.config ?? {}) as ColumnSpec<TableRow>["config"];
+  const config = rawConfig && Object.keys(rawConfig).length ? cloneConfig(rawConfig) : undefined;
+
   return {
     key: meta.column_name,
     name: meta.display_name,
     type: (meta.data_type as ColumnSpec<TableRow>["type"]) ?? "singleLineText",
     width: meta.width ?? 220,
-    ...(meta.config ?? {}),
+    config
   };
 }
 
@@ -112,7 +125,64 @@ export async function getTableData(
   }
 
   const metadata = tableResult.rows[0];
-  const columnSpecs = columns.rows.map((meta) => toColumnSpec(meta));
+  let airtableColumnLookup: Map<string, ColumnSpec<any>> | null = null;
+
+  if (metadata.source_file) {
+    try {
+      const definition = await findAirtableTableBySource(metadata.source_file);
+      if (definition) {
+        airtableColumnLookup = new Map();
+        for (const column of definition.columns) {
+          const displayKey = normalizeColumnLabel(String(column.name ?? ""));
+          if (displayKey) airtableColumnLookup.set(displayKey, column);
+
+          const keyKey = normalizeColumnLabel(String(column.key ?? ""));
+          if (keyKey && !airtableColumnLookup.has(keyKey)) {
+            airtableColumnLookup.set(keyKey, column);
+          }
+
+          const prefixedKey = normalizeColumnLabel(`col_${String(column.key ?? "")}`);
+          if (prefixedKey && !airtableColumnLookup.has(prefixedKey)) {
+            airtableColumnLookup.set(prefixedKey, column);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to enrich column metadata from Airtable definition", error);
+    }
+  }
+
+  const columnSpecs = columns.rows.map((meta) => {
+    const spec = toColumnSpec(meta);
+    if (airtableColumnLookup) {
+      const candidates = [
+        normalizeColumnLabel(String(meta.display_name ?? "")),
+        normalizeColumnLabel(String(meta.column_name ?? "")),
+        normalizeColumnLabel(String(spec.key ?? "")),
+      ].filter(Boolean);
+
+      let match: ColumnSpec<any> | undefined;
+      for (const key of candidates) {
+        const found = airtableColumnLookup.get(key);
+        if (found) {
+          match = found;
+          break;
+        }
+      }
+
+      if (match) {
+        spec.type = match.type;
+        spec.config = match.config ? cloneConfig(match.config) : undefined;
+        spec.width = match.width ?? spec.width;
+        if (match.description !== undefined) spec.description = match.description;
+        if (match.permissions !== undefined) spec.permissions = match.permissions;
+        if (match.hidden !== undefined) spec.hidden = match.hidden;
+        if (match.readOnly !== undefined) spec.readOnly = match.readOnly;
+      }
+    }
+    return spec;
+  });
+
   const tableRows = rowsResult.rows.map((row) => {
     const normalized: TableRow = { id: String((row as TableRow).id) };
     for (const [key, value] of Object.entries(row)) {
