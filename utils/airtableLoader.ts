@@ -5,8 +5,7 @@ import fs from "fs/promises";
 import path from "path";
 import { ColumnSpec, ColumnType, SelectOption } from "@/utils/tableUtils";
 import type { TableMetadata } from "@/utils/schema";
-
-type TableRow = Record<string, any>;
+import type { TableRow as TableServiceRow } from "./tableService";
 
 type TableServiceModule = typeof import("./tableService");
 
@@ -271,7 +270,7 @@ async function buildRawTableFromDatabase(
 
   let offset = 0;
   let totalRows = 0;
-  let columns: ColumnSpec<TableRow>[] | null = null;
+  let columns: ColumnSpec<TableServiceRow>[] | null = null;
   const records: GenericRow[] = [];
 
   try {

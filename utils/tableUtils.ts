@@ -1139,6 +1139,7 @@ interface FloatingMenuSurfaceProps extends React.HTMLAttributes<HTMLDivElement> 
   "data-select-dropdown"?: string;
   "data-header-context-menu"?: string;
   "data-cell-context-menu"?: string;
+  "data-linked-record-dropdown"?: string;
 }
 
 function FloatingMenuSurface({
@@ -5645,7 +5646,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       const viewOptions = linkConfig.views;
       const filterSummary =
         linkConfig.filter && typeof linkConfig.filter === "object"
-          ? (linkConfig.filter as Record<string, unknown>).summary ?? "Custom condition"
+          ? String((linkConfig.filter as { summary?: unknown }).summary ?? "Custom condition")
           : null;
       const handleEditFilter = () => {
         if (typeof window === "undefined") return;
