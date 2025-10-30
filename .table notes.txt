@@ -1,12 +1,12 @@
 ////////////////////////////table notes////////////////////////////
-    table:      Projects
-    Column:     P_Record_ID
-    Type:       Formula
-    Formula:    RECORD_ID()
-
-    table:      Projects
-    Column:     Quote ID
-    Type:       Formula
+    table:          Projects
+    Column:         P_Record_ID
+    Type:           Formula
+    Formula:        RECORD_ID()
+    
+    table:          Projects
+    Column:         Quote ID
+    Type:           Formula
     Formula:        generate: HO + MMDDYY + FirstLetterOfCustomer from  + SS
                     example:
                     Today is May 7, 2025 → 050725
@@ -14,59 +14,62 @@
                     Current time: 13:45:09 → 09
                     Final example Quote ID:
                     HO050725G09
-
-    table:      Projects
-    Column:     Quote PDF
-    Type:       Attachment
-    Format:     Files
-
-    table:      Projects
-    Column:     Today Plus # Days
-    Type:       Formula
-    Formula:    DATEADD(TODAY(), {# Days}, 'days')
-
-    table:      Projects
-    Column:     Project URL
-    Type:       Formula
-    Formula:    "https://airtable.com/appIBydxpXuSdssZW/pag51K34I43p0rTlc/" & RECORD_ID()
-
-    table:      Projects
-    Column:     CSV Upload
-    Type:       Attachment
-    Format:     Files
-
-    table:      Projects
-    Column:     Total Price
-    Type:       Rollup
-    Formula:    Openings field to roll up:
-                Opening Total Price
-                Aggregation formula which rolls up the values in each linked record
-                `SUM(values)`
     
-    table:      Projects
-    Column:     Opening Total Price 
-    Type:       Link to another record
-    Record:     Quote Line Items
-    Allow linking to multiple records
+    table:          Projects
+    Column:         Quote PDF
+    Type:           Attachment
+    Format:         Files
     
-    table:      Projects
-    Column:     Openings 
-    Type:       Link to another record
-    Record:     Openings
-    Allow linking to multiple records
-
-    table:      Projects
-    Column:     Openings 
-    Type:       Link to another record
-    Record:     Openings
-    Allow linking to multiple records
-
-
-
-
-
-
-
-
+    table:          Projects
+    Column:         Today Plus # Days
+    Type:           Formula
+    Formula:        DATEADD(TODAY(), {# Days}, 'days')
     
+    table:          Projects
+    Column:         Project URL
+    Type:           Formula
+    Formula:        "https://airtable.com/appIBydxpXuSdssZW/pag51K34I43p0rTlc/" & RECORD_ID()
+    
+    table:          Projects
+    Column:         CSV Upload
+    Type:           Attachment
+    Format:         Files
+    
+    table:          Projects
+    Column:         Total Price
+    Type:           Rollup
+    Formula:        Openings field to roll up:
+                    Opening Total Price
+                    Aggregation formula which rolls up the values in each linked record
+                    `SUM(values)`
+        
+    table:          Projects
+    Column:         Opening Total Price 
+    Type:           Link to another record
+    Record:         Quote Line Items
+    Allow linkin    g to multiple records
+        
+    table:          Projects
+    Column:         Openings 
+    Type:           Link to another record
+    Record:         Openings
+    Allow linkin    g to multiple records
+    
+    table:          Quote Line Items
+    Column:         C Composite Key 
+    Type:           Formula
+    Formula:        TRIM(Project) & "_" & TRIM(Category)
+    Drescription:   Combines the 'Customers' and 'Component Label' fields with a hyphen separator to create a unique identifier.
+
+    table:          Quote Line Items
+    Column:         Line Item ID
+    Type:           Auto Number
+    Drescription:   Automatically generate unique incremental numbers for each record.
+
+    table:          Quote Line Items
+    Column:         Customers
+    Type:           Lookup
+    From table:     Project
+    From field:     Customer
+
 
