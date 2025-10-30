@@ -28,7 +28,7 @@ async function loadTableServiceModule(): Promise<TableServiceModule | null> {
   }
 }
 
-const DATA_DIR = path.join(process.cwd(), "airtable", "csv-json");
+const DATA_DIR = path.join(process.cwd(), "airtable", "json");
 const AUTOMATIONS_DIR = path.join(process.cwd(), "airtable", "js");
 
 const RECORD_ID_REGEX = /^rec[0-9A-Za-z]{14}$/;

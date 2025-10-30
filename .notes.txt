@@ -5,7 +5,7 @@
 
 ////////////////////
     add new page in app\ for rebuilding an Airtable project.
-    airtable\csv-json contains all json data exported from Airtable(converted csv's from airtable\csv). Each json file is named after the corresponding Airtable table.
+    airtable\json contains all json data exported from Airtable(converted csv's from airtable\csv). Each json file is named after the corresponding Airtable table.
     airtable\js contains automation codes from the same Airtable project. each js file has an explanation of its purpose at the top of the file.
     work to rebuild the Airtable project using the json data and js automation codes.
     infer the relationships between tables based on column names and data patterns.
@@ -157,29 +157,29 @@
     26. the aria-label="Table views" tab should be a dropdown that only appears when the 'Create new...' button is clicked, and disappears when clicking outside of it.
     27. when pasting data into the table, automatically create new rows if the pasted data exceeds the current number of rows.
     28. include all tables in the airtable page. this is the list of all json files that all require a table on the airtable page: 
-        airtable\csv-json\Accentra Catalogue-Grid view.json
-        airtable\csv-json\Area Tags-Grid view.json
-        airtable\csv-json\Component Summary-Grid view.json
-        airtable\csv-json\Component Type-Grid view.json
-        airtable\csv-json\Components copy-Grid view.json
-        airtable\csv-json\Components-Grid view.json
-        airtable\csv-json\Customers-quote.json
-        airtable\csv-json\Doors Staging-Grid view.json
-        airtable\csv-json\Field Mapping-Grid view.json
-        airtable\csv-json\File Uploads-Grid view.json
-        airtable\csv-json\Group Output-Grid view.json
-        airtable\csv-json\Hardware Items-Grid view.json
-        airtable\csv-json\Hardware Set Items-Grid view.json
-        airtable\csv-json\Hardware Sets-Grid view.json
-        airtable\csv-json\Hardware Staging-Grid view.json
-        airtable\csv-json\Item Categories-Grid view.json
-        airtable\csv-json\Markup Overrides-Grid view.json
-        airtable\csv-json\Openings-Grid view.json
-        airtable\csv-json\Price Overrides-Grid view.json
-        airtable\csv-json\Projects-Grid view.json
-        airtable\csv-json\Quote Line Items-Grid view.json
-        airtable\csv-json\Staging-Grid view.json
-        airtable\csv-json\Submittals-Grid view.json
+        airtable\json\Accentra Catalogue-Grid view.json
+        airtable\json\Area Tags-Grid view.json
+        airtable\json\Component Summary-Grid view.json
+        airtable\json\Component Type-Grid view.json
+        airtable\json\Components copy-Grid view.json
+        airtable\json\Components-Grid view.json
+        airtable\json\Customers-quote.json
+        airtable\json\Doors Staging-Grid view.json
+        airtable\json\Field Mapping-Grid view.json
+        airtable\json\File Uploads-Grid view.json
+        airtable\json\Group Output-Grid view.json
+        airtable\json\Hardware Items-Grid view.json
+        airtable\json\Hardware Set Items-Grid view.json
+        airtable\json\Hardware Sets-Grid view.json
+        airtable\json\Hardware Staging-Grid view.json
+        airtable\json\Item Categories-Grid view.json
+        airtable\json\Markup Overrides-Grid view.json
+        airtable\json\Openings-Grid view.json
+        airtable\json\Price Overrides-Grid view.json
+        airtable\json\Projects-Grid view.json
+        airtable\json\Quote Line Items-Grid view.json
+        airtable\json\Staging-Grid view.json
+        airtable\json\Submittals-Grid view.json
     29. column dropdown menu is getting cut off at the bottom of the screen. make it open upwards when there is not enough space below the column header. also apply this logic to other dropdowns that may be cut off by the viewport edges.
     30. when editing a cell near the bottom of the viewport, make sure the entire cell is visible by scrolling the table if necessary.
     31. add the ability to drag and drop table tabs to reorder them.
@@ -200,5 +200,20 @@
     45. the user should be able to view and edit data in each neon table through the interactive table component. this includes creating, updating, and deleting columns, fields and rows
     46. implement real-time synchronization between the table component and the neon database
     . use the neon database connection to fetch and save data. you may need to modify the table component to work with neon data instead of json data. you may also need to create new api routes to handle database operations.try to make a new utils file if necessary to handle any database interactions.
-    47. if header's value is [], show as empty cell instead of string "[]"
+    47. add this rule to table component:
+      if header's value is [], show as empty cell instead of string "[]".
+        example: in app/airtable/page.tsx, the cell value is "[]". so show an empty cell instead of the string "[]". so just never show "[]" as a cell value. even if the user types "[]" into a cell, show it as an empty cell.
+         fix this issue.        
     48. hide aria-label="Select all rows" checkbox in top left corner of table until hover over it.
+    49. change this snippet in tableUtils.ts:      
+      h("div", { className: "flex items-center gap-2 text-sm text-zinc-500 dark:text-neutral-300" },
+        renderColumnIcon(column.type),
+        h("span", null, typeLabel)
+      )    
+
+    should be changed to a dropdown that select from all standard field types when editing a field.
+    50. create a agents.md file in the root directory that documents all AI agents used in this project, including their purpose, functionality, and any relevant implementation details. use .notes.txt as a reference for knowledge about the project.
+    51. both pages should share the same table component from utils\tableUtils.ts to ensure consistency in functionality and appearance across the application. now I find functionality differences between app/page.tsx and app/airtable/page.tsx like edit field still renames the column instead of opening field configuration. also all the column types in app/page.tsx have the same icon but in app/airtable/page.tsx they have different icons. make sure both pages use the same table component from utils\tableUtils.ts and have the same functionality
+    52.  user should be able to change column type from the field configuration dropdown. the code should record in the database, so create a new table within neon, for the column type and any relevant settings for that column type.
+    for example:
+    formula, Table reference, record reference, currency type, number format, date format, etc... refer to imgReferences\airtable_dropdown_specs.txt for all settings for each column type.

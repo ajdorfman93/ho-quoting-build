@@ -1,0 +1,89 @@
+//////////////////////Data Parser//////////////////////
+
+create a node.js file to convert folders of csv files into json files.
+the user will provide the input folder path and output folder path as command line arguments.
+example usage: node csvToJsonConverter.js airtable/csv
+the converted files should have the same name as the input files, just with a .json extension instead of .csv.
+the file structure will be preserved in the output folder.
+for example if the input folder has a file at "airtable/csv/data.csv", the output folder should have the converted file at "airtable/json/data.json".
+
+here is an example of a csv file content:
+Component ID,Hardware Set,Component,Item (from Component),Type,Component Cost,Quantity,Item Total Price,Hardware Sets,Hardware Staging,Components copy,Hardware Items,Test
+"""Hardware: Hager, Door Push/Pull, 13J, US32D"", ""Hardware: Hager, Door Pull, 34J 4x16, US26D""",Project A _Brooklyn NY  - 50,"""Hardware: Hager, Door Push/Pull, 13J, US32D"",""Hardware: Hager, Door Pull, 34J 4x16, US26D""","13J, 34J 4x16","Door Push/Pull,Door Pull",,2,$0.00,,,"""Hardware: Hager, Door Pull, 34J 4x16, US26D"",""Hardware: Hager, Door Push/Pull, 13J, US32D""",,"""o,"""")dfg,,"
+
+here is the expected output json file content:
+[
+  {
+    "Component ID":  ["Hardware: Hager, Door Push/Pull, 13J, US32D", "Hardware: Hager, Door Pull, 34J 4x16, US26D"],
+    "Hardware Set": [
+      "Project A _Brooklyn NY  - 50"
+    ],
+    "Component": ["Hardware: Hager, Door Push/Pull, 13J, US32D", "Hardware: Hager, Door Pull, 34J 4x16, US26D"],
+    "Item (from Component)": "34J 4x16",
+    "Type": "Door Pull",
+    "Component Cost": [],
+    "Quantity": "2",
+    "Item Total Price": "$0.00",
+    "Hardware Sets": [],
+    "Hardware Staging": [],
+    "Components copy":  ["Hardware: Hager, Door Pull, 34J 4x16, US26D", "Hardware: Hager, Door Push/Pull, 13J, US32D"],
+    "Hardware Items": []
+    "Test": "\"\"\"o,\"\"\"\")dfg,,\""
+
+  },
+  ]
+
+  the first row of the csv file contains the headers.
+  `Component ID,Hardware Set,Component,Item (from Component),Type,Component Cost,Quantity,Item Total Price,Hardware Sets,Hardware Staging,Components copy,Hardware Items,Test`
+    each subsequent row contains the data for each record.
+    each record should be represented as a json object, with the keys being the column headers and the values being the corresponding data for that record.
+    if there is no value for a particular cell, it should be represented as an empty array in the json output.
+    if a cell contains multiple values separated by commas, it should be represented as an array of strings in the json output.
+    each object in an array is enclosed in double quotes except if its a number, price or empty
+    example
+    """Hardware: Hager, Door Push/Pull, 13J, US32D"", ""Hardware: Hager, Door Pull, 34J 4x16, US26D"""
+    becomes
+    "Components copy":  [
+      "Hardware: Hager, Door Push/Pull, 13J, US32D",
+      "Hardware: Hager, Door Pull, 34J 4x16, US26D"
+    ]
+
+    example of a number cell:
+    2,
+    becomes
+    "Quantity": "2",
+    example of a price cell:
+    $0.00,
+    becomes
+    "Item Total Price": "$0.00",
+
+    example of empty cell:
+    but some cells may only have a single value, in which case it should be represented as a string.
+    example:
+    "Item (from Component)": "34J 4x16"
+
+    some cells may contain special characters like commas quotes or parentheses, these should be preserved in the json output.
+    example csv cell:
+    """o,"""")dfg,,"
+    json output:
+    "Test": "\"\"\"o,\"\"\"\")dfg,,\""
+
+    each value in the csv ends with a comma, except for the last value in the row.
+    if there is no value for a particular header in the csv file then it will just have a comma with no value before it. 
+    example:
+    ,2,$0.00,,,
+    becomes
+    "Component Cost": [],
+    "Quantity": "2",
+    "Item Total Price": "$0.00",
+    "Hardware Sets": [],
+    "Hardware Staging": [],
+
+    some arrays may only have a single value, in which case it should still be represented as an array with one string.
+    in the csv they may appear like this:
+        """""""Tru_Israel, IL"""" - 1""",
+    becomes
+        "Hardware Sets": ["\"\"Tru_Israel, IL\" - 1\""]
+,
+    first check all values for each record and ensure they are correctly represented as either strings or arrays in the json output.
+
