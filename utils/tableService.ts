@@ -4,7 +4,6 @@ import type { ColumnSpec } from "./tableUtils";
 import { query, withTransaction } from "./db";
 import { emitTableChange } from "./realtime";
 import { ColumnMetadata, TableMetadata, toColumnKey } from "./schema";
-import { findAirtableTableBySource } from "./airtableLoader";
 
 export type TableRow = Record<string, unknown> & { id: string };
 
@@ -15,10 +14,6 @@ function assertSafeIdentifier(identifier: string): string {
     throw new Error(`Unsafe identifier: ${identifier}`);
   }
   return identifier;
-}
-
-function normalizeColumnLabel(label: string): string {
-  return label.trim().toLowerCase().replace(/[\s_-]+/g, " ");
 }
 
 function cloneConfig<T>(value: T | undefined | null): T | undefined {
@@ -75,6 +70,36 @@ type ColumnMetadataQueryRow = {
   type_settings_updated_at: string | null;
 };
 
+function mapColumnMetadataRows(rows: ColumnMetadataQueryRow[]): ColumnMetadata[] {
+  return rows.map((row) => {
+    const config = row.config ?? {};
+    const typeSettings = row.type_settings_column_type
+      ? {
+          table_name: row.table_name,
+          column_name: row.column_name,
+          column_type: row.type_settings_column_type,
+          settings: row.type_settings_settings ?? {},
+          created_at: row.type_settings_created_at ?? undefined,
+          updated_at: row.type_settings_updated_at ?? undefined,
+        }
+      : null;
+
+    return {
+      table_name: row.table_name,
+      column_name: row.column_name,
+      display_name: row.display_name,
+      data_type: row.data_type,
+      config,
+      position: row.position,
+      is_nullable: row.is_nullable,
+      width: row.width,
+      created_at: row.created_at ?? undefined,
+      updated_at: row.updated_at ?? undefined,
+      type_settings: typeSettings,
+    } satisfies ColumnMetadata;
+  });
+}
+
 async function fetchColumnMetadata(
   client: PoolClient,
   tableName: string
@@ -106,33 +131,7 @@ async function fetchColumnMetadata(
     [tableName]
   );
 
-  return rows.map((row) => {
-    const config = row.config ?? {};
-    const typeSettings = row.type_settings_column_type
-      ? {
-          table_name: row.table_name,
-          column_name: row.column_name,
-          column_type: row.type_settings_column_type,
-          settings: row.type_settings_settings ?? {},
-          created_at: row.type_settings_created_at ?? undefined,
-          updated_at: row.type_settings_updated_at ?? undefined,
-        }
-      : null;
-
-    return {
-      table_name: row.table_name,
-      column_name: row.column_name,
-      display_name: row.display_name,
-      data_type: row.data_type,
-      config,
-      position: row.position,
-      is_nullable: row.is_nullable,
-      width: row.width,
-      created_at: row.created_at ?? undefined,
-      updated_at: row.updated_at ?? undefined,
-      type_settings: typeSettings,
-    } satisfies ColumnMetadata;
-  });
+  return mapColumnMetadataRows(rows);
 }
 
 export async function listTables(): Promise<TableMetadata[]> {
@@ -155,7 +154,7 @@ export async function getTableData(
   const limit = Math.max(1, Math.min(options?.limit ?? 100, 500));
   const offset = Math.max(0, options?.offset ?? 0);
 
-  const [tableResult, columns, rowsResult, countResult] = await Promise.all([
+  const [tableResult, columnRows, rowsResult, countResult] = await Promise.all([
     query<TableMetadata>(
       `
         SELECT table_name, display_name, source_file, created_at, updated_at
@@ -164,10 +163,27 @@ export async function getTableData(
       `,
       [safeTable]
     ),
-    query<ColumnMetadata>(
+    query<ColumnMetadataQueryRow>(
       `
-        SELECT table_name, column_name, display_name, data_type, config, position, is_nullable, width, created_at, updated_at
-        FROM column_metadata
+        SELECT
+          cm.table_name,
+          cm.column_name,
+          cm.display_name,
+          cm.data_type,
+          cm.config,
+          cm.position,
+          cm.is_nullable,
+          cm.width,
+          cm.created_at,
+          cm.updated_at,
+          cts.column_type AS type_settings_column_type,
+          cts.settings AS type_settings_settings,
+          cts.created_at AS type_settings_created_at,
+          cts.updated_at AS type_settings_updated_at
+        FROM column_metadata cm
+        LEFT JOIN column_type_settings cts
+          ON cm.table_name = cts.table_name
+         AND cm.column_name = cts.column_name
         WHERE table_name = $1
         ORDER BY position ASC;
       `,
@@ -187,64 +203,8 @@ export async function getTableData(
   }
 
   const metadata = tableResult.rows[0];
-  let airtableColumnLookup: Map<string, ColumnSpec<TableRow>> | null = null;
-
-  if (metadata.source_file) {
-    try {
-      const definition = await findAirtableTableBySource(metadata.source_file);
-      if (definition) {
-        airtableColumnLookup = new Map();
-        for (const column of definition.columns) {
-          const castColumn = column as ColumnSpec<TableRow>;
-          const displayKey = normalizeColumnLabel(String(column.name ?? ""));
-          if (displayKey) airtableColumnLookup.set(displayKey, castColumn);
-
-          const keyKey = normalizeColumnLabel(String(column.key ?? ""));
-          if (keyKey && !airtableColumnLookup.has(keyKey)) {
-            airtableColumnLookup.set(keyKey, castColumn);
-          }
-
-          const prefixedKey = normalizeColumnLabel(`col_${String(column.key ?? "")}`);
-          if (prefixedKey && !airtableColumnLookup.has(prefixedKey)) {
-            airtableColumnLookup.set(prefixedKey, castColumn);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Failed to enrich column metadata from Airtable definition", error);
-    }
-  }
-
-  const columnSpecs = columns.rows.map((meta) => {
-    const spec = toColumnSpec(meta);
-    if (airtableColumnLookup) {
-      const candidates = [
-        normalizeColumnLabel(String(meta.display_name ?? "")),
-        normalizeColumnLabel(String(meta.column_name ?? "")),
-        normalizeColumnLabel(String(spec.key ?? "")),
-      ].filter(Boolean);
-
-      let match: ColumnSpec<TableRow> | undefined;
-      for (const key of candidates) {
-        const found = airtableColumnLookup.get(key);
-        if (found) {
-          match = found;
-          break;
-        }
-      }
-
-      if (match) {
-        spec.type = match.type;
-        spec.config = match.config ? cloneConfig(match.config) : undefined;
-        spec.width = match.width ?? spec.width;
-        if (match.description !== undefined) spec.description = match.description;
-        if (match.permissions !== undefined) spec.permissions = match.permissions;
-        if (match.hidden !== undefined) spec.hidden = match.hidden;
-        if (match.readOnly !== undefined) spec.readOnly = match.readOnly;
-      }
-    }
-    return spec;
-  });
+  const columnMetadata = mapColumnMetadataRows(columnRows.rows);
+  const columnSpecs = columnMetadata.map((meta) => toColumnSpec(meta));
 
   const tableRows = rowsResult.rows.map((row) => {
     const normalized: TableRow = { id: String((row as TableRow).id) };
