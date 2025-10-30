@@ -901,7 +901,43 @@ function displayValue<T extends Record<string, any>>(value: unknown, column: Col
       }
       return stringifyValue(value);
     }
-    case "linkToRecord":
+    case "linkToRecord": {
+      const entries = Array.isArray(value) ? value : value ? [value] : [];
+      if (!entries.length) return "";
+      const records = column.config?.linkToRecord?.records ?? [];
+      const recordMap = new Map(records.map((record) => [record.id, record]));
+      const pills = entries
+        .map((entry, index) => {
+          let record: LinkedRecordOption | null = null;
+          if (typeof entry === "string") {
+            record = recordMap.get(entry) ?? { id: entry, title: entry };
+          } else if (entry && typeof entry === "object") {
+            const maybe = entry as { id?: string; title?: string; name?: string };
+            const lookup = maybe.id ? recordMap.get(maybe.id) : null;
+            if (lookup) {
+              record = lookup;
+            } else {
+              record = {
+                id: maybe.id ?? `record-${index}`,
+                title: maybe.title ?? maybe.name ?? stringifyValue(entry)
+              };
+            }
+          }
+          if (!record) return null;
+          const metaValues = record.meta ? Object.values(record.meta).filter(Boolean) : [];
+          return h("span", {
+            key: record.id ?? `record-${index}`,
+            className: "inline-flex flex-col rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-200"
+          },
+            h("span", { className: "font-semibold leading-snug" }, record.title),
+            metaValues.length
+              ? h("span", { className: "text-[10px] leading-tight text-blue-500/80 dark:text-blue-200/80" }, metaValues.join(" • "))
+              : null
+          );
+        })
+        .filter(Boolean) as React.ReactNode[];
+      return pills.length ? h("div", { className: "flex flex-wrap gap-1" }, ...pills) : "";
+    }
     case "lookup":
     case "rollup":
     case "formula":
@@ -1492,6 +1528,17 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     element: HTMLElement | null;
     rect: DOMRect | null;
   } | null>(null);
+  const [recordLinkDropdown, setRecordLinkDropdown] = React.useState<{
+    r: number;
+    c: number;
+    search: string;
+    expanded: boolean;
+    addedRecords: LinkedRecordOption[];
+  } | null>(null);
+  const [recordLinkDropdownAnchor, setRecordLinkDropdownAnchor] = React.useState<{
+    element: HTMLElement | null;
+    rect: DOMRect | null;
+  } | null>(null);
   const [headerEditing, setHeaderEditing] = React.useState<number | null>(null);
   const [fieldConfigPanel, setFieldConfigPanel] = React.useState<{
     columnIndex: number;
@@ -1569,6 +1616,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const colWidthsRef = React.useRef(colWidths);
   const rowHeightsRef = React.useRef(rowHeights);
   const lastSelectDropdownElementRef = React.useRef<HTMLElement | null>(null);
+  const lastRecordDropdownElementRef = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
     if (typeof loadingMoreRows === "boolean") {
@@ -1632,6 +1680,28 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const rect = cell.getBoundingClientRect();
     setSelectDropdownAnchor({ element: cell, rect });
   }, [selectDropdown, viewport.scrollLeft, viewport.scrollTop, colWidths, rowHeights]);
+
+  React.useLayoutEffect(() => {
+    if (!recordLinkDropdown) {
+      setRecordLinkDropdownAnchor(null);
+      lastRecordDropdownElementRef.current = null;
+      return;
+    }
+    const container = gridRef.current;
+    if (!container) return;
+    const selector = `[data-r="${recordLinkDropdown.r}"][data-c="${recordLinkDropdown.c}"]`;
+    const cell = container.querySelector(selector) as HTMLElement | null;
+    if (!cell) {
+      setRecordLinkDropdownAnchor(null);
+      return;
+    }
+    if (lastRecordDropdownElementRef.current !== cell && typeof cell.scrollIntoView === "function") {
+      cell.scrollIntoView({ block: "nearest", inline: "nearest" });
+      lastRecordDropdownElementRef.current = cell;
+    }
+    const rect = cell.getBoundingClientRect();
+    setRecordLinkDropdownAnchor({ element: cell, rect });
+  }, [recordLinkDropdown, viewport.scrollLeft, viewport.scrollTop, colWidths, rowHeights]);
 
   const handleScroll = React.useCallback(() => {
     const el = tableContainerRef.current;
@@ -3893,6 +3963,54 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           onChange: (e: any) => setCellValue(r, c, e.target.value)
         });
       }
+      case "phone": {
+        const phoneConfig = columns[c]?.config?.phone ?? {};
+        const placeholder = phoneConfig.placeholder ?? "(415) 555-9876";
+        const normalizePhone = (input: string) => {
+          const raw = String(input ?? "").trim();
+          if (!raw) return "";
+          if (!phoneConfig.normalizeToE164) {
+            return raw;
+          }
+          const extensionMatch = phoneConfig.allowExtension !== false
+            ? /\b(?:ext|x)\s*(\d+)$/i.exec(raw)
+            : null;
+          const extension = extensionMatch ? extensionMatch[1] : null;
+          const digits = raw.replace(/[^\d]/g, "");
+          if (!digits) return "";
+          let normalized = digits;
+          if (!normalized.startsWith("+")) {
+            normalized = `+${normalized}`;
+          }
+          if (extension) {
+            normalized = `${normalized} x${extension}`;
+          }
+          return normalized;
+        };
+        return h("div", {
+          className: "absolute inset-0 z-20 flex flex-col gap-1 bg-white px-2 py-1 dark:bg-neutral-900"
+        },
+          h("input", {
+            ref: (el: any) => (editorRef.current = el),
+            className: "w-full rounded-md border border-blue-300 px-3 py-1.5 text-sm text-zinc-800 outline-none ring-2 ring-blue-500 focus:border-blue-500 dark:border-blue-500/40 dark:bg-neutral-900 dark:text-neutral-50",
+            type: "tel",
+            defaultValue: String(val ?? ""),
+            placeholder,
+            onChange: (e: any) => setCellValue(r, c, e.target.value),
+            onKeyDown: handleEditorKeyDown,
+            onBlur: (e: any) => {
+              const nextValue = normalizePhone(e.target.value);
+              setCellValue(r, c, nextValue);
+              commitEdit();
+            }
+          }),
+          h("div", { className: "text-[10px] text-zinc-500 dark:text-neutral-400" },
+            phoneConfig.normalizeToE164 !== false
+              ? "Stored in international format; extensions preserved when allowed."
+              : "Stored exactly as entered."
+          )
+        );
+      }
       case "multipleSelect":
       case "singleSelect":
         return null;
@@ -4708,6 +4826,203 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         h("span", null, label)
       );
 
+    const buildSingleLineTextContent = () => {
+      const singleLine = {
+        placeholder: draftConfig.singleLineText?.placeholder ?? "",
+        maxLength: draftConfig.singleLineText?.maxLength ?? null,
+        defaultText: draftConfig.singleLineText?.defaultText ?? null,
+        showCharacterCount: draftConfig.singleLineText?.showCharacterCount ?? false,
+        trimOnSave: draftConfig.singleLineText?.trimOnSave ?? true,
+        validation: {
+          trim: draftConfig.singleLineText?.validation?.trim ?? true,
+          disallowEmpty: draftConfig.singleLineText?.validation?.disallowEmpty ?? false
+        }
+      };
+      const updateSingleLine = (mutator: (current: typeof singleLine) => typeof singleLine) => {
+        updateFieldConfigDraft((config) => {
+          const current = {
+            placeholder: singleLine.placeholder,
+            maxLength: singleLine.maxLength,
+            defaultText: singleLine.defaultText,
+            showCharacterCount: singleLine.showCharacterCount,
+            trimOnSave: singleLine.trimOnSave,
+            validation: { ...singleLine.validation }
+          };
+          const next = mutator(current);
+          config.singleLineText = {
+            ...next,
+            validation: { ...next.validation }
+          };
+        });
+      };
+      return h("div", { className: "space-y-4" },
+        h("label", { className: "flex flex-col gap-1 text-sm" },
+          h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Placeholder"),
+          h("input", {
+            type: "text",
+            placeholder: "Enter text…",
+            value: singleLine.placeholder,
+            onChange: (event: React.ChangeEvent<HTMLInputElement>) => updateSingleLine((current) => ({
+              ...current,
+              placeholder: event.currentTarget.value
+            })),
+            className: "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+          })
+        ),
+        renderToggle(
+          "Show character count",
+          Boolean(singleLine.showCharacterCount),
+          (next) => updateSingleLine((current) => ({ ...current, showCharacterCount: next }))
+        ),
+        renderToggle(
+          "Trim whitespace on save",
+          Boolean(singleLine.trimOnSave),
+          (next) => updateSingleLine((current) => ({ ...current, trimOnSave: next }))
+        ),
+        h("div", { className: "grid gap-4 md:grid-cols-2" },
+          h("label", { className: "flex flex-col gap-1 text-sm" },
+            h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Maximum characters"),
+            h("input", {
+              type: "number",
+              min: 1,
+              placeholder: "Unlimited",
+              value: singleLine.maxLength ?? "",
+              onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+                const raw = event.currentTarget.value;
+                updateSingleLine((current) => ({
+                  ...current,
+                  maxLength: raw === "" ? null : Math.max(1, Math.floor(Number(raw)))
+                }));
+              },
+              className: "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            })
+          ),
+          h("label", { className: "flex flex-col gap-1 text-sm" },
+            h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Default text"),
+            h("input", {
+              type: "text",
+              placeholder: "Optional default",
+              value: singleLine.defaultText ?? "",
+              onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+                const raw = event.currentTarget.value;
+                updateSingleLine((current) => ({
+                  ...current,
+                  defaultText: raw === "" ? null : raw
+                }));
+              },
+              className: "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            })
+          )
+        ),
+        h("div", { className: "space-y-2 rounded-lg border border-zinc-200 p-3 text-sm dark:border-neutral-700" },
+          h("div", { className: "text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Validation"),
+          renderToggle(
+            "Trim whitespace",
+            Boolean(singleLine.validation.trim),
+            (next) => updateSingleLine((current) => ({
+              ...current,
+              validation: { ...current.validation, trim: next }
+            })),
+            "Remove leading/trailing spaces before saving."
+          ),
+          renderToggle(
+            "Disallow empty values",
+            Boolean(singleLine.validation.disallowEmpty),
+            (next) => updateSingleLine((current) => ({
+              ...current,
+              validation: { ...current.validation, disallowEmpty: next }
+            })),
+            "Require this field to contain at least one character."
+          )
+        )
+      );
+    };
+
+    const buildPhoneContent = () => {
+      const phoneConfig = {
+        region: draftConfig.phone?.region ?? "auto",
+        format: draftConfig.phone?.format ?? "national",
+        allowExtension: draftConfig.phone?.allowExtension ?? true,
+        defaultNumber: draftConfig.phone?.defaultNumber ?? null,
+        placeholder: draftConfig.phone?.placeholder ?? "",
+        normalizeToE164: draftConfig.phone?.normalizeToE164 ?? true
+      };
+      const updatePhone = (partial: Partial<typeof phoneConfig>) => {
+        updateFieldConfigDraft((config) => {
+          const next = { ...(config.phone ?? {}) };
+          Object.assign(next, partial);
+          config.phone = next;
+        });
+      };
+      return h("div", { className: "space-y-4" },
+        h("div", { className: "grid gap-4 md:grid-cols-2" },
+          h("label", { className: "flex flex-col gap-1 text-sm" },
+            h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Default region"),
+            h("select", {
+              value: phoneConfig.region,
+              onChange: (event: React.ChangeEvent<HTMLSelectElement>) => updatePhone({ region: event.currentTarget.value || "auto" }),
+              className: "rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            },
+              h("option", { value: "auto" }, "Auto-detect"),
+              h("option", { value: "US" }, "United States"),
+              h("option", { value: "CA" }, "Canada"),
+              h("option", { value: "GB" }, "United Kingdom"),
+              h("option", { value: "AU" }, "Australia")
+            )
+          ),
+          h("label", { className: "flex flex-col gap-1 text-sm" },
+            h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Format"),
+            h("select", {
+              value: phoneConfig.format,
+              onChange: (event: React.ChangeEvent<HTMLSelectElement>) =>
+                updatePhone({ format: event.currentTarget.value as "national" | "international" }),
+              className: "rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            },
+              h("option", { value: "national" }, "National"),
+              h("option", { value: "international" }, "International")
+            )
+          )
+        ),
+        renderToggle(
+          "Allow extension",
+          Boolean(phoneConfig.allowExtension),
+          (next) => updatePhone({ allowExtension: next })
+        ),
+        renderToggle(
+          "Normalize to E.164",
+          Boolean(phoneConfig.normalizeToE164),
+          (next) => updatePhone({ normalizeToE164: next }),
+          "Store phone numbers in standardized +1 format."
+        ),
+        h("label", { className: "flex flex-col gap-1 text-sm" },
+          h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Input placeholder"),
+          h("input", {
+            type: "text",
+            placeholder: "(415) 555-9876",
+            value: phoneConfig.placeholder,
+            onChange: (event: React.ChangeEvent<HTMLInputElement>) => updatePhone({ placeholder: event.currentTarget.value }),
+            className: "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+          })
+        ),
+        h("label", { className: "flex flex-col gap-1 text-sm" },
+          h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Default number"),
+          h("input", {
+            type: "tel",
+            placeholder: "+14155559876",
+            value: phoneConfig.defaultNumber ?? "",
+            onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+              const raw = event.currentTarget.value;
+              updatePhone({ defaultNumber: raw === "" ? null : raw });
+            },
+            className: "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+          })
+        ),
+        h("p", { className: "rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-600 dark:bg-blue-500/10 dark:text-blue-200" },
+          "Phone formatting follows the selected region and format. Users can still type freely—the input normalizes on save."
+        )
+      );
+    };
+
     const buildPercentContent = () => {
       const percent = {
         decimals: 0,
@@ -4977,26 +5292,52 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     };
 
     const buildLinkToRecordContent = () => {
-      const linkConfig = {
-        targetTable: draftConfig.linkToRecord?.targetTable ?? "File Uploads",
-        multiple: draftConfig.linkToRecord?.multiple ?? true,
-        limitToViewId: draftConfig.linkToRecord?.limitToViewId ?? null,
-        filterEnabled: draftConfig.linkToRecord?.filterEnabled ?? false,
-        aiAssist: draftConfig.linkToRecord?.aiAssist ?? false,
-        allowCreate: draftConfig.linkToRecord?.allowCreate ?? true
-      };
-      const setLinkConfig = (partial: Partial<typeof linkConfig>) => {
-        updateFieldConfigDraft((config) => {
-          const next = { ...(config.linkToRecord ?? {}) };
-          Object.assign(next, partial);
-          config.linkToRecord = next;
-        });
-      };
-      const viewOptions = [
+      const defaultViews = [
         { id: "", name: "All views" },
         { id: "default", name: "Default view" },
         { id: "doors-staging", name: "Doors Staging" }
       ];
+      const existing = draftConfig.linkToRecord ?? {};
+      const linkConfig = {
+        targetTable: existing.targetTable ?? "File Uploads",
+        multiple: existing.multiple ?? true,
+        limitToViewId: existing.limitToViewId ?? null,
+        filter: existing.filter ?? null,
+        aiAssist: existing.aiAssist ?? false,
+        allowCreate: existing.allowCreate ?? true,
+        views: Array.isArray(existing.views) && existing.views.length ? existing.views : defaultViews
+      };
+      const setLinkConfig = (partial: Partial<typeof linkConfig>) => {
+        updateFieldConfigDraft((config) => {
+          const next = { ...(config.linkToRecord ?? {}) };
+          const ensuredViews = Array.isArray(next.views) && next.views.length ? next.views : linkConfig.views;
+          Object.assign(next, partial);
+          if (!next.views || !next.views.length) {
+            next.views = ensuredViews;
+          }
+          if (partial.limitToViewId === "") {
+            next.limitToViewId = null;
+          }
+          config.linkToRecord = next;
+        });
+      };
+      const viewOptions = linkConfig.views;
+      const filterSummary =
+        linkConfig.filter && typeof linkConfig.filter === "object"
+          ? (linkConfig.filter as Record<string, unknown>).summary ?? "Custom condition"
+          : null;
+      const handleEditFilter = () => {
+        if (typeof window === "undefined") return;
+        const initial = filterSummary ?? "";
+        const result = window.prompt("Describe the filter condition for record selection:", initial);
+        if (result === null) return;
+        const trimmed = result.trim();
+        if (!trimmed) {
+          setLinkConfig({ filter: null });
+        } else {
+          setLinkConfig({ filter: { summary: trimmed } });
+        }
+      };
       return h("div", { className: "space-y-4" },
         h("div", { className: "space-y-1 rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-neutral-700" },
           h("div", { className: "text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Link to"),
@@ -5008,12 +5349,33 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           h("select", {
             className: "rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
             value: linkConfig.limitToViewId ?? "",
-            onChange: (event: React.ChangeEvent<HTMLSelectElement>) => setLinkConfig({ limitToViewId: event.currentTarget.value || null })
+            onChange: (event: React.ChangeEvent<HTMLSelectElement>) => {
+              const value = event.currentTarget.value;
+              setLinkConfig({ limitToViewId: value === "" ? null : value });
+            }
           },
             ...viewOptions.map((view) => h("option", { key: view.id, value: view.id }, view.name))
           )
         ),
-        renderToggle("Filter record selection by a condition", Boolean(linkConfig.filterEnabled), (next) => setLinkConfig({ filterEnabled: next })),
+        renderToggle(
+          "Filter record selection by a condition",
+          Boolean(linkConfig.filter),
+          (next) => {
+            if (!next) {
+              setLinkConfig({ filter: null });
+            } else {
+              setLinkConfig({ filter: linkConfig.filter ?? { summary: "Status is Approved" } });
+            }
+          }
+        ),
+        linkConfig.filter ? h("div", { className: "rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-200" },
+          h("div", { className: "mb-1 font-medium" }, filterSummary ?? "Custom condition"),
+          h("button", {
+            type: "button",
+            className: "rounded-full border border-blue-500 px-3 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-500/20",
+            onClick: handleEditFilter
+          }, "Edit condition")
+        ) : null,
         renderToggle("Use AI to show top matches when selecting a record", Boolean(linkConfig.aiAssist), (next) => setLinkConfig({ aiAssist: next })),
         renderToggle("Allow creating new linked records", Boolean(linkConfig.allowCreate), (next) => setLinkConfig({ allowCreate: next }))
       );
@@ -5085,6 +5447,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
     let typeContent: React.ReactNode;
     switch (column.type) {
+      case "singleLineText":
+        typeContent = buildSingleLineTextContent();
+        break;
+      case "phone":
+        typeContent = buildPhoneContent();
+        break;
       case "percent":
         typeContent = buildPercentContent();
         break;
