@@ -939,6 +939,9 @@ interface FloatingMenuSurfaceProps extends React.HTMLAttributes<HTMLDivElement> 
   side?: DropdownPlacement;
   offset?: number;
   point?: { x: number; y: number };
+  "data-select-dropdown"?: string;
+  "data-header-context-menu"?: string;
+  "data-cell-context-menu"?: string;
 }
 
 function FloatingMenuSurface({
@@ -1391,7 +1394,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   const closeFieldConfigPanel = React.useCallback(() => setFieldConfigPanel(null), []);
 
-  const updateFieldConfigDraft = React.useCallback((mutator: (next: NonNullable<ColumnSpec<T>["config"]>) => void) => {
+  const updateFieldConfigDraft = React.useCallback((mutator: (config: NonNullable<ColumnSpec<T>["config"]>) => void) => {
     setFieldConfigPanel((prev) => {
       if (!prev) return prev;
       const nextConfig = deepClone(prev.draftConfig);
@@ -1406,8 +1409,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   const applyFieldConfigChanges = React.useCallback((columnIndex: number, name: string, config: NonNullable<ColumnSpec<T>["config"]>) => {
     setColumns((prev) => {
-      const currentColumn = prev[columnIndex];
-      if (!currentColumn) return prev;
+      const current = prev[columnIndex];
+      if (!current) return prev;
       const next = deepClone(prev);
       const target = next[columnIndex];
       target.name = name || target.name;
@@ -1420,7 +1423,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   const openFieldConfiguration = React.useCallback((columnIndex: number) => {
     const column = columns[columnIndex];
-    if (!column || !FIELD_CONFIGURATION_TYPES.has(column.type)) {
+    if (!column) return;
+    if (!FIELD_CONFIGURATION_TYPES.has(column.type)) {
       setHeaderEditing(columnIndex);
       return;
     }
@@ -1605,9 +1609,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   React.useEffect(() => {
     if (fieldConfigPanel && !columns[fieldConfigPanel.columnIndex]) {
-      setFieldConfigPanel(null);
+      closeFieldConfigPanel();
     }
-  }, [columns, fieldConfigPanel]);
+  }, [columns, fieldConfigPanel, closeFieldConfigPanel]);
 
   function getCellValue(r: number, c: number) {
     const row = rows[r];
@@ -1767,9 +1771,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         return known.find((o) => o.label === label) ?? (label ? { id: label, label } : null);
       }
       case "date":
-        return v ? new Date(v).toLocaleDateString() : "";
+        return input ? new Date(input).toLocaleDateString() : "";
       default:
-        return v ?? "";
+        return input ?? "";
     }
   }
   /* Mouse selection & fill-down drag */
@@ -4552,67 +4556,46 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     if (!column) return null;
     const typeLabel = ALL_TYPES.find((opt) => opt.value === column.type)?.label ?? String(column.type);
 
-    const renderToggle = (
-      label: string,
-      checked: boolean,
-      onChange: (next: boolean) => void,
-      description?: string
-    ) => h("label", {
-      key: label,
-      className: "flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 text-sm transition hover:bg-zinc-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
-    },
-      h("div", { className: "mr-3" },
-        h("div", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, label),
-        description ? h("div", { className: "text-xs text-zinc-500 dark:text-neutral-400" }, description) : null
-      ),
-      h("input", {
-        type: "checkbox",
-        className: "h-4 w-4",
-        checked,
-        onChange: (event: React.ChangeEvent<HTMLInputElement>) => onChange(event.currentTarget.checked)
-      })
-    );
+    const renderToggle = (label: string, checked: boolean, onChange: (next: boolean) => void, description?: string) =>
+      h("label", {
+        key: label,
+        className: "flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 text-sm transition hover:bg-zinc-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+      },
+        h("div", { className: "mr-3" },
+          h("div", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, label),
+          description ? h("div", { className: "text-xs text-zinc-500 dark:text-neutral-400" }, description) : null
+        ),
+        h("input", {
+          type: "checkbox",
+          className: "h-4 w-4",
+          checked,
+          onChange: (event: React.ChangeEvent<HTMLInputElement>) => onChange(event.currentTarget.checked)
+        })
+      );
 
-    const renderRadio = (
-      name: string,
-      value: string,
-      current: string,
-      label: string,
-      onSelect: () => void
-    ) => h("label", {
-      key: value,
-      className: "flex items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm hover:bg-zinc-50 dark:hover:bg-neutral-800"
-    },
-      h("input", {
-        type: "radio",
-        name,
-        value,
-        checked: current === value,
-        onChange: onSelect
-      }),
-      h("span", null, label)
-    );
+    const renderRadio = (name: string, value: string, current: string, label: string, onSelect: () => void) =>
+      h("label", {
+        key: value,
+        className: "flex items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm hover:bg-zinc-50 dark:hover:bg-neutral-800"
+      },
+        h("input", {
+          type: "radio",
+          name,
+          value,
+          checked: current === value,
+          onChange: onSelect
+        }),
+        h("span", null, label)
+      );
 
-    const handleSave = () => {
-      const trimmedName = draftName.trim() || column.name;
-      const normalized = normalizeFieldConfig(column.type, draftConfig);
-      applyFieldConfigChanges(columnIndex, trimmedName, normalized);
-      closeFieldConfigPanel();
-    };
-
-    const handleCancel = () => {
-      closeFieldConfigPanel();
-    };
-
-    let typeContent: React.ReactNode = null;
-
-    if (column.type === "percent") {
+    const buildPercentContent = () => {
       const percent = {
         decimals: 0,
         locale: "local",
         showThousands: true,
         asProgressBar: false,
         allowNegative: false,
+        defaultPercent: draftConfig.percent?.defaultPercent,
         ...draftConfig.percent
       };
       const updatePercent = (partial: Partial<typeof percent>) => {
@@ -4622,7 +4605,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           config.percent = next;
         });
       };
-      typeContent = h("div", { className: "space-y-4" },
+      return h("div", { className: "space-y-4" },
         h("div", { className: "space-y-2" },
           h("div", { className: "text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Formatting"),
           h("label", { className: "flex flex-col gap-1 text-sm" },
@@ -4672,12 +4655,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           })
         )
       );
-    } else if (column.type === "user") {
+    };
+
+    const buildUserContent = () => {
       const userConfig = {
-        multiple: false,
-        notifyOnAdd: true,
-        defaultUserIds: [] as string[],
-        ...draftConfig.user
+        multiple: draftConfig.user?.multiple ?? false,
+        notifyOnAdd: draftConfig.user?.notifyOnAdd ?? true,
+        defaultUserIds: draftConfig.user?.defaultUserIds ?? []
       };
       const availableUsers = Array.isArray(users) ? users : [];
       const setUserConfig = (partial: Partial<typeof userConfig>) => {
@@ -4694,7 +4678,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
             : (userConfig.defaultUserIds ?? []).filter((id) => id !== userId)
         });
       };
-      typeContent = h("div", { className: "space-y-4" },
+      return h("div", { className: "space-y-4" },
         renderToggle("Allow adding multiple users", Boolean(userConfig.multiple), (next) => {
           setUserConfig({ multiple: next, defaultUserIds: next ? userConfig.defaultUserIds ?? [] : (userConfig.defaultUserIds ?? []).slice(0, 1) });
         }),
@@ -4722,14 +4706,14 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
             : h("p", { className: "rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-500 dark:bg-neutral-900 dark:text-neutral-400" }, "No users available")
         )
       );
-    } else if (column.type === "attachment") {
+    };
+
+    const buildAttachmentContent = () => {
       const attachment = {
-        storage: "cloud" as "cloud" | "inline",
-        accept: [] as string[],
-        maxFiles: null as number | null,
-        showGallery: true,
-        generateThumbnails: true,
-        ...draftConfig.attachment
+        accept: draftConfig.attachment?.accept ?? [],
+        maxFiles: draftConfig.attachment?.maxFiles ?? null,
+        showGallery: draftConfig.attachment?.showGallery ?? true,
+        generateThumbnails: draftConfig.attachment?.generateThumbnails ?? true
       };
       const setAttachment = (partial: Partial<typeof attachment>) => {
         updateFieldConfigDraft((config) => {
@@ -4738,7 +4722,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           config.attachment = next;
         });
       };
-      typeContent = h("div", { className: "space-y-4" },
+      return h("div", { className: "space-y-4" },
         h("div", { className: "space-y-2" },
           h("div", { className: "text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Format"),
           h("div", { className: "rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-neutral-700 dark:text-neutral-100" }, "Files")
@@ -4769,89 +4753,378 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           h("input", {
             type: "text",
             placeholder: ".pdf, .jpg",
-            value: (attachment.accept ?? []).join(", "),
+            value: attachment.accept.join(", "),
             onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
-              const raw = event.currentTarget.value;
-              const parts = raw.split(",").map((part) => part.trim()).filter(Boolean);
+              const parts = event.currentTarget.value.split(",").map((part) => part.trim()).filter(Boolean);
               setAttachment({ accept: parts });
             },
-    const sel = cellMenu.menu!.selection;
-    if (!sel) return null;
-    const sample = getCellStyle(sel.r0, sel.c0) ?? {};
-    const fillValue = typeof sample.background === "string" ? sample.background : "#ffffff";
-    const textValue = typeof sample.color === "string" ? sample.color : "#000000";
-    const alignment = sample.align ?? null;
-    const isBold = !!sample.bold;
-    const isItalic = !!sample.italic;
-    const isUnderline = !!sample.underline;
-    const canPasteFormat = !!formatClipboardRef.current;
-    const toggleButtonClass = (active: boolean) => mergeClasses(
-      "inline-flex h-7 w-7 items-center justify-center rounded border text-xs transition-colors",
-      active
-        ? "bg-blue-100 border-blue-300 text-blue-600 dark:bg-blue-500/20 dark:text-blue-200 dark:border-blue-500/40"
-        : "border-zinc-200 hover:bg-zinc-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
-    );
-    return h(FloatingMenuSurface, {
-      className: "fixed z-50 rounded-lg border bg-white dark:bg-neutral-900 shadow-xl p-2 text-sm min-w-[220px]",
-      point: { x: cellMenu.menu!.x, y: cellMenu.menu!.y },
-      offset: 8,
-      onMouseLeave: () => cellMenu.close(),
-      "data-cell-context-menu": "true"
-    },
-      h("div", { className: "flex flex-col gap-1" },
-        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: async () => { await cutSelectionRange(sel); cellMenu.close(); } }, "Cut"),
-        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: async () => { await copySelectionToClipboard(sel); cellMenu.close(); } }, "Copy"),
-        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: async () => { await pasteFromClipboard(sel); cellMenu.close(); } }, "Paste"),
-        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { clearSelectionCells(sel); cellMenu.close(); } }, "Delete"),
-        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { copySelectionFormatting(sel); cellMenu.close(); } }, "Copy format"),
-        h("button", {
-          className: mergeClasses("text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", !canPasteFormat && "opacity-40 cursor-not-allowed"),
-          onClick: () => { if (canPasteFormat) { pasteSelectionFormatting(sel); cellMenu.close(); } },
-          disabled: !canPasteFormat
-        }, "Paste format"),
-        h("div", { className: "border-t my-1" }),
-        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertRowsAt(sel.r0, [createBlankRow()]); cellMenu.close(); } }, "Insert row above"),
-        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertRowsAt(sel.r1 + 1, [createBlankRow()]); cellMenu.close(); } }, "Insert row below"),
-        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertColumnAtIndex(sel.c0); cellMenu.close(); } }, "Insert column left"),
-        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertColumnAtIndex(sel.c1 + 1); cellMenu.close(); } }, "Insert column right"),
-        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { requestRemoveRows({ start: sel.r0, end: sel.r1 }); cellMenu.close(); } }, "Delete row"),
-        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { const indices = Array.from({ length: sel.c1 - sel.c0 + 1 }, (_v, i) => sel.c0 + i); requestRemoveColumns(indices); cellMenu.close(); } }, "Delete column")
-      ),
-      h("div", { className: "border-t my-2" }),
-      h("div", { className: "px-3 py-1 text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400" }, "Text"),
-      h("div", { className: "flex items-center gap-1 px-3 pb-2" },
-        h("button", { className: toggleButtonClass(isBold), title: "Bold", onClick: () => toggleSelectionTextStyle(sel, "bold") }, h(FaBold, { className: "h-4 w-4" })),
-        h("button", { className: toggleButtonClass(isItalic), title: "Italic", onClick: () => toggleSelectionTextStyle(sel, "italic") }, h(FaItalic, { className: "h-4 w-4" })),
-        h("button", { className: toggleButtonClass(isUnderline), title: "Underline", onClick: () => toggleSelectionTextStyle(sel, "underline") }, h(FaUnderline, { className: "h-4 w-4" }))
-      ),
-      h("div", { className: "flex items-center gap-1 px-3 pb-2" },
-        h("button", { className: mergeClasses(toggleButtonClass((alignment ?? "left") === "left"), "h-8 w-8"), title: "Align left", onClick: () => setSelectionAlignment(sel, "left") }, h(FaAlignLeft, { className: "h-4 w-4" })),
-        h("button", { className: mergeClasses(toggleButtonClass(alignment === "center"), "h-8 w-8"), title: "Align center", onClick: () => setSelectionAlignment(sel, "center") }, h(FaAlignCenter, { className: "h-4 w-4" })),
-        h("button", { className: mergeClasses(toggleButtonClass(alignment === "right"), "h-8 w-8"), title: "Align right", onClick: () => setSelectionAlignment(sel, "right") }, h(FaAlignRight, { className: "h-4 w-4" }))
-      ),
-      h("div", { className: "border-t my-2" }),
-      h("div", { className: "px-3 py-1 text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400" }, "Colors & Fill"),
-      h("div", { className: "flex items-center gap-2 px-3 pb-2" },
-        h("label", { className: "flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-300" },
-          "Fill",
-          h("input", {
-            type: "color",
-            value: fillValue,
-            onChange: (e: any) => applyCellStyleToSelection(sel, { background: e.target.value })
-          })
-        ),
-        h("label", { className: "flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-300" },
-          "Text",
-          h("input", {
-            type: "color",
-            value: textValue,
-            onChange: (e: any) => applyCellStyleToSelection(sel, { color: e.target.value })
+            className: "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
           })
         )
+      );
+    };
+
+    const buildLastModifiedContent = () => {
+      const lastModified = {
+        include: draftConfig.lastModifiedTime?.include ?? "all",
+        fields: draftConfig.lastModifiedTime?.fields ?? [],
+        format: {
+          dateStyle: draftConfig.lastModifiedTime?.format?.dateStyle ?? "short",
+          timeStyle: draftConfig.lastModifiedTime?.format?.timeStyle ?? "short",
+          timezone: draftConfig.lastModifiedTime?.format?.timezone ?? ""
+        }
+      };
+      const setLastModified = (partial: Partial<typeof lastModified>) => {
+        updateFieldConfigDraft((config) => {
+          const next = { ...(config.lastModifiedTime ?? {}) };
+          Object.assign(next, partial);
+          config.lastModifiedTime = next;
+        });
+      };
+      return h("div", { className: "space-y-4" },
+        h("div", { className: "space-y-1 rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-neutral-700" },
+          renderRadio(`last-mod-include-${columnIndex}`, "all", lastModified.include, "All editable fields", () => setLastModified({ include: "all" })),
+          renderRadio(`last-mod-include-${columnIndex}`, "specific", lastModified.include, "Specific fields", () => setLastModified({ include: "specific" }))
+        ),
+        lastModified.include === "specific"
+          ? h("div", { className: "space-y-2" },
+              h("div", { className: "text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Choose fields"),
+              h("div", { className: "max-h-48 overflow-y-auto rounded-lg border border-zinc-200 dark:border-neutral-700" },
+                ...columns.map((candidate, idx) => {
+                  const fieldName = candidate.name ?? `Field ${idx + 1}`;
+                  const checked = lastModified.fields.includes(fieldName);
+                  return h("label", {
+                    key: `last-mod-field-${idx}`,
+                    className: "flex items-center gap-2 px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-neutral-800"
+                  },
+                    h("input", {
+                      type: "checkbox",
+                      checked,
+                      onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+                        const nextFields = new Set(lastModified.fields);
+                        if (event.currentTarget.checked) nextFields.add(fieldName);
+                        else nextFields.delete(fieldName);
+                        setLastModified({ fields: Array.from(nextFields) });
+                      }
+                    }),
+                    h("span", null, fieldName)
+                  );
+                })
+              )
+            )
+          : null,
+        h("div", { className: "space-y-2" },
+          h("div", { className: "text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Formatting"),
+          h("label", { className: "flex flex-col gap-1 text-sm" },
+            h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Date style"),
+            h("select", {
+              className: "rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
+              value: lastModified.format.dateStyle,
+              onChange: (event: React.ChangeEvent<HTMLSelectElement>) => setLastModified({ format: { ...lastModified.format, dateStyle: event.currentTarget.value as "short" | "medium" | "long" } })
+            },
+              h("option", { value: "short" }, "Short"),
+              h("option", { value: "medium" }, "Medium"),
+              h("option", { value: "long" }, "Long")
+            )
+          ),
+          h("label", { className: "flex flex-col gap-1 text-sm" },
+            h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Time style"),
+            h("select", {
+              className: "rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
+              value: lastModified.format.timeStyle,
+              onChange: (event: React.ChangeEvent<HTMLSelectElement>) => setLastModified({ format: { ...lastModified.format, timeStyle: event.currentTarget.value as "short" | "medium" | "long" } })
+            },
+              h("option", { value: "short" }, "Short"),
+              h("option", { value: "medium" }, "Medium"),
+              h("option", { value: "long" }, "Long")
+            )
+          ),
+          h("label", { className: "flex flex-col gap-1 text-sm" },
+            h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Timezone"),
+            h("input", {
+              type: "text",
+              placeholder: "Local timezone",
+              value: lastModified.format.timezone ?? "",
+              onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+                const value = event.currentTarget.value.trim();
+                setLastModified({ format: { ...lastModified.format, timezone: value || undefined } });
+              },
+              className: "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            })
+          )
+        )
+      );
+    };
+
+    const buildLinkToRecordContent = () => {
+      const linkConfig = {
+        targetTable: draftConfig.linkToRecord?.targetTable ?? "File Uploads",
+        multiple: draftConfig.linkToRecord?.multiple ?? true,
+        limitToViewId: draftConfig.linkToRecord?.limitToViewId ?? null,
+        filterEnabled: draftConfig.linkToRecord?.filterEnabled ?? false,
+        aiAssist: draftConfig.linkToRecord?.aiAssist ?? false,
+        allowCreate: draftConfig.linkToRecord?.allowCreate ?? true
+      };
+      const setLinkConfig = (partial: Partial<typeof linkConfig>) => {
+        updateFieldConfigDraft((config) => {
+          const next = { ...(config.linkToRecord ?? {}) };
+          Object.assign(next, partial);
+          config.linkToRecord = next;
+        });
+      };
+      const viewOptions = [
+        { id: "", name: "All views" },
+        { id: "default", name: "Default view" },
+        { id: "doors-staging", name: "Doors Staging" }
+      ];
+      return h("div", { className: "space-y-4" },
+        h("div", { className: "space-y-1 rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-neutral-700" },
+          h("div", { className: "text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Link to"),
+          h("div", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, linkConfig.targetTable)
+        ),
+        renderToggle("Allow linking to multiple records", Boolean(linkConfig.multiple), (next) => setLinkConfig({ multiple: next })),
+        h("label", { className: "flex flex-col gap-1 text-sm" },
+          h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Limit record selection to a view"),
+          h("select", {
+            className: "rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
+            value: linkConfig.limitToViewId ?? "",
+            onChange: (event: React.ChangeEvent<HTMLSelectElement>) => setLinkConfig({ limitToViewId: event.currentTarget.value || null })
+          },
+            ...viewOptions.map((view) => h("option", { key: view.id, value: view.id }, view.name))
+          )
+        ),
+        renderToggle("Filter record selection by a condition", Boolean(linkConfig.filterEnabled), (next) => setLinkConfig({ filterEnabled: next })),
+        renderToggle("Use AI to show top matches when selecting a record", Boolean(linkConfig.aiAssist), (next) => setLinkConfig({ aiAssist: next })),
+        renderToggle("Allow creating new linked records", Boolean(linkConfig.allowCreate), (next) => setLinkConfig({ allowCreate: next }))
+      );
+    };
+
+    const buildLookupContent = () => {
+      const lookupConfig = {
+        sourceLinkedField: draftConfig.lookup?.sourceLinkedField ?? "",
+        sourceField: draftConfig.lookup?.sourceField ?? "",
+        filterEnabled: draftConfig.lookup?.filterEnabled ?? false,
+        sortEnabled: draftConfig.lookup?.sortEnabled ?? false,
+        limitEnabled: draftConfig.lookup?.limitEnabled ?? false,
+        limit: draftConfig.lookup?.limit ?? 10
+      };
+      const setLookupConfig = (partial: Partial<typeof lookupConfig>) => {
+        updateFieldConfigDraft((config) => {
+          const next = { ...(config.lookup ?? {}) };
+          Object.assign(next, partial);
+          config.lookup = next;
+        });
+      };
+      const linkedFieldOptions = columns
+        .map((candidate, idx) => candidate.type === "linkToRecord" ? { id: String(candidate.key ?? idx), name: candidate.name ?? `Field ${idx + 1}` } : null)
+        .filter((entry): entry is { id: string; name: string } => Boolean(entry));
+      return h("div", { className: "space-y-4" },
+        h("div", { className: "space-y-2" },
+          h("label", { className: "flex flex-col gap-1 text-sm" },
+            h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Select lookup source"),
+            h("select", {
+              className: "rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
+              value: lookupConfig.sourceLinkedField,
+              onChange: (event: React.ChangeEvent<HTMLSelectElement>) => setLookupConfig({ sourceLinkedField: event.currentTarget.value })
+            },
+              h("option", { value: "" }, "Choose a linked record field"),
+              ...linkedFieldOptions.map((opt) => h("option", { key: opt.id, value: opt.name }, opt.name))
+            )
+          ),
+          h("label", { className: "flex flex-col gap-1 text-sm" },
+            h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Field you want to look up"),
+            h("input", {
+              type: "text",
+              placeholder: "Component",
+              value: lookupConfig.sourceField,
+              onChange: (event: React.ChangeEvent<HTMLInputElement>) => setLookupConfig({ sourceField: event.currentTarget.value }),
+              className: "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            })
+          )
+        ),
+        renderToggle("Only include linked records meeting conditions", Boolean(lookupConfig.filterEnabled), (next) => setLookupConfig({ filterEnabled: next })),
+        renderToggle("Sort records", Boolean(lookupConfig.sortEnabled), (next) => setLookupConfig({ sortEnabled: next })),
+        renderToggle("Limit the number of items shown", Boolean(lookupConfig.limitEnabled), (next) => setLookupConfig({ limitEnabled: next })),
+        lookupConfig.limitEnabled
+          ? h("label", { className: "flex flex-col gap-1 text-sm" },
+              h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Maximum items"),
+              h("input", {
+                type: "number",
+                min: 1,
+                value: lookupConfig.limit,
+                onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+                  const value = Math.max(1, Math.floor(Number(event.currentTarget.value)));
+                  setLookupConfig({ limit: Number.isFinite(value) ? value : 10 });
+                },
+                className: "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+              })
+            )
+          : null
+      );
+    };
+
+    let typeContent: React.ReactNode;
+    switch (column.type) {
+      case "percent":
+        typeContent = buildPercentContent();
+        break;
+      case "user":
+        typeContent = buildUserContent();
+        break;
+      case "attachment":
+        typeContent = buildAttachmentContent();
+        break;
+      case "lastModifiedTime":
+        typeContent = buildLastModifiedContent();
+        break;
+      case "linkToRecord":
+        typeContent = buildLinkToRecordContent();
+        break;
+      case "lookup":
+        typeContent = buildLookupContent();
+        break;
+      default:
+        typeContent = h("div", { className: "rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300" },
+          "Field configuration controls are not available for this column type. You can still rename the field."
+        );
+        break;
+    }
+
+    const handleSave = () => {
+      const trimmedName = draftName.trim() || column.name;
+      const normalized = normalizeFieldConfig(column.type, draftConfig);
+      applyFieldConfigChanges(columnIndex, trimmedName, normalized);
+      closeFieldConfigPanel();
+    };
+
+    const headerNode = h("div", { className: "border-b border-zinc-200 px-4 pb-3 pt-4 dark:border-neutral-700" },
+      h("div", { className: "mb-2 rounded-lg border border-amber-400 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:border-amber-500 dark:bg-amber-500/10 dark:text-amber-200" }, column.name),
+      h("div", { className: "mb-3 flex flex-col gap-1" },
+        h("label", { className: "text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Field name"),
+        h("input", {
+          type: "text",
+          value: draftName,
+          onChange: (event: React.ChangeEvent<HTMLInputElement>) => updateFieldConfigName(event.currentTarget.value),
+          className: "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+        })
       ),
-      h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800 w-full", onClick: () => { clearStylesFromSelection(sel); cellMenu.close(); } }, "Clear formatting")
+      h("div", { className: "flex items-center gap-2 text-sm text-zinc-500 dark:text-neutral-300" },
+        renderColumnIcon(column.type),
+        h("span", null, typeLabel)
+      )
     );
-  })();
+
+    const bodyNode = h("div", { className: "max-h-[60vh] overflow-y-auto px-4 py-4 space-y-4" }, typeContent);
+
+    const footerNode = h("div", { className: "flex items-center justify-end gap-2 border-t border-zinc-200 px-4 py-3 dark:border-neutral-700" },
+      h("button", {
+        type: "button",
+        className: "rounded-full px-4 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:text-neutral-300 dark:hover:bg-neutral-800",
+        onClick: () => closeFieldConfigPanel()
+      }, "Cancel"),
+      h("button", {
+        type: "button",
+        className: "rounded-full bg-amber-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-neutral-900",
+        onClick: handleSave
+      }, "Save")
+    );
+
+    return h(FloatingMenuSurface, {
+      className: "fixed z-50 w-[360px] max-w-[400px] rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-900",
+      anchorElement: anchorElement ?? undefined,
+      anchorRect: anchorElement ? undefined : anchorRect ?? undefined,
+      align: "start",
+      side: "bottom",
+      offset: 8
+    },
+      h("div", { className: "flex max-h-[70vh] flex-col", "data-field-config-panel": "true" },
+        headerNode,
+        bodyNode,
+        footerNode
+      )
+    );
+  })() : null;
+
+  let cellContextMenu: React.ReactNode = null;
+  if (cellMenu.menu) {
+    const sel = cellMenu.menu.selection;
+    if (sel) {
+      const sample = getCellStyle(sel.r0, sel.c0) ?? {};
+      const fillValue = typeof sample.background === "string" ? sample.background : "#ffffff";
+      const textValue = typeof sample.color === "string" ? sample.color : "#000000";
+      const alignment = sample.align ?? null;
+      const isBold = !!sample.bold;
+      const isItalic = !!sample.italic;
+      const isUnderline = !!sample.underline;
+      const canPasteFormat = !!formatClipboardRef.current;
+      const toggleButtonClass = (active: boolean) => mergeClasses(
+        "inline-flex h-7 w-7 items-center justify-center rounded border text-xs transition-colors",
+        active
+          ? "bg-blue-100 border-blue-300 text-blue-600 dark:bg-blue-500/20 dark:text-blue-200 dark:border-blue-500/40"
+          : "border-zinc-200 hover:bg-zinc-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+      );
+      cellContextMenu = h(FloatingMenuSurface, {
+        className: "fixed z-50 rounded-lg border bg-white dark:bg-neutral-900 shadow-xl p-2 text-sm min-w-[220px]",
+        point: { x: cellMenu.menu.x, y: cellMenu.menu.y },
+        offset: 8,
+        onMouseLeave: () => cellMenu.close(),
+        "data-cell-context-menu": "true"
+      },
+        h("div", { className: "flex flex-col gap-1" },
+          h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: async () => { await cutSelectionRange(sel); cellMenu.close(); } }, "Cut"),
+          h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: async () => { await copySelectionToClipboard(sel); cellMenu.close(); } }, "Copy"),
+          h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: async () => { await pasteFromClipboard(sel); cellMenu.close(); } }, "Paste"),
+          h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { clearSelectionCells(sel); cellMenu.close(); } }, "Delete"),
+          h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { copySelectionFormatting(sel); cellMenu.close(); } }, "Copy format"),
+          h("button", {
+            className: mergeClasses("text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", !canPasteFormat && "opacity-40 cursor-not-allowed"),
+            onClick: () => { if (canPasteFormat) { pasteSelectionFormatting(sel); cellMenu.close(); } },
+            disabled: !canPasteFormat
+          }, "Paste format"),
+          h("div", { className: "border-t my-1" }),
+          h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertRowsAt(sel.r0, [createBlankRow()]); cellMenu.close(); } }, "Insert row above"),
+          h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertRowsAt(sel.r1 + 1, [createBlankRow()]); cellMenu.close(); } }, "Insert row below"),
+          h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertColumnAtIndex(sel.c0); cellMenu.close(); } }, "Insert column left"),
+          h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { insertColumnAtIndex(sel.c1 + 1); cellMenu.close(); } }, "Insert column right"),
+          h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { requestRemoveRows({ start: sel.r0, end: sel.r1 }); cellMenu.close(); } }, "Delete row"),
+          h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800", onClick: () => { const indices = Array.from({ length: sel.c1 - sel.c0 + 1 }, (_v, i) => sel.c0 + i); requestRemoveColumns(indices); cellMenu.close(); } }, "Delete column")
+        ),
+        h("div", { className: "border-t my-2" }),
+        h("div", { className: "px-3 py-1 text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400" }, "Text"),
+        h("div", { className: "flex items-center gap-1 px-3 pb-2" },
+          h("button", { className: toggleButtonClass(isBold), title: "Bold", onClick: () => toggleSelectionTextStyle(sel, "bold") }, h(FaBold, { className: "h-4 w-4" })),
+          h("button", { className: toggleButtonClass(isItalic), title: "Italic", onClick: () => toggleSelectionTextStyle(sel, "italic") }, h(FaItalic, { className: "h-4 w-4" })),
+          h("button", { className: toggleButtonClass(isUnderline), title: "Underline", onClick: () => toggleSelectionTextStyle(sel, "underline") }, h(FaUnderline, { className: "h-4 w-4" }))
+        ),
+        h("div", { className: "flex items-center gap-1 px-3 pb-2" },
+          h("button", { className: mergeClasses(toggleButtonClass((alignment ?? "left") === "left"), "h-8 w-8"), title: "Align left", onClick: () => setSelectionAlignment(sel, "left") }, h(FaAlignLeft, { className: "h-4 w-4" })),
+          h("button", { className: mergeClasses(toggleButtonClass(alignment === "center"), "h-8 w-8"), title: "Align center", onClick: () => setSelectionAlignment(sel, "center") }, h(FaAlignCenter, { className: "h-4 w-4" })),
+          h("button", { className: mergeClasses(toggleButtonClass(alignment === "right"), "h-8 w-8"), title: "Align right", onClick: () => setSelectionAlignment(sel, "right") }, h(FaAlignRight, { className: "h-4 w-4" }))
+        ),
+        h("div", { className: "border-t my-2" }),
+        h("div", { className: "px-3 py-1 text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400" }, "Colors & Fill"),
+        h("div", { className: "flex items-center gap-2 px-3 pb-2" },
+          h("label", { className: "flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-300" },
+            "Fill",
+            h("input", {
+              type: "color",
+              value: fillValue,
+              onChange: (e: any) => applyCellStyleToSelection(sel, { background: e.target.value })
+            })
+          ),
+          h("label", { className: "flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-300" },
+            "Text",
+            h("input", {
+              type: "color",
+              value: textValue,
+              onChange: (e: any) => applyCellStyleToSelection(sel, { color: e.target.value })
+            })
+          )
+        ),
+        h("button", { className: "text-left px-3 py-1 rounded hover:bg-zinc-100 dark:hover:bg-neutral-800 w-full", onClick: () => { clearStylesFromSelection(sel); cellMenu.close(); } }, "Clear formatting")
+      );
+    }
+  }
 
 
   const primaryViews = availableViews.filter((view) => view.group === "primary");
@@ -5562,6 +5835,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     { className: "flex gap-4 items-start" },
     mainContent,
     headerContextMenu,
+    fieldConfigElement,
     confirmModalElement,
     cellContextMenu,
     detailsModalElement
