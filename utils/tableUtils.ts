@@ -212,6 +212,8 @@ function renderColumnIcon(type: ColumnType) {
 
 const FIELD_CONFIGURATION_TYPES = new Set<ColumnType>([
   "attachment",
+  "singleLineText",
+  "phone",
   "lastModifiedTime",
   "linkToRecord",
   "lookup",
@@ -222,6 +224,31 @@ const FIELD_CONFIGURATION_TYPES = new Set<ColumnType>([
 function normalizeFieldConfig(type: ColumnType, config: ColumnSpec["config"] | undefined): NonNullable<ColumnSpec["config"]> {
   const base = deepClone(config ?? {});
   switch (type) {
+    case "singleLineText": {
+      const singleLineText = { ...(base.singleLineText ?? {}) };
+      const validation = { ...(singleLineText.validation ?? {}) };
+      singleLineText.placeholder = typeof singleLineText.placeholder === "string" ? singleLineText.placeholder : "";
+      singleLineText.maxLength = typeof singleLineText.maxLength === "number" ? singleLineText.maxLength : null;
+      singleLineText.defaultText = typeof singleLineText.defaultText === "string" ? singleLineText.defaultText : null;
+      singleLineText.showCharacterCount = Boolean(singleLineText.showCharacterCount);
+      singleLineText.trimOnSave = "trimOnSave" in singleLineText ? Boolean(singleLineText.trimOnSave) : true;
+      validation.trim = "trim" in validation ? Boolean(validation.trim) : true;
+      validation.disallowEmpty = Boolean(validation.disallowEmpty);
+      singleLineText.validation = validation;
+      base.singleLineText = singleLineText;
+      break;
+    }
+    case "phone": {
+      const phone = { ...(base.phone ?? {}) };
+      phone.region = typeof phone.region === "string" && phone.region ? phone.region : "auto";
+      phone.format = phone.format === "international" ? "international" : "national";
+      phone.allowExtension = "allowExtension" in phone ? Boolean(phone.allowExtension) : true;
+      phone.defaultNumber = typeof phone.defaultNumber === "string" ? phone.defaultNumber : null;
+      phone.placeholder = typeof phone.placeholder === "string" ? phone.placeholder : "";
+      phone.normalizeToE164 = "normalizeToE164" in phone ? Boolean(phone.normalizeToE164) : true;
+      base.phone = phone;
+      break;
+    }
     case "percent": {
       const percent = { ...(base.percent ?? {}) };
       percent.decimals = Number.isFinite(percent.decimals) ? percent.decimals : 0;
@@ -263,12 +290,25 @@ function normalizeFieldConfig(type: ColumnType, config: ColumnSpec["config"] | u
     }
     case "linkToRecord": {
       const linkToRecord = { ...(base.linkToRecord ?? {}) };
-      linkToRecord.targetTable = linkToRecord.targetTable ?? "Linked Records";
+      linkToRecord.targetTable = linkToRecord.targetTable ?? "File Uploads";
       linkToRecord.multiple = linkToRecord.multiple ?? true;
       linkToRecord.limitToViewId = linkToRecord.limitToViewId ?? null;
-      linkToRecord.filterEnabled = linkToRecord.filterEnabled ?? false;
+      const legacyFilterEnabled = (linkToRecord as any).filterEnabled;
+      if (typeof linkToRecord.filter === "undefined") {
+        linkToRecord.filter =
+          typeof legacyFilterEnabled === "boolean" && legacyFilterEnabled
+            ? { type: "placeholder" }
+            : null;
+      } else if (linkToRecord.filter && typeof linkToRecord.filter !== "object") {
+        linkToRecord.filter = null;
+      }
       linkToRecord.aiAssist = linkToRecord.aiAssist ?? false;
       linkToRecord.allowCreate = linkToRecord.allowCreate ?? true;
+      linkToRecord.views = Array.isArray(linkToRecord.views) ? linkToRecord.views : [];
+      linkToRecord.records = Array.isArray(linkToRecord.records) ? linkToRecord.records : [];
+      if ("filterEnabled" in linkToRecord) {
+        delete (linkToRecord as any).filterEnabled;
+      }
       base.linkToRecord = linkToRecord;
       break;
     }
@@ -293,6 +333,12 @@ export interface SelectOption {
   id: string;
   label: string;
   color?: string;
+}
+
+export interface LinkedRecordOption {
+  id: string;
+  title: string;
+  meta?: Record<string, string>;
 }
 
 type RGBColor = { r: number; g: number; b: number };
@@ -434,6 +480,22 @@ export interface ColumnSpec<T extends Record<string, any> = any> {
     multipleSelect?: { options: SelectOption[] };
     singleSelect?: { options: SelectOption[] };
     checkbox?: { style?: "checkbox" | "toggle" };
+    singleLineText?: {
+      placeholder?: string;
+      maxLength?: number | null;
+      defaultText?: string | null;
+      showCharacterCount?: boolean;
+      trimOnSave?: boolean;
+      validation?: { trim?: boolean; disallowEmpty?: boolean };
+    };
+    phone?: {
+      region?: string;
+      format?: "national" | "international";
+      allowExtension?: boolean;
+      defaultNumber?: string | null;
+      placeholder?: string;
+      normalizeToE164?: boolean;
+    };
     attachment?: {
       accept?: string[];
       maxFiles?: number | null;
@@ -455,9 +517,11 @@ export interface ColumnSpec<T extends Record<string, any> = any> {
       targetTable?: string;
       multiple?: boolean;
       limitToViewId?: string | null;
-      filterEnabled?: boolean;
+      filter?: Record<string, unknown> | null;
       aiAssist?: boolean;
       allowCreate?: boolean;
+      views?: Array<{ id: string; name: string }>;
+      records?: LinkedRecordOption[];
     };
     lookup?: {
       sourceLinkedField?: string;
