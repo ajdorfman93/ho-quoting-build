@@ -4847,7 +4847,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
               value: lastModified.format.timezone ?? "",
               onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
                 const value = event.currentTarget.value.trim();
-                setLastModified({ format: { ...lastModified.format, timezone: value || undefined } });
+                setLastModified({ format: { ...lastModified.format, timezone: value || "" } });
               },
               className: "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
             })
