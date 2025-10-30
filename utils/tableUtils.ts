@@ -191,6 +191,8 @@ type FieldAgentAction = {
   description: string;
 };
 
+type SortableHandle = ReturnType<(typeof Sortable)["create"]>;
+
 const FIELD_AGENT_ACTIONS: FieldAgentAction[] = [
   { id: "analyze-attachment", label: "Analyze attachment", icon: FaFileAlt, description: "Summarize and extract insights from the selected file." },
   { id: "research-companies", label: "Research companies", icon: FaBuilding, description: "Gather company intel, contacts, and recent activity." },
@@ -1376,8 +1378,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const latestColumnsRef = React.useRef(columns);
   const headerRowRef = React.useRef<HTMLDivElement | null>(null);
   const rowsContainerRef = React.useRef<HTMLDivElement | null>(null);
-  const columnSortableRef = React.useRef<InstanceType<typeof Sortable> | null>(null);
-  const rowSortableRef = React.useRef<InstanceType<typeof Sortable> | null>(null);
+  const columnSortableRef = React.useRef<SortableHandle | null>(null);
+  const rowSortableRef = React.useRef<SortableHandle | null>(null);
   const headerColumnIndicesRef = React.useRef<number[]>([]);
   const renderedRowIndexesRef = React.useRef<number[]>([]);
   const pendingColumnCommitRef = React.useRef<ColumnSpec<T>[] | null>(null);
