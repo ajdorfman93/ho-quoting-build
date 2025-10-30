@@ -4,6 +4,8 @@ The HO Quoting rebuild uses a single AI surface today: the **Field agents** menu
 
 The menu is defined in `utils/tableUtils.ts` (`FIELD_AGENT_ACTIONS`) and rendered for every instance of the shared table component that both `app/page.tsx` and `app/airtable/page.tsx` consume. Each entry captures the intent, iconography, and copy that is shown to the user.
 
+> 2025-10-30 — The `/airtable` route now renders the same Neon-backed `InteractiveGridDemo` that powers the home page. No local JSON is loaded; all reads and writes flow through the `/api/tables/*` endpoints and the Neon `column_metadata` / `column_type_settings` tables. Keep this in mind when wiring new agent behaviors—the two surfaces are functionally identical.
+
 ## Agent Catalog
 
 | ID | Label | Purpose | Current behavior |
@@ -24,6 +26,7 @@ The menu is defined in `utils/tableUtils.ts` (`FIELD_AGENT_ACTIONS`) and rendere
 - **State echo** – After an action fires, the toolbar displays a “Last action” pill so users—and telemetry—can see the most recent automation request.
 - **Extensibility** – Extend `FIELD_AGENT_ACTIONS` or adjust the `FieldAgentAction` type to add/remove capabilities. Downstream integrations should replace the console log with real adapters (REST, GraphQL, queue dispatch, etc.) and handle optimistic UI state if the action performs long-running work.
 - **Styling** – The button and dropdown inherit the shared table theming pipeline (dark mode, spacing, border radii), so the same component instance in `app/page.tsx` and `app/airtable/page.tsx` render identically.
+- **Neon parity** – Any agent experiments can target either route. Column type updates, schema mutations, and row edits replicate instantly via server-sent events, so treat `/airtable` as a second entry point rather than a sandbox backed by JSON.
 
 ## Integration Checklist
 
