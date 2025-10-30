@@ -300,7 +300,7 @@ export default function InteractiveGridDemo({
   const syncingRef = React.useRef(syncing);
   const ignoreEventsRef = React.useRef(false);
   const tableTabsContainerRef = React.useRef<HTMLDivElement | null>(null);
-  const tableTabsSortableRef = React.useRef<Sortable | null>(null);
+  const tableTabsSortableRef = React.useRef<ReturnType<typeof Sortable.create> | null>(null);
   const latestTablesRef = React.useRef<TableMetadata[]>(tables);
 
   const replaceState = React.useCallback((next: GridState) => {
