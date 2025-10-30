@@ -1,171 +1,27 @@
-[
-  {
-    "Name": "1",
-    "Customer": "Cleveland Construction,Edgeworks",
-    "Project": "Homewood Suites_Celebration FL,Homewood Suites_Celebration FL",
-    "Component": "\"Door: Solid Core Wood, Veneer\"",
-    "Override Price": "$10.00",
-    "Support Doc": "",
-    "P Composite Key": "Homewood Suites_Celebration FL, Homewood Suites_Celebration FL_\"Door: Solid Core Wood, Veneer\"",
-    "Quote Line Items": "",
-    "Quote Line Items 2": "",
-    "Components copy": "",
-    "Components copy (2)": "\"Door: Solid Core Wood, Flush, Veneer\""
-  },
-  {
-    "Name": "2",
-    "Customer": "Opechee Construction Corporation",
-    "Project": "H2S Brooklyn _Brooklyn NY",
-    "Component": "\"Frame: Hollow Metal, KD, (16 Gauge)\"",
-    "Override Price": "$26.00",
-    "Support Doc": "",
-    "P Composite Key": "H2S Brooklyn _Brooklyn NY_\"Frame: Hollow Metal, KD, (16 Gauge)\"",
-    "Quote Line Items": "",
-    "Quote Line Items 2": "468,477,450,459,497,480,507",
-    "Components copy": "",
-    "Components copy (2)": "\"Frame: Hollow Metal, KD, (16 Gauge)\""
-  },
-  {
-    "Name": "4",
-    "Customer": "Opechee Construction Corporation",
-    "Project": "H2S Brooklyn _Brooklyn NY",
-    "Component": "\"Door: Solid Core Wood, Veneer\"",
-    "Override Price": "$366.00",
-    "Support Doc": "",
-    "P Composite Key": "H2S Brooklyn _Brooklyn NY_\"Door: Solid Core Wood, Veneer\"",
-    "Quote Line Items": "",
-    "Quote Line Items 2": "499",
-    "Components copy": "",
-    "Components copy (2)": "\"Door: Solid Core Wood, Flush, Veneer\""
-  },
-  {
-    "Name": "5",
-    "Customer": "Opechee Construction Corporation",
-    "Project": "H2S Brooklyn _Brooklyn NY",
-    "Component": "\"Hardware: Hager, Kick Plate, 190S 10x46, US4\"",
-    "Override Price": "$3001.00",
-    "Support Doc": "",
-    "P Composite Key": "H2S Brooklyn _Brooklyn NY_\"Hardware: Hager, Kick Plate, 190S 10x46, US4\"",
-    "Quote Line Items": "",
-    "Quote Line Items 2": "472,454,445,463,501",
-    "Components copy": "",
-    "Components copy (2)": "\"Hardware: Hager, Kick Plate, 190S 10x46, US4\""
-  },
-  {
-    "Name": "6",
-    "Customer": "Opechee Construction Corporation",
-    "Project": "H2S Brooklyn _Brooklyn NY",
-    "Component": "\"Door: Solid Core Wood, Veneer\"",
-    "Override Price": "$196.00",
-    "Support Doc": "",
-    "P Composite Key": "H2S Brooklyn _Brooklyn NY_\"Door: Solid Core Wood, Veneer\"",
-    "Quote Line Items": "",
-    "Quote Line Items 2": "470,452,438,461,433,443",
-    "Components copy": "",
-    "Components copy (2)": "\"Door: Solid Core Wood, Flush, Veneer\""
-  },
-  {
-    "Name": "7",
-    "Customer": "Opechee Construction Corporation",
-    "Project": "H2S Brooklyn _Brooklyn NY",
-    "Component": "\"Door: Solid Core Wood, Plastic Laminate \"",
-    "Override Price": "$501.00",
-    "Support Doc": "",
-    "P Composite Key": "H2S Brooklyn _Brooklyn NY_\"Door: Solid Core Wood, Plastic Laminate \"",
-    "Quote Line Items": "",
-    "Quote Line Items 2": "458,476,467,449,496,506",
-    "Components copy": "",
-    "Components copy (2)": "\"Door: Solid Core Wood, Flush, Plastic Laminate \""
-  },
-  {
-    "Name": "8",
-    "Customer": "Opechee Construction Corporation",
-    "Project": "H2S Brooklyn _Brooklyn NY",
-    "Component": "\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\"",
-    "Override Price": "$601.00",
-    "Support Doc": "",
-    "P Composite Key": "H2S Brooklyn _Brooklyn NY_\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\"",
-    "Quote Line Items": "",
-    "Quote Line Items 2": "471,490,453,500,444,483,462,439,434",
-    "Components copy": "",
-    "Components copy (2)": "\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\""
-  },
-  {
-    "Name": "9",
-    "Customer": "Opechee Construction Corporation",
-    "Project": "H2S Brooklyn _Brooklyn NY",
-    "Component": "\"Hardware: Hager, Push Plate, 30S 4x16, US26D\"",
-    "Override Price": "$290.00",
-    "Support Doc": "",
-    "P Composite Key": "H2S Brooklyn _Brooklyn NY_\"Hardware: Hager, Push Plate, 30S 4x16, US26D\"",
-    "Quote Line Items": "",
-    "Quote Line Items 2": "508,478,498,469,481,460",
-    "Components copy": "",
-    "Components copy (2)": "\"Hardware: Hager, Push Plate, 30S 4x16, US26D\""
-  },
-  {
-    "Name": "12",
-    "Customer": "\"HiFive Development Services, Inc.\",Eitzah,Eitzah,Eitzah,Eitzah",
-    "Project": "\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\"",
-    "Component": "\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"",
-    "Override Price": "$98.00",
-    "Support Doc": "",
-    "P Composite Key": "\"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\"_\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"",
-    "Quote Line Items": "583",
-    "Quote Line Items 2": "583,553,523,517,559,565,547,541,535,571,529,577",
-    "Components copy": "",
-    "Components copy (2)": "\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\""
-  },
-  {
-    "Name": "13",
-    "Customer": "\"HiFive Development Services, Inc.\",Eitzah,Eitzah,Eitzah,Eitzah",
-    "Project": "\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\"",
-    "Component": "\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\"",
-    "Override Price": "$98.00",
-    "Support Doc": "",
-    "P Composite Key": "\"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\"_\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\"",
-    "Quote Line Items": "",
-    "Quote Line Items 2": "582,552,576,558,546,570,540,564,522,534,516,528",
-    "Components copy": "",
-    "Components copy (2)": "\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\""
-  },
-  {
-    "Name": "14",
-    "Customer": "\"HiFive Development Services, Inc.\",Eitzah,Eitzah,Eitzah,Eitzah",
-    "Project": "\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\"",
-    "Component": "\"Hardware: Hager, Cylindrical Passage, 2510 2-3/4 WTN ASA, US26D\"",
-    "Override Price": "$98.00",
-    "Support Doc": "",
-    "P Composite Key": "\"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\"_\"Hardware: Hager, Cylindrical Passage, 2510 2-3/4 WTN ASA, US26D\"",
-    "Quote Line Items": "",
-    "Quote Line Items 2": "533,557,563,569,527,575,551,521,545,581,539,515",
-    "Components copy": "",
-    "Components copy (2)": "\"Hardware: Hager, Cylindrical Passage, 2510 2-3/4 WTN ASA, US26D\""
-  },
-  {
-    "Name": "15",
-    "Customer": "\"HiFive Development Services, Inc.\",Eitzah,Eitzah,Eitzah,Eitzah",
-    "Project": "\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\"",
-    "Component": "\"Hardware: Pemko, Door Shoe, 2173DV35.625, Dark Bronze Aluminum\"",
-    "Override Price": "$98.00",
-    "Support Doc": "",
-    "P Composite Key": "\"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\"_\"Hardware: Pemko, Door Shoe, 2173DV35.625, Dark Bronze Aluminum\"",
-    "Quote Line Items": "",
-    "Quote Line Items 2": "548,536,572,530,578,524,554,542,584,560,566,518",
-    "Components copy": "",
-    "Components copy (2)": "\"Hardware: Pemko, Door Shoe, 2173DV35.625, Dark Bronze Aluminum\""
-  },
-  {
-    "Name": "16",
-    "Customer": "\"HiFive Development Services, Inc.\",Eitzah,Eitzah,Eitzah,Eitzah",
-    "Project": "\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\"",
-    "Component": "",
-    "Override Price": "",
-    "Support Doc": "",
-    "P Composite Key": "\"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\"_",
-    "Quote Line Items": "",
-    "Quote Line Items 2": "",
-    "Components copy": "",
-    "Components copy (2)": ""
-  }
-]
+[\n  {
+  "﻿Name,Customer,Project,Component,Override Price,Support Doc,P Composite Key,Quote Line Items,Quote Line Items 2,Components copy,Components copy": "1,\"Cleveland Construction,Edgeworks\",\"Homewood Suites_Celebration FL,Homewood Suites_Celebration FL\",\"\"Door: Solid Core Wood, Veneer\"\",$10.00,,\"Homewood Suites_Celebration FL, Homewood Suites_Celebration FL_\"Door: Solid Core Wood, Veneer\"\",,,,\"\"Door: Solid Core Wood, Flush, Veneer\"\""
+},\n  {
+  "﻿Name,Customer,Project,Component,Override Price,Support Doc,P Composite Key,Quote Line Items,Quote Line Items 2,Components copy,Components copy": "2,Opechee Construction Corporation,H2S Brooklyn _Brooklyn NY,\"\"Frame: Hollow Metal, KD, (16 Gauge)\"\",$26.00,,\"H2S Brooklyn _Brooklyn NY_\"Frame: Hollow Metal, KD, (16 Gauge)\"\",,\"468,477,450,459,497,480,507\",,\"\"Frame: Hollow Metal, KD, (16 Gauge)\"\""
+},\n  {
+  "﻿Name,Customer,Project,Component,Override Price,Support Doc,P Composite Key,Quote Line Items,Quote Line Items 2,Components copy,Components copy": "4,Opechee Construction Corporation,H2S Brooklyn _Brooklyn NY,\"\"Door: Solid Core Wood, Veneer\"\",$366.00,,\"H2S Brooklyn _Brooklyn NY_\"Door: Solid Core Wood, Veneer\"\",,499,,\"\"Door: Solid Core Wood, Flush, Veneer\"\""
+},\n  {
+  "﻿Name,Customer,Project,Component,Override Price,Support Doc,P Composite Key,Quote Line Items,Quote Line Items 2,Components copy,Components copy": "5,Opechee Construction Corporation,H2S Brooklyn _Brooklyn NY,\"\"Hardware: Hager, Kick Plate, 190S 10x46, US4\"\",$3001.00,,\"H2S Brooklyn _Brooklyn NY_\"Hardware: Hager, Kick Plate, 190S 10x46, US4\"\",,\"472,454,445,463,501\",,\"\"Hardware: Hager, Kick Plate, 190S 10x46, US4\"\""
+},\n  {
+  "﻿Name,Customer,Project,Component,Override Price,Support Doc,P Composite Key,Quote Line Items,Quote Line Items 2,Components copy,Components copy": "6,Opechee Construction Corporation,H2S Brooklyn _Brooklyn NY,\"\"Door: Solid Core Wood, Veneer\"\",$196.00,,\"H2S Brooklyn _Brooklyn NY_\"Door: Solid Core Wood, Veneer\"\",,\"470,452,438,461,433,443\",,\"\"Door: Solid Core Wood, Flush, Veneer\"\""
+},\n  {
+  "﻿Name,Customer,Project,Component,Override Price,Support Doc,P Composite Key,Quote Line Items,Quote Line Items 2,Components copy,Components copy": "7,Opechee Construction Corporation,H2S Brooklyn _Brooklyn NY,\"\"Door: Solid Core Wood, Plastic Laminate \"\",$501.00,,\"H2S Brooklyn _Brooklyn NY_\"Door: Solid Core Wood, Plastic Laminate \"\",,\"458,476,467,449,496,506\",,\"\"Door: Solid Core Wood, Flush, Plastic Laminate \"\""
+},\n  {
+  "﻿Name,Customer,Project,Component,Override Price,Support Doc,P Composite Key,Quote Line Items,Quote Line Items 2,Components copy,Components copy": "8,Opechee Construction Corporation,H2S Brooklyn _Brooklyn NY,\"\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\"\",$601.00,,\"H2S Brooklyn _Brooklyn NY_\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\"\",,\"471,490,453,500,444,483,462,439,434\",,\"\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\"\""
+},\n  {
+  "﻿Name,Customer,Project,Component,Override Price,Support Doc,P Composite Key,Quote Line Items,Quote Line Items 2,Components copy,Components copy": "9,Opechee Construction Corporation,H2S Brooklyn _Brooklyn NY,\"\"Hardware: Hager, Push Plate, 30S 4x16, US26D\"\",$290.00,,\"H2S Brooklyn _Brooklyn NY_\"Hardware: Hager, Push Plate, 30S 4x16, US26D\"\",,\"508,478,498,469,481,460\",,\"\"Hardware: Hager, Push Plate, 30S 4x16, US26D\"\""
+},\n  {
+  "﻿Name,Customer,Project,Component,Override Price,Support Doc,P Composite Key,Quote Line Items,Quote Line Items 2,Components copy,Components copy": "12,\"\"HiFive Development Services, Inc.\",Eitzah,Eitzah,Eitzah,Eitzah\",\"\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\"\",\"\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"\",$98.00,,\"\"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\"_\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"\",583,\"583,553,523,517,559,565,547,541,535,571,529,577\",,\"\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"\""
+},\n  {
+  "﻿Name,Customer,Project,Component,Override Price,Support Doc,P Composite Key,Quote Line Items,Quote Line Items 2,Components copy,Components copy": "13,\"\"HiFive Development Services, Inc.\",Eitzah,Eitzah,Eitzah,Eitzah\",\"\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\"\",\"\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\"\",$98.00,,\"\"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\"_\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\"\",,\"582,552,576,558,546,570,540,564,522,534,516,528\",,\"\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\"\""
+},\n  {
+  "﻿Name,Customer,Project,Component,Override Price,Support Doc,P Composite Key,Quote Line Items,Quote Line Items 2,Components copy,Components copy": "14,\"\"HiFive Development Services, Inc.\",Eitzah,Eitzah,Eitzah,Eitzah\",\"\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\"\",\"\"Hardware: Hager, Cylindrical Passage, 2510 2-3/4 WTN ASA, US26D\"\",$98.00,,\"\"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\"_\"Hardware: Hager, Cylindrical Passage, 2510 2-3/4 WTN ASA, US26D\"\",,\"533,557,563,569,527,575,551,521,545,581,539,515\",,\"\"Hardware: Hager, Cylindrical Passage, 2510 2-3/4 WTN ASA, US26D\"\""
+},\n  {
+  "﻿Name,Customer,Project,Component,Override Price,Support Doc,P Composite Key,Quote Line Items,Quote Line Items 2,Components copy,Components copy": "15,\"\"HiFive Development Services, Inc.\",Eitzah,Eitzah,Eitzah,Eitzah\",\"\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\"\",\"\"Hardware: Pemko, Door Shoe, 2173DV35.625, Dark Bronze Aluminum\"\",$98.00,,\"\"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\"_\"Hardware: Pemko, Door Shoe, 2173DV35.625, Dark Bronze Aluminum\"\",,\"548,536,572,530,578,524,554,542,584,560,566,518\",,\"\"Hardware: Pemko, Door Shoe, 2173DV35.625, Dark Bronze Aluminum\"\""
+},\n  {
+  "﻿Name,Customer,Project,Component,Override Price,Support Doc,P Composite Key,Quote Line Items,Quote Line Items 2,Components copy,Components copy": "16,\"\"HiFive Development Services, Inc.\",Eitzah,Eitzah,Eitzah,Eitzah\",\"\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\"\",,,,\"\"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\"_\",,,,"
+}\n]\n

@@ -1,22 +1,5 @@
-[
-  {
-    "Name": "",
-    "Openings": "ID_E_109A",
-    "Components": "",
-    "Quantity": "",
-    "Hardware Set Item": "",
-    "Set": "",
-    "Set Quantity": "",
-    "Total Quantity": "0"
-  },
-  {
-    "Name": "",
-    "Openings": "ID_H_165",
-    "Components": "",
-    "Quantity": "",
-    "Hardware Set Item": "\"\"\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\"\"\"",
-    "Set": "H2S Brooklyn _Brooklyn NY - 12",
-    "Set Quantity": "1",
-    "Total Quantity": "1"
-  }
-]
+[\n  {
+  "﻿Name,Openings,Components,Quantity ,Hardware Set Item,Set,Set Quantity,Total Quantity": ",ID_E_109A,,,,,,0"
+},\n  {
+  "﻿Name,Openings,Components,Quantity ,Hardware Set Item,Set,Set Quantity,Total Quantity": ",ID_H_165,,,\"\"\"\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\"\"\"\",H2S Brooklyn _Brooklyn NY - 12,1,1"
+}\n]\n

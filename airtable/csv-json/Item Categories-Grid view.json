@@ -1,18 +1,9 @@
-[
-  {
-    "Name": "Door",
-    "Markup Settings": "\"Homewood Suites_Celebration FL, Homewood Suites_Celebration FL_Door_30%\",\"Script Test_Brooklyn NY, Script Test_Brooklyn NY_Door_25%\",H2S Brooklyn _Brooklyn NY_Door_200%,_Door_30%,Homewood Suites_Celebration FL_Door_30%"
-  },
-  {
-    "Name": "Frame",
-    "Markup Settings": "Hyatt House_Brooklyn NY_Frame_25%,\"Script Test_Brooklyn NY, Script Test_Brooklyn NY_Frame_30%\""
-  },
-  {
-    "Name": "Hardware",
-    "Markup Settings": "_Hardware_10%,\"Script Test_Brooklyn NY, Script Test_Brooklyn NY_Hardware_35%\",Script Test_Brooklyn NY_Hardware_50%"
-  },
-  {
-    "Name": "Door SP",
-    "Markup Settings": "\"Script Test_Brooklyn NY, Script Test_Brooklyn NY_Door SP_50%\""
-  }
-]
+[\n  {
+  "﻿Name,Markup Settings": "Door,\"\"Homewood Suites_Celebration FL, Homewood Suites_Celebration FL_Door_30%\",\"Script Test_Brooklyn NY, Script Test_Brooklyn NY_Door_25%\",H2S Brooklyn _Brooklyn NY_Door_200%,_Door_30%,Homewood Suites_Celebration FL_Door_30%\""
+},\n  {
+  "﻿Name,Markup Settings": "Frame,\"Hyatt House_Brooklyn NY_Frame_25%,\"Script Test_Brooklyn NY, Script Test_Brooklyn NY_Frame_30%\"\""
+},\n  {
+  "﻿Name,Markup Settings": "Hardware,\"_Hardware_10%,\"Script Test_Brooklyn NY, Script Test_Brooklyn NY_Hardware_35%\",Script Test_Brooklyn NY_Hardware_50%\""
+},\n  {
+  "﻿Name,Markup Settings": "Door SP,\"\"Script Test_Brooklyn NY, Script Test_Brooklyn NY_Door SP_50%\"\""
+}\n]\n
