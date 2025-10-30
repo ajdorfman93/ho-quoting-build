@@ -1438,6 +1438,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const [sortConfig, setSortConfig] = React.useState<{ columnKey: string; direction: "asc" | "desc" } | null>(null);
   const [groupConfig, setGroupConfig] = React.useState<{ columnKey: string } | null>(null);
   const [colorConfig, setColorConfig] = React.useState<{ columnKey: string } | null>(null);
+  const isRowReorderLocked = React.useMemo(() => Boolean(sortConfig || groupConfig), [sortConfig, groupConfig]);
+  const isRowReorderLockedRef = React.useRef(isRowReorderLocked);
+  React.useEffect(() => {
+    isRowReorderLockedRef.current = isRowReorderLocked;
+  }, [isRowReorderLocked]);
   const editOriginalRef = React.useRef<any>(null);
   const headerMenu = useContextMenu();
   const cellMenu = useCellContextMenu();
@@ -3491,11 +3496,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   }, [colorConfig, columns, rows, getCellValue]);
 
   const visibleRowIndexes = filteredRowIndexes;
-  const isRowReorderLocked = Boolean(sortConfig || groupConfig);
-  const isRowReorderLockedRef = React.useRef(isRowReorderLocked);
-  React.useEffect(() => {
-    isRowReorderLockedRef.current = isRowReorderLocked;
-  }, [isRowReorderLocked]);
 
   const menuButtonClass = (active: boolean) =>
     mergeClasses(
