@@ -1389,6 +1389,56 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const [viewport, setViewport] = React.useState<{ scrollTop: number; scrollLeft: number; width: number; height: number }>({ scrollTop: 0, scrollLeft: 0, width: 0, height: 0 });
   const [internalLoadMorePending, setInternalLoadMorePending] = React.useState(false);
 
+  const closeFieldConfigPanel = React.useCallback(() => setFieldConfigPanel(null), []);
+
+  const updateFieldConfigDraft = React.useCallback((mutator: (next: NonNullable<ColumnSpec<T>["config"]>) => void) => {
+    setFieldConfigPanel((prev) => {
+      if (!prev) return prev;
+      const nextConfig = deepClone(prev.draftConfig);
+      mutator(nextConfig);
+      return { ...prev, draftConfig: nextConfig };
+    });
+  }, []);
+
+  const updateFieldConfigName = React.useCallback((name: string) => {
+    setFieldConfigPanel((prev) => (prev ? { ...prev, draftName: name } : prev));
+  }, []);
+
+  const applyFieldConfigChanges = React.useCallback((columnIndex: number, name: string, config: NonNullable<ColumnSpec<T>["config"]>) => {
+    setColumns((prev) => {
+      const currentColumn = prev[columnIndex];
+      if (!currentColumn) return prev;
+      const next = deepClone(prev);
+      const target = next[columnIndex];
+      target.name = name || target.name;
+      const sanitized = deepClone(config);
+      target.config = Object.keys(sanitized).length ? sanitized : undefined;
+      commit(latestRowsRef.current, next);
+      return next;
+    });
+  }, [commit]);
+
+  const openFieldConfiguration = React.useCallback((columnIndex: number) => {
+    const column = columns[columnIndex];
+    if (!column || !FIELD_CONFIGURATION_TYPES.has(column.type)) {
+      setHeaderEditing(columnIndex);
+      return;
+    }
+    let anchorElement: HTMLElement | null = null;
+    if (typeof document !== "undefined") {
+      anchorElement = document.querySelector(`[data-header-cell='true'][data-c='${columnIndex}']`) as HTMLElement | null;
+    }
+    const anchorRect = anchorElement?.getBoundingClientRect?.() ?? null;
+    const draftConfig = normalizeFieldConfig(column.type, column.config);
+    setFieldConfigPanel({
+      columnIndex,
+      anchorElement,
+      anchorRect,
+      draftName: column.name,
+      draftConfig
+    });
+  }, [columns]);
+
   const gridRef = React.useRef<HTMLDivElement | null>(null);
   const editorRef = React.useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const tableContainerRef = React.useRef<HTMLDivElement | null>(null);
@@ -1531,6 +1581,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         setDetailsModal(null);
       }
 
+      const insideFieldConfigSurface = Boolean(target.closest("[data-field-config-panel='true']"));
+      if (fieldConfigPanel && !insideFieldConfigSurface) {
+        closeFieldConfigPanel();
+      }
+
       const insideCellEditor = editorRef.current ? editorRef.current.contains(target) : false;
 
       if (selectDropdown) {
@@ -1546,7 +1601,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     };
     window.addEventListener("pointerdown", handlePointerDown, true);
     return () => window.removeEventListener("pointerdown", handlePointerDown, true);
-  }, [editing, selectDropdown, headerMenuState, closeHeaderMenu, cellMenuState, closeCellMenu, confirmAction, cancelDeletion, detailsModal, setDetailsModal, commitEdit]);
+  }, [editing, selectDropdown, headerMenuState, closeHeaderMenu, cellMenuState, closeCellMenu, confirmAction, cancelDeletion, detailsModal, setDetailsModal, commitEdit, fieldConfigPanel, closeFieldConfigPanel]);
+
+  React.useEffect(() => {
+    if (fieldConfigPanel && !columns[fieldConfigPanel.columnIndex]) {
+      setFieldConfigPanel(null);
+    }
+  }, [columns, fieldConfigPanel]);
 
   function getCellValue(r: number, c: number) {
     const row = rows[r];
@@ -3865,6 +3926,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         onContextMenu: (e: React.MouseEvent) => headerMenu.open(e, c),
         role: "columnheader",
         "data-c": c,
+        "data-header-cell": "true",
         draggable: true,
         onClick: (event: React.MouseEvent) => {
           const target = event.target as HTMLElement | null;
@@ -4447,7 +4509,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       h("div", { key, className: "my-1 border-t border-zinc-200 dark:border-neutral-700" });
 
     const options: React.ReactNode[] = [
-      makeOption("Edit field", FaPencilAlt, () => setHeaderEditing(columnIndex)),
+      makeOption("Edit field", FaPencilAlt, () => openFieldConfiguration(columnIndex)),
       makeOption("Duplicate field", FaClone, () => duplicateColumn(columnIndex)),
       makeOption("Insert left", FaArrowLeft, () => insertColumnAtIndex(columnIndex)),
       makeOption("Insert right", FaArrowRight, () => insertColumnAtIndex(columnIndex + 1)),
@@ -4484,7 +4546,235 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     }, ...options);
   })();
 
-  const cellContextMenu = cellMenu.menu && (() => {
+  const fieldConfigElement = fieldConfigPanel ? (() => {
+    const { columnIndex, anchorElement, anchorRect, draftConfig, draftName } = fieldConfigPanel;
+    const column = columns[columnIndex];
+    if (!column) return null;
+    const typeLabel = ALL_TYPES.find((opt) => opt.value === column.type)?.label ?? String(column.type);
+
+    const renderToggle = (
+      label: string,
+      checked: boolean,
+      onChange: (next: boolean) => void,
+      description?: string
+    ) => h("label", {
+      key: label,
+      className: "flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 text-sm transition hover:bg-zinc-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+    },
+      h("div", { className: "mr-3" },
+        h("div", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, label),
+        description ? h("div", { className: "text-xs text-zinc-500 dark:text-neutral-400" }, description) : null
+      ),
+      h("input", {
+        type: "checkbox",
+        className: "h-4 w-4",
+        checked,
+        onChange: (event: React.ChangeEvent<HTMLInputElement>) => onChange(event.currentTarget.checked)
+      })
+    );
+
+    const renderRadio = (
+      name: string,
+      value: string,
+      current: string,
+      label: string,
+      onSelect: () => void
+    ) => h("label", {
+      key: value,
+      className: "flex items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm hover:bg-zinc-50 dark:hover:bg-neutral-800"
+    },
+      h("input", {
+        type: "radio",
+        name,
+        value,
+        checked: current === value,
+        onChange: onSelect
+      }),
+      h("span", null, label)
+    );
+
+    const handleSave = () => {
+      const trimmedName = draftName.trim() || column.name;
+      const normalized = normalizeFieldConfig(column.type, draftConfig);
+      applyFieldConfigChanges(columnIndex, trimmedName, normalized);
+      closeFieldConfigPanel();
+    };
+
+    const handleCancel = () => {
+      closeFieldConfigPanel();
+    };
+
+    let typeContent: React.ReactNode = null;
+
+    if (column.type === "percent") {
+      const percent = {
+        decimals: 0,
+        locale: "local",
+        showThousands: true,
+        asProgressBar: false,
+        allowNegative: false,
+        ...draftConfig.percent
+      };
+      const updatePercent = (partial: Partial<typeof percent>) => {
+        updateFieldConfigDraft((config) => {
+          const next = { ...(config.percent ?? {}) };
+          Object.assign(next, partial);
+          config.percent = next;
+        });
+      };
+      typeContent = h("div", { className: "space-y-4" },
+        h("div", { className: "space-y-2" },
+          h("div", { className: "text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Formatting"),
+          h("label", { className: "flex flex-col gap-1 text-sm" },
+            h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Decimal places"),
+            h("select", {
+              className: "rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
+              value: percent.decimals,
+              onChange: (event: React.ChangeEvent<HTMLSelectElement>) => updatePercent({ decimals: Number(event.currentTarget.value) })
+            }, [0, 1, 2, 3, 4].map((value) =>
+              h("option", { key: value, value }, `${value} (${(100).toFixed(value)}%)`)
+            ))
+          ),
+          h("label", { className: "flex flex-col gap-1 text-sm" },
+            h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Thousands and decimal separators"),
+            h("select", {
+              className: "rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
+              value: percent.locale,
+              onChange: (event: React.ChangeEvent<HTMLSelectElement>) => updatePercent({ locale: event.currentTarget.value })
+            },
+              h("option", { value: "local" }, "Local (1,000,000.00)"),
+              h("option", { value: "european" }, "European (1.000.000,00)"),
+              h("option", { value: "space" }, "Space (1 000 000.00)")
+            )
+          )
+        ),
+        renderToggle("Show thousands separator", Boolean(percent.showThousands), (next) => updatePercent({ showThousands: next })),
+        renderToggle("Display as progress bar", Boolean(percent.asProgressBar), (next) => updatePercent({ asProgressBar: next })),
+        renderToggle("Allow negative numbers", Boolean(percent.allowNegative), (next) => updatePercent({ allowNegative: next })),
+        h("div", { className: "space-y-2" },
+          h("div", { className: "text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Default"),
+          h("input", {
+            type: "number",
+            min: 0,
+            max: 100,
+            placeholder: "Default percent",
+            value: percent.defaultPercent ?? "",
+            onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+              const raw = event.currentTarget.value;
+              if (raw === "") {
+                updatePercent({ defaultPercent: undefined });
+              } else {
+                const nextValue = clamp(Number(raw), 0, 100);
+                updatePercent({ defaultPercent: Number.isFinite(nextValue) ? nextValue : undefined });
+              }
+            },
+            className: "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+          })
+        )
+      );
+    } else if (column.type === "user") {
+      const userConfig = {
+        multiple: false,
+        notifyOnAdd: true,
+        defaultUserIds: [] as string[],
+        ...draftConfig.user
+      };
+      const availableUsers = Array.isArray(users) ? users : [];
+      const setUserConfig = (partial: Partial<typeof userConfig>) => {
+        updateFieldConfigDraft((config) => {
+          const next = { ...(config.user ?? {}) };
+          Object.assign(next, partial);
+          config.user = next;
+        });
+      };
+      const toggleDefaultUser = (userId: string, checked: boolean) => {
+        setUserConfig({
+          defaultUserIds: checked
+            ? (userConfig.multiple ? Array.from(new Set([...(userConfig.defaultUserIds ?? []), userId])) : [userId])
+            : (userConfig.defaultUserIds ?? []).filter((id) => id !== userId)
+        });
+      };
+      typeContent = h("div", { className: "space-y-4" },
+        renderToggle("Allow adding multiple users", Boolean(userConfig.multiple), (next) => {
+          setUserConfig({ multiple: next, defaultUserIds: next ? userConfig.defaultUserIds ?? [] : (userConfig.defaultUserIds ?? []).slice(0, 1) });
+        }),
+        renderToggle("Notify users with base access when they're added", Boolean(userConfig.notifyOnAdd), (next) => setUserConfig({ notifyOnAdd: next })),
+        h("div", { className: "space-y-2" },
+          h("div", { className: "text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Default option"),
+          availableUsers.length
+            ? h("div", { className: "max-h-48 overflow-y-auto rounded-lg border border-zinc-200 dark:border-neutral-700" },
+                ...availableUsers.map((user) => {
+                  const checked = (userConfig.defaultUserIds ?? []).includes(user.id);
+                  return h("label", {
+                    key: user.id,
+                    className: "flex items-center gap-2 px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-neutral-800"
+                  },
+                    h("input", {
+                      type: userConfig.multiple ? "checkbox" : "radio",
+                      name: userConfig.multiple ? `default-user-${columnIndex}-${user.id}` : `default-user-${columnIndex}`,
+                      checked,
+                      onChange: (event: React.ChangeEvent<HTMLInputElement>) => toggleDefaultUser(user.id, event.currentTarget.checked)
+                    }),
+                    h("span", null, user.name ?? user.id)
+                  );
+                })
+              )
+            : h("p", { className: "rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-500 dark:bg-neutral-900 dark:text-neutral-400" }, "No users available")
+        )
+      );
+    } else if (column.type === "attachment") {
+      const attachment = {
+        storage: "cloud" as "cloud" | "inline",
+        accept: [] as string[],
+        maxFiles: null as number | null,
+        showGallery: true,
+        generateThumbnails: true,
+        ...draftConfig.attachment
+      };
+      const setAttachment = (partial: Partial<typeof attachment>) => {
+        updateFieldConfigDraft((config) => {
+          const next = { ...(config.attachment ?? {}) };
+          Object.assign(next, partial);
+          config.attachment = next;
+        });
+      };
+      typeContent = h("div", { className: "space-y-4" },
+        h("div", { className: "space-y-2" },
+          h("div", { className: "text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Format"),
+          h("div", { className: "rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-neutral-700 dark:text-neutral-100" }, "Files")
+        ),
+        renderToggle("Show gallery", Boolean(attachment.showGallery), (next) => setAttachment({ showGallery: next })),
+        renderToggle("Generate thumbnails", Boolean(attachment.generateThumbnails), (next) => setAttachment({ generateThumbnails: next })),
+        h("label", { className: "flex flex-col gap-1 text-sm" },
+          h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Maximum files"),
+          h("input", {
+            type: "number",
+            min: 1,
+            placeholder: "Unlimited",
+            value: attachment.maxFiles ?? "",
+            onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+              const raw = event.currentTarget.value;
+              if (raw === "") {
+                setAttachment({ maxFiles: null });
+              } else {
+                const parsed = Math.max(1, Math.floor(Number(raw)));
+                setAttachment({ maxFiles: Number.isFinite(parsed) ? parsed : null });
+              }
+            },
+            className: "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+          })
+        ),
+        h("label", { className: "flex flex-col gap-1 text-sm" },
+          h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Allowed file types"),
+          h("input", {
+            type: "text",
+            placeholder: ".pdf, .jpg",
+            value: (attachment.accept ?? []).join(", "),
+            onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+              const raw = event.currentTarget.value;
+              const parts = raw.split(",").map((part) => part.trim()).filter(Boolean);
+              setAttachment({ accept: parts });
+            },
     const sel = cellMenu.menu!.selection;
     if (!sel) return null;
     const sample = getCellStyle(sel.r0, sel.c0) ?? {};
