@@ -1,4 +1,4 @@
-// utils/tableUtils.ts
+﻿// utils/tableUtils.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as React from "react";
 import Sortable from "sortablejs";
