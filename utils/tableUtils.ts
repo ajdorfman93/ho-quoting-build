@@ -1603,6 +1603,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     draftConfig: NonNullable<ColumnSpec<T>["config"]>;
     draftType: ColumnType;
   } | null>(null);
+  const [fieldTypeMenuOpen, setFieldTypeMenuOpen] = React.useState(false);
+  const fieldTypeButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  const fieldTypeMenuRef = React.useRef<HTMLDivElement | null>(null);
   const [detailsModal, setDetailsModal] = React.useState<{ rowIndex: number } | null>(null);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState("");
