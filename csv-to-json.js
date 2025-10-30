@@ -1,21 +1,25 @@
 #!/usr/bin/env node
 /**
- * csv-to-json.js (dependency-free, file or directory)
+ * csv-to-json.js (dependency-free, file or directory) — with smart array splitting.
  *
- * Robust encoding & parsing:
- * - Detects UTF-8 BOM, UTF-16LE, UTF-16BE and decodes correctly (no garbled text).
- * - Strips BOM at file and header level.
- * - Proper CSV parsing (quotes/escaped quotes), no external deps.
- * - Auto-detects delimiter from header line (',', ';', '\t', '|') unless --delimiter is provided.
- * - ALWAYS includes all headers in every JSON object; missing/blank cells => "".
- * - Default pretty-print = 2 spaces (override with --pretty <n>; use 0 to minify).
- * - Treat all columns as plain text unless --infer-types is passed.
- * - Works on single files or entire directories recursively.
- *
- * Usage:
- *  node csv-to-json.js airtable/csv
- * Node 18+
+ * Key behavior:
+ * - Detect & decode UTF-8 (BOM/none), UTF-16LE/BE; strip BOM.
+ * - Proper CSV parsing (quotes/escaped quotes), no deps.
+ * - Auto-detect delimiter from header line unless --delimiter is set.
+ * - ALWAYS include all headers; missing/blank cells => "" (or [] if array field).
+ * - Default pretty=2; use --pretty=0 to minify.
+ * - Plain text columns unless --infer-types.
+ * - File or recursive directory mode.
+ * - Smart array splitting: commas are dividers EXCEPT the comma in the pattern "City, ST"
+ *   where ST is exactly two uppercase letters. Examples:
+ *     "Home 2 Suites - Springfield, OH, Home 2 Suites - ..." → splits only on comma after "OH"
+ *     "_Montreal, QB, H3Z..." → first comma is not a divider (City, ST), next comma is divider.
+ * - Default array fields: Quote Line Items, Openings, Hardware Set, Components, Openings 2, Openings 3, Items, Item Ids, Quote Line Item Ids
+ *   (Override via --array-fields "col1,col2,...")
  */
+
+//    node csv-to-json.js airtable/csv
+
 
 import fs from 'fs';
 import path from 'path';
@@ -73,13 +77,13 @@ Options:
       --pretty [n]            Pretty-print JSON (default 2). Use 0 for minified.
       --infer-types           Optional: numbers/bools/null (default off → plain text)
       --array-fields <list>   Columns to split into arrays (comma-separated)
-      --array-sep <char>      Separator for array-fields (default ';')
+      --array-sep <char>      Ignored (we use smart comma rules); present for compatibility
       --limit <n>             Process at most n rows per file (testing)
   -h, --help                  Show help
 
 Notes:
-  • Every JSON row includes ALL headers from the CSV. Missing values become "".
-  • By default, all columns are plain text (no inference) and empty strings are preserved.
+  • Every JSON row includes ALL headers from the CSV. Missing values become "" (or [] for array fields).
+  • Default array fields: Quote Line Items, Openings, Hardware Set, Components, Openings 2, Openings 3, Items, Item Ids, Quote Line Item Ids.
 `;
   console.log(help.trim() + '\\n');
 }
@@ -115,7 +119,10 @@ if (hasFlag('pretty')) {
 const inferTypes = hasFlag('infer-types');
 const limit = Number(getOpt('limit')) || undefined;
 
-const arrayFieldsRaw = getOpt('array-fields', null, '');
+let arrayFieldsRaw = getOpt('array-fields', null, '');
+if (!arrayFieldsRaw) {
+  arrayFieldsRaw = 'Quote Line Items,Openings,Hardware Set,Components,Openings 2,Openings 3,Items,Item Ids,Quote Line Item Ids';
+}
 const arrayFields = new Set(
   arrayFieldsRaw
     .split(',')
@@ -123,32 +130,22 @@ const arrayFields = new Set(
     .filter(Boolean)
     .map(s => s.toLowerCase())
 );
-const arraySep = getOpt('array-sep', null, ';');
-
-let outputPath = getOpt('output','o', null);
 
 // ------------------------- Encoding helpers ---------------------------------
 
 function stripBOMChar(s) {
   if (!s) return s;
-  // Remove leading U+FEFF if present
   if (s.charCodeAt(0) === 0xFEFF) return s.slice(1);
   return s;
 }
 function decodeBufferSmart(buf) {
-  // Detect BOM/encoding
   if (buf.length >= 3 && buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) {
-    // UTF-8 with BOM
     return buf.toString('utf8').slice(1);
   }
   if (buf.length >= 2 && buf[0] === 0xFF && buf[1] === 0xFE) {
-    // UTF-16 LE
-    // Drop BOM two bytes
-    const sliced = buf.subarray(2);
-    return sliced.toString('utf16le');
+    return buf.subarray(2).toString('utf16le');
   }
   if (buf.length >= 2 && buf[0] === 0xFE && buf[1] === 0xFF) {
-    // UTF-16 BE -> convert to LE by swapping pairs, then decode
     const le = Buffer.alloc(buf.length - 2);
     for (let i = 2, j = 0; i + 1 < buf.length; i += 2, j += 2) {
       le[j] = buf[i + 1];
@@ -156,7 +153,6 @@ function decodeBufferSmart(buf) {
     }
     return le.toString('utf16le');
   }
-  // Fallback: assume UTF-8 without BOM
   return buf.toString('utf8');
 }
 
@@ -227,54 +223,118 @@ function parseRow(line, delimiter) {
   return out;
 }
 
-function coerceValue(key, value) {
-  // Strip only WRAPPING quotes (straight or smart) while keeping interior/inch quotes.
-  const unwrap = (s) => {
-    if (s == null) return '';
-    let v = String(s);
-    const wsTrimmed = v.trim();
-    if (wsTrimmed.length >= 2 && wsTrimmed[0] === '"' && wsTrimmed[wsTrimmed.length - 1] === '"') {
-      v = wsTrimmed.slice(1, -1);
-    } else if (wsTrimmed.length >= 2 && wsTrimmed[0] === '“' && wsTrimmed[wsTrimmed.length - 1] === '”') {
-      v = wsTrimmed.slice(1, -1);
-    } else {
-      v = wsTrimmed;
-    }
-    return v;
-  };
-
-  if (value == null) return '';
-  const trimmed = unwrap(value);
-  if (trimmed === '') return '';
-  if (arrayFields.size > 0 && arrayFields.has(key.toLowerCase())) {
-    return trimmed.split(arraySep).map(s => s.trim());
+// Smart array splitting: commas are dividers unless the comma is part of "City, ST" where ST is exactly two uppercase letters.
+function isTwoLetterStateLikeSegment(s, pos) {
+  const i = pos;
+  if (i < 0 || i >= s.length || s[i] !== ',') return false;
+  const after = s.slice(i + 1);
+  if (after.length < 3) return false;
+  if (after[0] !== ' ') return false;
+  const a = after.charCodeAt(1), b = after.charCodeAt(2);
+  const isUpper = (c) => c >= 65 && c <= 90;
+  if (!isUpper(a) || !isUpper(b)) return false;
+  if (after.length >= 4) {
+    const c = after.charCodeAt(3);
+    const isAlphaNum = (ch) => (ch >= 48 && ch <= 57) || (ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122);
+    if (isAlphaNum(c)) return false;
   }
-  if (!inferTypes) return trimmed;
-  if (/^-?\d+$/.test(trimmed)) {
-    const asInt = parseInt(trimmed, 10);
+  return true;
+}
+
+function unwrapQuotes(s) {
+  if (s == null) return '';
+  let v = String(s).trim();
+  if (v.length >= 2 && v[0] === '"' && v[v.length - 1] === '"') v = v.slice(1, -1);
+  if (v.length >= 2 && v[0] === '“' && v[v.length - 1] === '”') v = v.slice(1, -1);
+  while (v.startsWith('""')) v = v.slice(1);
+  while (v.endsWith('""')) v = v.slice(0, -1);
+  return v.trim();
+}
+
+function splitArraySmart(val) {
+  const s = String(val);
+  if (s.trim() === '') return [];
+  const out = [];
+  let buf = '';
+  let i = 0;
+  const len = s.length;
+  let inQuotes = false;
+
+  while (i < len) {
+    const ch = s[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < len && s[i + 1] === '"') {
+          buf += '"';
+          i += 2;
+          continue;
+        } else {
+          inQuotes = false;
+          i++;
+          continue;
+        }
+      } else {
+        buf += ch;
+        i++;
+        continue;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+        i++;
+        continue;
+      }
+      if (ch === ',') {
+        if (!isTwoLetterStateLikeSegment(s, i)) {
+          out.push(buf.trim());
+          buf = '';
+          i++;
+          if (i < len && s[i] === ' ') i++;
+          continue;
+        } else {
+          buf += ch;
+          i++;
+          continue;
+        }
+      }
+      buf += ch;
+      i++;
+    }
+  }
+  out.push(buf.trim());
+  const cleaned = out.map(t => unwrapQuotes(t)).filter(v => v !== '');
+  return cleaned;
+}
+
+function coerceValue(key, value) {
+  if (value == null) return '';
+  const base = unwrapQuotes(value);
+  if (base === '') return arrayFields.has(key.toLowerCase()) ? [] : '';
+  if (arrayFields.has(key.toLowerCase())) {
+    const arr = splitArraySmart(base);
+    return arr;
+  }
+  if (!inferTypes) return base;
+  if (/^-?\d+$/.test(base)) {
+    const asInt = parseInt(base, 10);
     if (Number.isSafeInteger(asInt)) return asInt;
   }
-  if (/^-?\d*\.\d+$/.test(trimmed)) {
-    const asFloat = parseFloat(trimmed);
+  if (/^-?\d*\.\d+$/.test(base)) {
+    const asFloat = parseFloat(base);
     if (!Number.isNaN(asFloat)) return asFloat;
   }
-  if (/^(true|false)$/i.test(trimmed)) return /^true$/i.test(trimmed);
-  if (/^null$/i.test(trimmed)) return null;
-  return trimmed;
+  if (/^(true|false)$/i.test(base)) return /^true$/i.test(base);
+  if (/^null$/i.test(base)) return null;
+  return base;
 }
 
 function convertCSVStringToJSON(str) {
-  // Normalize encoding & strip any leading BOM
-  str = stripBOMChar(decodeBufferSmart(Buffer.from(str, 'utf8')));
-  // NOTE: the caller will pass a decoded string; above ensures BOM removed even if present as U+FEFF.
-
-  const lines = splitLines(str);
+  const decoded = decodeBufferSmart(Buffer.from(str, 'utf8'));
+  const norm = stripBOMChar(decoded);
+  const lines = splitLines(norm);
   let headerLineIdx = -1;
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].trim() !== '') {
-      headerLineIdx = i;
-      break;
-    }
+    if (lines[i].trim() !== '') { headerLineIdx = i; break; }
   }
   if (headerLineIdx === -1) return { headers: [], rows: [], delimiter: ',' };
 
@@ -282,7 +342,6 @@ function convertCSVStringToJSON(str) {
   const delim = detectDelimiterFromLine(headerLine);
   let headers = parseRow(headerLine, delim).map(h => stripBOMChar(h).trim());
 
-  // Deduplicate headers
   const seen = new Map();
   headers = headers.map((h, idx) => {
     const key = h || `Column ${idx + 1}`;
@@ -309,7 +368,6 @@ function convertCSVStringToJSON(str) {
     rows.push(obj);
     if (limit && rows.length >= limit) break;
   }
-
   return { headers, rows, delimiter: delim };
 }
 
@@ -326,19 +384,13 @@ async function* walkDir(dir) {
     }
   }
 }
-function isCSV(p) {
-  const ext = path.extname(p).toLowerCase();
-  return ext === '.csv';
-}
-async function ensureDir(p) {
-  await fs.promises.mkdir(p, { recursive: true });
-}
+function isCSV(p) { return path.extname(p).toLowerCase() === '.csv'; }
+async function ensureDir(p) { await fs.promises.mkdir(p, { recursive: true }); }
 
 // ------------------------------- Runners ------------------------------------
 
 function readTextSmart(filePath) {
   const buf = fs.readFileSync(filePath);
-  // detect encoding by BOM and decode properly
   if (buf.length >= 3 && buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) {
     return buf.toString('utf8').slice(1);
   }
@@ -366,7 +418,9 @@ async function handleFile(inputFilePath, outPath) {
   if (ndjson) {
     for (const r of rows) {
       for (const h of headers) {
-        if (!Object.prototype.hasOwnProperty.call(r, h) || r[h] == null) r[h] = '';
+        if (!Object.prototype.hasOwnProperty.call(r, h) || r[h] == null || r[h] === '') {
+          r[h] = arrayFields.has(h.toLowerCase()) ? [] : '';
+        }
       }
       outStream.write(JSON.stringify(r));
       outStream.write(os.EOL);
@@ -376,7 +430,11 @@ async function handleFile(inputFilePath, outPath) {
       const full = {};
       for (const h of headers) {
         let v = r[h];
-        if (v === null || typeof v === 'undefined') v = '';
+        if (arrayFields.has(h.toLowerCase())) {
+          if (v == null || v === '' || (Array.isArray(v) && v.length === 0)) v = [];
+        } else {
+          if (v === null || typeof v === 'undefined') v = '';
+        }
         full[h] = v;
       }
       return full;
@@ -399,7 +457,7 @@ async function handleDirectory(dirInputPath, dirOutputRoot) {
     const base = path.basename(rel, path.extname(rel));
     const outFile = path.join(outDir, base + (ndjson ? '.ndjson' : '.json'));
     try {
-      await handleFile(f, ndjson ? outFile : outFile);
+      await handleFile(f, outFile);
       count++;
     } catch (err) {
       console.error(`✖ Failed to convert ${rel}: ${err && err.message ? err.message : err}`);
@@ -414,12 +472,13 @@ async function handleDirectory(dirInputPath, dirOutputRoot) {
   const stat = fs.statSync(inputPath);
   if (stat.isDirectory()) {
     const dirInputPath = path.resolve(inputPath);
-    const dirOutputRoot = outputPath
-      ? path.resolve(outputPath)
+    const dirOutputRoot = getOpt('output','o', null)
+      ? path.resolve(getOpt('output','o', null))
       : path.resolve(path.dirname(dirInputPath), path.basename(dirInputPath) + '-json');
     await ensureDir(dirOutputRoot);
     await handleDirectory(dirInputPath, dirOutputRoot);
   } else if (stat.isFile()) {
+    let outputPath = getOpt('output','o', null);
     if (!outputPath && !ndjson) {
       const ext = path.extname(inputPath);
       outputPath = path.join(path.dirname(inputPath), path.basename(inputPath, ext) + '.json');
