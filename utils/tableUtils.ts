@@ -8,6 +8,7 @@ import {
   FaArrowLeft,
   FaArrowRight,
   FaBold,
+  FaBuilding,
   FaCalendarAlt,
   FaCheckSquare,
   FaCheck,
@@ -20,7 +21,9 @@ import {
   FaEyeSlash,
   FaFilter,
   FaFont,
+  FaFileAlt,
   FaHeart,
+  FaImage,
   FaGripVertical,
   FaHashtag,
   FaHourglassHalf,
@@ -51,6 +54,8 @@ import {
   FaTh,
   FaThLarge,
   FaCircle,
+  FaMagic,
+  FaRobot,
   FaUnderline,
   FaUser,
   FaHistory,
@@ -176,6 +181,24 @@ const VIEW_DEFINITIONS: ViewDefinition[] = [
   { id: "gantt", name: "Gantt", icon: FaStream, colorClass: "text-teal-500", group: "primary" },
   { id: "form", name: "Form", icon: FaWpforms, colorClass: "text-purple-500", group: "secondary" },
   { id: "section", name: "Section", icon: FaLayerGroup, colorClass: "text-gray-500", group: "secondary" }
+];
+
+type FieldAgentAction = {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+};
+
+const FIELD_AGENT_ACTIONS: FieldAgentAction[] = [
+  { id: "analyze-attachment", label: "Analyze attachment", icon: FaFileAlt, description: "Summarize and extract insights from the selected file." },
+  { id: "research-companies", label: "Research companies", icon: FaBuilding, description: "Gather company intel, contacts, and recent activity." },
+  { id: "find-image-from-web", label: "Find image from web", icon: FaImage, description: "Search the web for high-quality reference imagery." },
+  { id: "generate-image", label: "Generate image", icon: FaMagic, description: "Use AI to create on-brand visual mockups." },
+  { id: "deep-match", label: "Deep match", icon: FaLayerGroup, description: "Compare requirements with existing assets for best fit." },
+  { id: "build-prototype", label: "Build prototype", icon: FaPencilAlt, description: "Draft interactive prototypes based on the current record." },
+  { id: "build-field-agent", label: "Build a field agent", icon: FaRobot, description: "Spin up an automated assistant tailored to this workflow." },
+  { id: "browse-catalog", label: "Browse catalog", icon: FaThLarge, description: "Quickly explore available templates and solution kits." }
 ];
 
 const columnTypeIconMap: Partial<Record<ColumnType, React.ComponentType<{ className?: string }>>> = {
@@ -1361,6 +1384,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const [rowHeightMenuOpen, setRowHeightMenuOpen] = React.useState(false);
   const rowHeightButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const rowHeightMenuRef = React.useRef<HTMLDivElement | null>(null);
+  const [fieldAgentsOpen, setFieldAgentsOpen] = React.useState(false);
+  const [fieldAgentsSearch, setFieldAgentsSearch] = React.useState("");
+  const [lastFieldAgentAction, setLastFieldAgentAction] = React.useState<string | null>(null);
+  const fieldAgentsButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  const fieldAgentsMenuRef = React.useRef<HTMLDivElement | null>(null);
   const [rowHeightPreset, setRowHeightPreset] = React.useState<RowHeightPreset>("short");
   const rowHeightPresetRef = React.useRef<RowHeightPreset>("short");
   const [wrapHeaders, setWrapHeaders] = React.useState(false);
@@ -1369,6 +1397,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   React.useEffect(() => {
     rowHeightPresetRef.current = rowHeightPreset;
   }, [rowHeightPreset]);
+  React.useEffect(() => {
+    if (!fieldAgentsOpen) {
+      setFieldAgentsSearch("");
+    }
+  }, [fieldAgentsOpen]);
   const [filterDraftColumn, setFilterDraftColumn] = React.useState<string>("");
   const [filterDraftOperator, setFilterDraftOperator] = React.useState<"contains" | "equals">("contains");
   const [filterDraftValue, setFilterDraftValue] = React.useState("");
@@ -1395,6 +1428,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const sortMenuPlacement = useAutoDropdownPlacement(sortMenuOpen, sortButtonRef, sortMenuRef, { offset: 8 });
   const colorMenuPlacement = useAutoDropdownPlacement(colorMenuOpen, colorButtonRef, colorMenuRef, { offset: 8 });
   const rowHeightMenuPlacement = useAutoDropdownPlacement(rowHeightMenuOpen, rowHeightButtonRef, rowHeightMenuRef, { offset: 8 });
+  const fieldAgentsPlacement = useAutoDropdownPlacement(fieldAgentsOpen, fieldAgentsButtonRef, fieldAgentsMenuRef, { offset: 8 });
   const activeViewDefinition = React.useMemo(
     () => availableViews.find((view) => view.instanceId === activeView),
     [availableViews, activeView]
@@ -1431,10 +1465,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     setSortMenuOpen(false);
     setColorMenuOpen(false);
     setRowHeightMenuOpen(false);
+    setFieldAgentsOpen(false);
   }, []);
 
   React.useEffect(() => {
-    if (!(viewsDropdownOpen || fieldsMenuOpen || filterMenuOpen || groupMenuOpen || sortMenuOpen || colorMenuOpen || rowHeightMenuOpen)) {
+    if (!(viewsDropdownOpen || fieldsMenuOpen || filterMenuOpen || groupMenuOpen || sortMenuOpen || colorMenuOpen || rowHeightMenuOpen || fieldAgentsOpen)) {
       return;
     }
     const menus = [
@@ -1444,7 +1479,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       { open: groupMenuOpen, trigger: groupButtonRef as React.RefObject<HTMLElement>, menu: groupMenuRef as React.RefObject<HTMLElement> },
       { open: sortMenuOpen, trigger: sortButtonRef as React.RefObject<HTMLElement>, menu: sortMenuRef as React.RefObject<HTMLElement> },
       { open: colorMenuOpen, trigger: colorButtonRef as React.RefObject<HTMLElement>, menu: colorMenuRef as React.RefObject<HTMLElement> },
-      { open: rowHeightMenuOpen, trigger: rowHeightButtonRef as React.RefObject<HTMLElement>, menu: rowHeightMenuRef as React.RefObject<HTMLElement> }
+      { open: rowHeightMenuOpen, trigger: rowHeightButtonRef as React.RefObject<HTMLElement>, menu: rowHeightMenuRef as React.RefObject<HTMLElement> },
+      { open: fieldAgentsOpen, trigger: fieldAgentsButtonRef as React.RefObject<HTMLElement>, menu: fieldAgentsMenuRef as React.RefObject<HTMLElement> }
     ];
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
@@ -1468,7 +1504,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [viewsDropdownOpen, fieldsMenuOpen, filterMenuOpen, groupMenuOpen, sortMenuOpen, colorMenuOpen, rowHeightMenuOpen, closeAllMenus]);
+  }, [viewsDropdownOpen, fieldsMenuOpen, filterMenuOpen, groupMenuOpen, sortMenuOpen, colorMenuOpen, rowHeightMenuOpen, fieldAgentsOpen, closeAllMenus]);
 
   const commit = React.useCallback((nextRows: T[] = rows, nextCols: ColumnSpec<T>[] = columns) => {
     push({ rows: nextRows, columns: nextCols });
@@ -2236,6 +2272,29 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     setRecordLinkDropdown(null);
     setRecordLinkDropdownAnchor(null);
     const { r, c } = editing;
+    const column = columns[c];
+    const originalValue = editOriginalRef.current;
+    if (column) {
+      const key = column.key as keyof T;
+      const currentRows = deepClone(latestRowsRef.current);
+      if (currentRows[r]) {
+        const existingValue = (currentRows[r] as any)[key];
+        if (column.type === "singleLineText" && typeof existingValue === "string") {
+          const singleConfig = column.config?.singleLineText;
+          const shouldTrim = singleConfig?.trimOnSave ?? true;
+          const disallowEmpty = singleConfig?.validation?.disallowEmpty ?? false;
+          let sanitized = shouldTrim ? existingValue.trim() : existingValue;
+          if (disallowEmpty && sanitized === "") {
+            sanitized = typeof originalValue === "string" && originalValue !== "" ? originalValue : existingValue;
+          }
+          if (sanitized !== existingValue) {
+            (currentRows[r] as any)[key] = sanitized;
+            latestRowsRef.current = currentRows;
+            setRows(currentRows);
+          }
+        }
+      }
+    }
     editOriginalRef.current = null;
     setEditing(null);
     commit(latestRowsRef.current, columns);
@@ -4906,6 +4965,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
               setRecordLinkDropdown((prev) => (prev ? { ...prev, search: value } : prev));
             },
             placeholder: "Find a record",
+            onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                cancelEdit();
+              }
+            },
             className: "w-full rounded-lg border border-zinc-300 px-3 py-2 pl-8 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
           }),
           h(FaSearch, { className: "pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 dark:text-neutral-500" })
@@ -5883,6 +5948,69 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     secondaryViews.length ? h("div", { className: "flex flex-col gap-1" }, ...secondaryViews.map(renderViewButton)) : null
   ) : null;
 
+  const filteredFieldAgentActions = React.useMemo(() => {
+    const query = fieldAgentsSearch.trim().toLowerCase();
+    if (!query) return FIELD_AGENT_ACTIONS;
+    return FIELD_AGENT_ACTIONS.filter((action) =>
+      action.label.toLowerCase().includes(query) ||
+      action.description.toLowerCase().includes(query)
+    );
+  }, [fieldAgentsSearch]);
+
+  const handleFieldAgentSelect = React.useCallback((action: FieldAgentAction) => {
+    setLastFieldAgentAction(action.label);
+    setFieldAgentsOpen(false);
+    setFieldAgentsSearch("");
+    console.info(`Field agent action selected: ${action.id}`);
+  }, []);
+
+  const fieldAgentsDropdown = fieldAgentsOpen ? h("div", {
+    ref: fieldAgentsMenuRef,
+    className: mergeClasses(
+      "absolute z-40 w-80 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-950",
+      fieldAgentsPlacement === "top"
+        ? "bottom-full mb-2 origin-bottom-right"
+        : "top-full mt-2 origin-top-right"
+    ),
+    role: "menu",
+    "aria-label": "Field agent actions",
+    "data-placement": fieldAgentsPlacement,
+    "data-field-agents-dropdown": "true"
+  },
+    h("div", { className: "flex flex-col gap-3" },
+      h("div", { className: "relative" },
+        h("input", {
+          type: "search",
+          value: fieldAgentsSearch,
+          onChange: (event: React.ChangeEvent<HTMLInputElement>) => setFieldAgentsSearch(event.currentTarget.value),
+          placeholder: "Search actions",
+          className: "w-full rounded-full border border-zinc-300 px-3 py-2 pl-9 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+        }),
+        h(FaSearch, { className: "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 dark:text-neutral-500" })
+      ),
+      h("div", { className: "grid grid-cols-1 gap-2 sm:grid-cols-2" },
+        ...filteredFieldAgentActions.map((action) =>
+          h("button", {
+            key: action.id,
+            type: "button",
+            className: "flex h-full flex-col gap-1 rounded-xl border border-zinc-200 px-3 py-2 text-left text-sm transition hover:border-blue-300 hover:bg-blue-50 dark:border-neutral-700 dark:hover:border-blue-500/40 dark:hover:bg-blue-500/10",
+            onClick: () => handleFieldAgentSelect(action)
+          },
+            h("div", { className: "flex items-center gap-2" },
+              h(action.icon, { className: "h-4 w-4 text-blue-500 dark:text-blue-300" }),
+              h("span", { className: "font-semibold text-zinc-700 dark:text-neutral-100" }, action.label)
+            ),
+            h("p", { className: "text-xs text-zinc-500 dark:text-neutral-400" }, action.description)
+          )
+        )
+      ),
+      filteredFieldAgentActions.length === 0
+        ? h("div", { className: "rounded-xl border border-dashed border-zinc-300 px-3 py-4 text-center text-xs text-zinc-500 dark:border-neutral-700 dark:text-neutral-400" },
+            "No actions match your search.")
+        : null
+    )
+  ) : null;
+
   const hideFieldsActive = fieldsMenuOpen || hiddenColumns.length > 0;
   const fieldsButtonLabel = hiddenColumns.length
     ? `${hiddenColumns.length} hidden field${hiddenColumns.length === 1 ? "" : "s"}`
@@ -6384,9 +6512,32 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           )
         ),
         rowHeightMenu
+      ),
+      h("div", { className: "relative" },
+        h("button", {
+          ref: fieldAgentsButtonRef,
+          type: "button",
+          className: mergeClasses(
+            "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition",
+            fieldAgentsOpen
+              ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:border-blue-400/60 dark:bg-blue-500/10 dark:text-blue-200"
+              : "border-zinc-300 hover:bg-zinc-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+          ),
+          onClick: () => setFieldAgentsOpen((open) => !open),
+          "aria-haspopup": "menu",
+          "aria-expanded": fieldAgentsOpen ? "true" : "false"
+        },
+          h(FaRobot, { className: "h-3.5 w-3.5 text-blue-500 dark:text-blue-300" }),
+          h("span", null, "Field agents"),
+          h(FaChevronDown, { className: mergeClasses("h-3 w-3 transition-transform", fieldAgentsOpen && "rotate-180") })
+        ),
+        fieldAgentsDropdown
       )
     ),
     h("div", { className: "ml-auto flex flex-wrap items-center gap-2" },
+      lastFieldAgentAction
+        ? h("span", { className: "mr-2 text-xs text-zinc-500 dark:text-neutral-400" }, `Last action: ${lastFieldAgentAction}`)
+        : null,
       h("button", {
         className: "rounded-full border px-3 py-1 text-sm disabled:opacity-40",
         onClick: () => undo(),
@@ -6447,7 +6598,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     body,
     columnResizeGuideLine,
     rowResizeGuideLine,
-    selectDropdownElement
+    selectDropdownElement,
+    recordLinkDropdownElement
   );
 
   const confirmModalElement = confirmAction ? h("div", {
