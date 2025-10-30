@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import type { PoolClient } from "pg";
 import type { ColumnSpec } from "./tableUtils";
 import { query, withTransaction } from "./db";
+import { emitTableChange } from "./realtime";
 import { ColumnMetadata, TableMetadata, toColumnKey } from "./schema";
 
 export type TableRow = Record<string, unknown> & { id: string };
@@ -181,6 +182,13 @@ export async function createColumn(
       rows.filter((row) => row.column_name === columnKey)
     );
 
+    emitTableChange({
+      table: safeTable,
+      type: "columnCreated",
+      payload: { columnKey },
+      timestamp: new Date().toISOString(),
+    });
+
     return toColumnSpec(meta);
   });
 }
@@ -228,6 +236,13 @@ export async function updateColumn(
       rows.filter((row) => row.column_name === columnKey)
     );
 
+    emitTableChange({
+      table: safeTable,
+      type: "columnUpdated",
+      payload: { columnKey },
+      timestamp: new Date().toISOString(),
+    });
+
     return toColumnSpec(meta);
   });
 }
@@ -250,6 +265,13 @@ export async function reorderColumns(
         [safeTable, safeOrder[index], index + 1]
       );
     }
+
+    emitTableChange({
+      table: safeTable,
+      type: "columnReordered",
+      payload: { columnKeys: safeOrder },
+      timestamp: new Date().toISOString(),
+    });
   });
 }
 
@@ -266,6 +288,13 @@ export async function deleteColumn(tableName: string, columnKey: string) {
       `DELETE FROM column_metadata WHERE table_name = $1 AND column_name = $2;`,
       [safeTable, safeColumn]
     );
+
+    emitTableChange({
+      table: safeTable,
+      type: "columnDeleted",
+      payload: { columnKey: safeColumn },
+      timestamp: new Date().toISOString(),
+    });
   });
 }
 
@@ -303,6 +332,14 @@ export async function createRow(
     if (key === "id") continue;
     normalized[key] = value;
   }
+
+  emitTableChange({
+    table: safeTable,
+    type: "rowCreated",
+    payload: { rowId: normalized.id, values },
+    timestamp: new Date().toISOString(),
+  });
+
   return normalized;
 }
 
@@ -353,10 +390,24 @@ export async function updateRow(
     if (key === "id") continue;
     normalized[key] = value;
   }
+
+  emitTableChange({
+    table: safeTable,
+    type: "rowUpdated",
+    payload: { rowId: normalized.id, values },
+    timestamp: new Date().toISOString(),
+  });
+
   return normalized;
 }
 
 export async function deleteRow(tableName: string, rowId: string) {
   const safeTable = assertSafeIdentifier(tableName);
   await query(`DELETE FROM "${safeTable}" WHERE id = $1;`, [rowId]);
+  emitTableChange({
+    table: safeTable,
+    type: "rowDeleted",
+    payload: { rowId },
+    timestamp: new Date().toISOString(),
+  });
 }

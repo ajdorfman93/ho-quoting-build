@@ -1,9 +1,22 @@
-[\n  {
-  "﻿Name,Area Tag,Status": "Basement,Basement,Added"
-},\n  {
-  "﻿Name,Area Tag,Status": "Testing ,Testing ,Added"
-},\n  {
-  "﻿Name,Area Tag,Status": "Testing 2,Testing 2,Added"
-},\n  {
-  "﻿Name,Area Tag,Status": "In der erd,In der erd,New"
-}\n]\n
+[
+  {
+    "Name": "Basement",
+    "Area Tag": "Basement",
+    "Status": "Added"
+  },
+  {
+    "Name": "Testing",
+    "Area Tag": "Testing",
+    "Status": "Added"
+  },
+  {
+    "Name": "Testing 2",
+    "Area Tag": "Testing 2",
+    "Status": "Added"
+  },
+  {
+    "Name": "In der erd",
+    "Area Tag": "In der erd",
+    "Status": "New"
+  }
+]

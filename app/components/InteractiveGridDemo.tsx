@@ -284,6 +284,12 @@ export default function InteractiveGridDemo() {
 
   const previousStateRef = React.useRef<GridState | null>(null);
   const suppressChangesRef = React.useRef(false);
+  const eventSourceRef = React.useRef<EventSource | null>(null);
+  const refreshTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const syncingRef = React.useRef(syncing);
+  const ignoreEventsRef = React.useRef(false);
 
   const replaceState = React.useCallback((next: GridState) => {
     const snapshot = cloneState(next);
@@ -474,6 +480,7 @@ export default function InteractiveGridDemo() {
         return;
       }
 
+      ignoreEventsRef.current = true;
       setSyncing(true);
 
       try {
@@ -496,6 +503,9 @@ export default function InteractiveGridDemo() {
         await refreshTable();
       } finally {
         setSyncing(false);
+        setTimeout(() => {
+          ignoreEventsRef.current = false;
+        }, 300);
       }
     },
     [
@@ -548,6 +558,16 @@ export default function InteractiveGridDemo() {
     }
   }, [activeTable, gridState, loadingMore, replaceState, totalRows]);
 
+  const scheduleRefresh = React.useCallback(() => {
+    if (!activeTable || loading || ignoreEventsRef.current) return;
+    if (syncingRef.current) return;
+    if (refreshTimeoutRef.current) return;
+    refreshTimeoutRef.current = setTimeout(async () => {
+      refreshTimeoutRef.current = null;
+      await refreshTable();
+    }, 500);
+  }, [activeTable, loading, refreshTable]);
+
   React.useEffect(() => {
     let cancelled = false;
     async function bootstrap() {
@@ -582,6 +602,70 @@ export default function InteractiveGridDemo() {
       cancelled = true;
     };
   }, [loadTable]);
+
+  React.useEffect(() => {
+    if (!activeTable) return;
+    let closed = false;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let source: EventSource | null = null;
+
+    const connect = () => {
+      if (closed) return;
+      source = new EventSource(`/api/tables/${activeTable}/events`);
+      eventSourceRef.current = source;
+
+      source.onmessage = (event) => {
+        if (!event.data) return;
+        try {
+          const payload = JSON.parse(event.data);
+          if (!payload || payload.type === "connected") return;
+          if (ignoreEventsRef.current) return;
+          scheduleRefresh();
+        } catch {
+          /* ignore malformed payload */
+        }
+      };
+
+      source.onerror = () => {
+        if (source) {
+          source.close();
+          if (eventSourceRef.current === source) {
+            eventSourceRef.current = null;
+          }
+        }
+        if (!closed && !reconnectTimer) {
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            connect();
+          }, 5000);
+        }
+      };
+    };
+
+    connect();
+
+    return () => {
+      closed = true;
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      if (source) {
+        source.close();
+        if (eventSourceRef.current === source) {
+          eventSourceRef.current = null;
+        }
+      }
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+    };
+  }, [activeTable, scheduleRefresh]);
+
+  React.useEffect(() => {
+    syncingRef.current = syncing;
+  }, [syncing]);
 
   return (
     <div className="flex flex-col gap-6">

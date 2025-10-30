@@ -1,71 +1,562 @@
-[\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"\"Tru_Israel, IL\" - 22\",\"\"Tru_Israel, IL\"\",22,,\"\"\"\"Door: Solid Core Wood, Plastic Laminate \"\"\",\"\"\"Frame: Hollow Metal, Cased Welded, (16 Gauge)\"\"\",\"\"\"Hardware: Pemko, Smoke Seals, S773\"\"\",\"\"\"Hardware: Rockwood, Viewer, 627\"\"\",\"\"\"Frame: Hollow Metal, Welded, (16 Gauge)\"\"\"\",\"Smoke Seals,Viewer\",$0.00,,\"ID_T_190C,ID_T_200T,ID_N_143A\",,,,,"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"\"Tru by Hilton _Monroe, PA\" - 23\",\"\"Tru by Hilton _Monroe, PA\"\",23,,,,$0.00,,,,,,,"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"\"Tru by Hilton _Monroe, PA\" - 24\",\"\"Tru by Hilton _Monroe, PA\"\",24,,,,$0.00,,,,,,,"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"\"Navy Yard_Montreal, QB\" - CW\",\"\"Navy Yard_Montreal, QB\"\",CW,,\"\"\"\"Door: Solid Core Wood, Veneer\"\"\",\"\"\"Door: Solid Core Wood, Pre-Painted\"\"\",\"\"\"Door: Solid Core Wood, Plastic Laminate \"\"\"\",,$0.00,,\"ID_N_143B,ID_P_213\",\"193,194,195,196\",,,,"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "Script Test_Brooklyn NY - TS,Script Test_Brooklyn NY,TS,,,,$0.00,,\"ID_S_A100,ID_N_101,ID_P_214\",\"152,153,181,182\",,,,"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "Project A _Brooklyn NY  - 50,Project A _Brooklyn NY ,50,,\"\"\"\"Hardware: Hager, Door Pull, 34J 4x16, US4\"\"\",\"\"\"Hardware: Hager, Door Push/Pull, 13J, US32D\"\", \"\"Hardware: Hager, Door Pull, 34J 4x16, US26D\"\"\"\",\"Door Pull,Door Push/Pull,Door Pull\",$0.00,,\"ID_S_578,ID_T_109B,ID_O_107A\",,,,,"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "Project A _Brooklyn NY  - 56,Project A _Brooklyn NY ,56,,\"\"\"\"Hardware: Hager, Door Push/Pull, 13J, US32D\"\", \"\"Hardware: Hager, Hinges, ECBB1100 4.5x4.5, US26\"\"\"\",\"Door Push/Pull,Hinges\",$0.00,,ID_P_251A,\"220,221,225,226\",,,,"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "Home 2 Suites & Tru by Hilton_VA 24201 - Set 1,Home 2 Suites & Tru by Hilton_VA 24201,Set 1,,\"\"\"\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"\"\",\"\"\"Hardware: Hager, Closer, 5200, US26D\"\"\",\"\"\"Hardware: Rockwood, Viewer, 627\"\"\",\"\"\"Hardware: Pemko, Latch, PDLAA10BE, Satin Bronze\"\"\",\"\"\"Hardware: Pemko, Smoke Seals, S773BL17, Black\"\"\",\"\"\"Hardware: Pemko, Door Bottom, 2173DV\"\"\",\"\"\"Hardware: Pemko, Threshold, EV2325\"\"\",\"\"\"Hardware: Hager, Wall Stop, 232W, US26D\"\"\"\",\"Hinges,Closer,Viewer,Latch,Smoke Seals,Door Bottom,Threshold,Wall Stop\",$120.55,,\"ID_H_G01,ID_H_G02\",\"412,413,414,415,416,417,418,419,422,423,424,425,426,427,428,429\",,,,"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "Home 2 Suites & Tru by Hilton_VA 24201 - Set 2,Home 2 Suites & Tru by Hilton_VA 24201,Set 2,,\"\"\"\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\"\"\",\"\"\"Door: Solid Core Wood, Pre-Painted\"\"\",\"\"\"Hardware: Hager, Door Pull, 34J 4x16, US32D\"\"\",\"\"\"Door: Solid Core Wood, Veneer\"\"\"\",Door Pull,$0.00,,,,,,,"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "Project A _Brooklyn NY  - 57,Project A _Brooklyn NY ,57,,\"\"\"\"Door: Solid Core Wood, Veneer\"\"\",\"\"\"Door: Solid Core Wood, Pre-Painted\"\"\"\",,$0.00,,,,,,,"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "H2S Brooklyn _Brooklyn NY - 12,H2S Brooklyn _Brooklyn NY,12,,\"\"\"\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"\"\",\"\"\"Hardware: Hager, Cylindrical Lock, 2570 2-3/4 WTN NC ASA IC, US26D\"\"\",\"\"\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\"\"\",\"\"\"Hardware: Hager, Closer, 5200 TRK ADJ 1-6 ALM HOTA, ALM\"\"\"\",\"Hinges,Cylindrical Lock,Closer,Closer\",$28.84,,\"ID_H_165,ID_H_171\",\"435,436,437,440,441,442,446,447,448,455,456,457,464,465,466,473,474,475,486,487,488,493,494,495,503,504,505,587,588,589,590\",,,,"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "H2S Brooklyn _Brooklyn NY - 13,H2S Brooklyn _Brooklyn NY,13,,,,$0.00,,ID_H_170,,,,,"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"\"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\" - 12\",\"\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\"\",12,,\"\"\"\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"\"\",\"\"\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\"\"\",\"\"\"Hardware: Hager, Cylindrical Passage, 2510 2-3/4 WTN ASA, US26D\"\"\",\"\"\"Hardware: Pemko, Door Shoe, 2173DV35.625, Dark Bronze Aluminum\"\"\"\",\"Hinges,Closer,Cylindrical Passage,Door Shoe\",$16.84,,\"ID_H2_GR-03,ID_H2_GR-01,ID_H2_GR-02,ID_H2_GR-03,ID_H2_GR-03,ID_H2_GR-01,ID_H2_GR-02,ID_H2_GR-03,ID_H2_GR-03,ID_H2_GR-01,ID_H2_GR-02,ID_H2_GR-03,ID_H2_GR-03,ID_H2_GR-01,ID_H2_GR-02,ID_H2_GR-03,ID_H2_GR-03,ID_H2_GR-01,ID_H2_GR-02,ID_H2_GR-03\",\"515,516,517,518,521,522,523,524,527,528,529,530,533,534,535,536,539,540,541,542,545,546,547,548,551,552,553,554,557,558,559,560,563,564,565,566,569,570,571,572,575,576,577,578,581,582,583,584,604,605,606,607\",,,,"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "Script Test_Brooklyn NY - ,Script Test_Brooklyn NY,,,\"\"\"\"Hardware: Hager, Closer, 5100 PAR ADJ 1-6 ALM HDCS BF, ALM\"\"\"\",Closer,$0.00,,,,,,,"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - 1\",\"\"Tru_Israel, IL\"\",1,HARDWARE BY MFR CARD READER AS REQUIRED,\"\"\"\"Hardware: Pemko, Door Guard, PDLAA\"\"\",\"\"\"Hardware: Pemko, Smoke Seals, S773\"\"\"\",\"Door Guard,Smoke Seals\",$0.00,\"\"\"\"Hardware: Pemko, Door Guard, PDLAA\"\"\",\"\"\"Hardware: Pemko, Smoke Seals, S773\"\"\"\",,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,\"5060,5061,5170,5171,5276,5277\",\"68,69"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - 2\",\"\"Tru_Israel, IL\"\",2,\"1-1/2 PR HINGES, SILENCERS\",\"\"\"\"Hardware: Rockwood, Viewer, 627\"\"\",\"\"\"Hardware: Pemko, Threshold, EV2325\"\"\"\",\"Viewer,Threshold\",$0.00,\"\"\"\"Hardware: Rockwood, Viewer, 627\"\"\",\"\"\"Hardware: Pemko, Threshold, EV2325\"\"\"\",,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,\"5072,5073,5090,5091,5092,5200,5288,5305,5306\",\"70,71,72,73"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - 3\",\"\"Tru_Israel, IL\"\",3,\"1-1/2 PR HINGES, PASSAGE LOCKSET, SILENCERS, STOP\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,\"5065,5066,5095,5097,5098,5099,5103,5104,5105,5108,5110,5111,5116,5117,5118,5121,5122,5127,5128,5129,5132,5133,5138,5139,5140,5143,5144,5149,5150,5151,5175,5176,5205,5207,5208,5210,5213,5214,5215,5217,5218,5220,5221,5225,5226,5227,5230,5231,5235,5236,5237,5240,5241,5245,5246,5247,5250,5251,5255,5256,5257,5281,5282,5309,5310,5311,5312,5313,5315,5318,5319,5320,5322,5323,5325,5326,5330,5331,5332,5335,5336,5340,5341,5342,5345,5346,5350,5351,5352,5355,5356,5360,5361,5362\",\"74,75,76,77"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - 4\",\"\"Tru_Israel, IL\"\",4,\"1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS, STOP\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,\"5069,5070,5179,5180,5285,5286\",\"78,79,80,81"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - 5\",\"\"Tru_Israel, IL\"\",5,HARDWARE BY MFR CARD READER AS REQUIRED,,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,\"5071,5081,5088,5093,5181,5191,5192,5198,5203,5287,5296,5297,5303,5307\",\"82,83,84,85,86"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"\"Tru_Israel, IL\" - 6\",\"\"Tru_Israel, IL\"\",6,\"1-1/2 PR HINGES, SILENCERS, THRESHOLD\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,\"5087,5089,5197,5199,5302,5304\",87"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - 7\",\"\"Tru_Israel, IL\"\",7,\"1-1/2 PR HINGES, EXIT DEVICE, SILENCERS\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,\"5109,5112,5120,5123,5131,5134,5142,5145,5182,5201,5219,5222,5229,5232,5239,5242,5249,5252,5324,5327,5334,5337,5344,5347,5354,5357\",\"88,89,90,91"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - 8\",\"\"Tru_Israel, IL\"\",8,\"1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,\"5074,5106,5107,5183,5202,5216,5289,5321\",\"92,93,94,95"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - 9\",\"\"Tru_Israel, IL\"\",9,\"1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS, STOP\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,\"5075,5076,5082,5083,5085,5094,5096,5184,5185,5189,5190,5193,5195,5204,5206,5290,5291,5298,5300,5308\",\"96,97,98,99"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - 10\",\"\"Tru_Israel, IL\"\",10,\"1-1/2 PR HINGES, PASSAGE LOCKSET, SILENCERS, STOP\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,\"5079,5080,5187,5188,5294,5295\",\"100,101,102,103"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - 11\",\"\"Tru_Israel, IL\"\",11,\"1-1/2 PR HINGES, OFFICE LOCKSET, CARD READER AS REQUIRED, SILENCERS, STOP\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,\"5084,5194,5299\",\"104,105,106,107,108"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - 12\",\"\"Tru_Israel, IL\"\",12,\"1-1/2 PR HINGES, CLASSROOM LOCKSET, SILENCERS, STOP\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,\"5086,5196,5301\",\"109,110,111,112"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - 13\",\"\"Tru_Israel, IL\"\",13,\"1-1/2 PR HINGES, LATCHSET, CARD READER AS REQUIRED, SILENCERS, STOP\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,\"5100,5115,5119,5126,5130,5137,5141,5148,5152,5209,5224,5228,5234,5238,5244,5248,5254,5258,5314,5329,5333,5339,5343,5349,5353,5359,5363\",\"113,114,115,116"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - 14\",\"\"Tru_Israel, IL\"\",14,\"1-1/2 PR HINGES, EXIT DEVICE (BLANK EXTERIOR FACE), SILENCERS\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,,\"117,118,119"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - 15\",\"\"Tru_Israel, IL\"\",15,\"3 PR HINGES, PASSAGE LATCHSET, SILENCERS\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,\"5077,5078,5186,5292,5293\",\"120,121,122"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - GR1\",\"\"Tru_Israel, IL\"\",GR1,\"1-1/2 PR HINGES, ENTRANCE LOCKSET (CARD READER CONTROL), CLOSER (AT H/C ROOMS), DOOR VIEWER (NOT AT H/C ROOMS), SOUND GASKET AT FRAME, METAL THRESHOLD (ROLLOVER AT H/C ROOMS)\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,\"5153,5155,5157,5159,5161,5163,5165,5167\",\"123,124,125,126,127,128"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - GR2\",\"\"Tru_Israel, IL\"\",GR2,\"1-1/2 PR HINGES, PRIVACY LOCKSET\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,\"5154,5156,5158,5160,5162,5164,5166,5168\",\"129,130"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"Tru_Israel, IL\" - GR3\",\"\"Tru_Israel, IL\"\",GR3,\"1-1/2 PR HINGES, PRIVACY LOCKSET (BLANK ON WALL SIDE)\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,,\"131,132"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"\"Tru_Israel, IL\" - gr1\",\"\"Tru_Israel, IL\"\",gr1,\"1-1/2 pr hinges, interconnected lockset (card reader control), closer (no hold open at h/c rooms), door viewer (no hold open at h/c rooms), smoke gasket at frame\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,,"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"\"Tru_Israel, IL\" - gr2\",\"\"Tru_Israel, IL\"\",gr2,\"1-1/2 pr hinges, privacy lockset, metal threshold (rollover at h/c rooms)\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,,"
-},\n  {
-  "﻿Set Name,Projects,Set ID,Extracted Data,Hardware Set Items,Type (from Hardware Set Items),Set Base Price,Components,Openings,Quote Line Items,File Uploads,File Uploads Record_ID,Doors Staging,Hardware Staging": "\"\"Tru_Israel, IL\" - gr3\",\"\"Tru_Israel, IL\"\",gr3,\"1-1/2 pr hinges, privacy lockset (blank on wall side)\",,,$0.00,,,,\"\"Tru_Israel, IL 2025-07-10 16:38\"\",rectY6G993QboIAHg,,"
-}\n]\n
+[
+  {
+    "Set Name": "\"Tru_Israel, IL\" - 22",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "22",
+    "Extracted Data": "",
+    "Hardware Set Items": "\"\"Door: Solid Core Wood, Plastic Laminate \"\"\",\"\"\"Frame: Hollow Metal, Cased Welded, (16 Gauge)\"\"\",\"\"\"Hardware: Pemko, Smoke Seals, S773\"\"\",\"\"\"Hardware: Rockwood, Viewer, 627\"\"\",\"\"\"Frame: Hollow Metal, Welded, (16 Gauge)\"\"",
+    "Type (from Hardware Set Items)": "Smoke Seals,Viewer",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "ID_T_190C,ID_T_200T,ID_N_143A",
+    "Quote Line Items": "",
+    "File Uploads": "",
+    "File Uploads Record_ID": "",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  },
+  {
+    "Set Name": "\"Tru by Hilton _Monroe, PA\" - 23",
+    "Projects": "Tru by Hilton _Monroe, PA",
+    "Set ID": "23",
+    "Extracted Data": "",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "",
+    "File Uploads Record_ID": "",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  },
+  {
+    "Set Name": "\"Tru by Hilton _Monroe, PA\" - 24",
+    "Projects": "Tru by Hilton _Monroe, PA",
+    "Set ID": "24",
+    "Extracted Data": "",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "",
+    "File Uploads Record_ID": "",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  },
+  {
+    "Set Name": "\"Navy Yard_Montreal, QB\" - CW",
+    "Projects": "Navy Yard_Montreal, QB",
+    "Set ID": "CW",
+    "Extracted Data": "",
+    "Hardware Set Items": "\"\"Door: Solid Core Wood, Veneer\"\"\",\"\"\"Door: Solid Core Wood, Pre-Painted\"\"\",\"\"\"Door: Solid Core Wood, Plastic Laminate \"\"",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "ID_N_143B,ID_P_213",
+    "Quote Line Items": "193,194,195,196",
+    "File Uploads": "",
+    "File Uploads Record_ID": "",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  },
+  {
+    "Set Name": "Script Test_Brooklyn NY - TS",
+    "Projects": "Script Test_Brooklyn NY",
+    "Set ID": "TS",
+    "Extracted Data": "",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "ID_S_A100,ID_N_101,ID_P_214",
+    "Quote Line Items": "152,153,181,182",
+    "File Uploads": "",
+    "File Uploads Record_ID": "",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  },
+  {
+    "Set Name": "Project A _Brooklyn NY  - 50",
+    "Projects": "Project A _Brooklyn NY",
+    "Set ID": "50",
+    "Extracted Data": "",
+    "Hardware Set Items": "\"\"Hardware: Hager, Door Pull, 34J 4x16, US4\"\"\",\"\"\"Hardware: Hager, Door Push/Pull, 13J, US32D\"\", \"\"Hardware: Hager, Door Pull, 34J 4x16, US26D\"\"",
+    "Type (from Hardware Set Items)": "Door Pull,Door Push/Pull,Door Pull",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "ID_S_578,ID_T_109B,ID_O_107A",
+    "Quote Line Items": "",
+    "File Uploads": "",
+    "File Uploads Record_ID": "",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  },
+  {
+    "Set Name": "Project A _Brooklyn NY  - 56",
+    "Projects": "Project A _Brooklyn NY",
+    "Set ID": "56",
+    "Extracted Data": "",
+    "Hardware Set Items": "\"\"Hardware: Hager, Door Push/Pull, 13J, US32D\"\", \"\"Hardware: Hager, Hinges, ECBB1100 4.5x4.5, US26\"\"",
+    "Type (from Hardware Set Items)": "Door Push/Pull,Hinges",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "ID_P_251A",
+    "Quote Line Items": "220,221,225,226",
+    "File Uploads": "",
+    "File Uploads Record_ID": "",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  },
+  {
+    "Set Name": "Home 2 Suites & Tru by Hilton_VA 24201 - Set 1",
+    "Projects": "Home 2 Suites & Tru by Hilton_VA 24201",
+    "Set ID": "Set 1",
+    "Extracted Data": "",
+    "Hardware Set Items": "\"\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"\"\",\"\"\"Hardware: Hager, Closer, 5200, US26D\"\"\",\"\"\"Hardware: Rockwood, Viewer, 627\"\"\",\"\"\"Hardware: Pemko, Latch, PDLAA10BE, Satin Bronze\"\"\",\"\"\"Hardware: Pemko, Smoke Seals, S773BL17, Black\"\"\",\"\"\"Hardware: Pemko, Door Bottom, 2173DV\"\"\",\"\"\"Hardware: Pemko, Threshold, EV2325\"\"\",\"\"\"Hardware: Hager, Wall Stop, 232W, US26D\"\"",
+    "Type (from Hardware Set Items)": "Hinges,Closer,Viewer,Latch,Smoke Seals,Door Bottom,Threshold,Wall Stop",
+    "Set Base Price": "$120.55",
+    "Components": "",
+    "Openings": "ID_H_G01,ID_H_G02",
+    "Quote Line Items": "412,413,414,415,416,417,418,419,422,423,424,425,426,427,428,429",
+    "File Uploads": "",
+    "File Uploads Record_ID": "",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  },
+  {
+    "Set Name": "Home 2 Suites & Tru by Hilton_VA 24201 - Set 2",
+    "Projects": "Home 2 Suites & Tru by Hilton_VA 24201",
+    "Set ID": "Set 2",
+    "Extracted Data": "",
+    "Hardware Set Items": "\"\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\"\"\",\"\"\"Door: Solid Core Wood, Pre-Painted\"\"\",\"\"\"Hardware: Hager, Door Pull, 34J 4x16, US32D\"\"\",\"\"\"Door: Solid Core Wood, Veneer\"\"",
+    "Type (from Hardware Set Items)": "Door Pull",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "",
+    "File Uploads Record_ID": "",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  },
+  {
+    "Set Name": "Project A _Brooklyn NY  - 57",
+    "Projects": "Project A _Brooklyn NY",
+    "Set ID": "57",
+    "Extracted Data": "",
+    "Hardware Set Items": "\"\"Door: Solid Core Wood, Veneer\"\"\",\"\"\"Door: Solid Core Wood, Pre-Painted\"\"",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "",
+    "File Uploads Record_ID": "",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  },
+  {
+    "Set Name": "H2S Brooklyn _Brooklyn NY - 12",
+    "Projects": "H2S Brooklyn _Brooklyn NY",
+    "Set ID": "12",
+    "Extracted Data": "",
+    "Hardware Set Items": "\"\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"\"\",\"\"\"Hardware: Hager, Cylindrical Lock, 2570 2-3/4 WTN NC ASA IC, US26D\"\"\",\"\"\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\"\"\",\"\"\"Hardware: Hager, Closer, 5200 TRK ADJ 1-6 ALM HOTA, ALM\"\"",
+    "Type (from Hardware Set Items)": "Hinges,Cylindrical Lock,Closer,Closer",
+    "Set Base Price": "$28.84",
+    "Components": "",
+    "Openings": "ID_H_165,ID_H_171",
+    "Quote Line Items": "435,436,437,440,441,442,446,447,448,455,456,457,464,465,466,473,474,475,486,487,488,493,494,495,503,504,505,587,588,589,590",
+    "File Uploads": "",
+    "File Uploads Record_ID": "",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  },
+  {
+    "Set Name": "H2S Brooklyn _Brooklyn NY - 13",
+    "Projects": "H2S Brooklyn _Brooklyn NY",
+    "Set ID": "13",
+    "Extracted Data": "",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "ID_H_170",
+    "Quote Line Items": "",
+    "File Uploads": "",
+    "File Uploads Record_ID": "",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  },
+  {
+    "Set Name": "\"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\" - 12",
+    "Projects": "Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_",
+    "Set ID": "12",
+    "Extracted Data": "",
+    "Hardware Set Items": "\"\"Hardware: Hager, Hinges, BB1279 4.5x4.5, US26D\"\"\",\"\"\"Hardware: Hager, Closer, 5200 MLT ADJ 1-6 ALM BF, ALM\"\"\",\"\"\"Hardware: Hager, Cylindrical Passage, 2510 2-3/4 WTN ASA, US26D\"\"\",\"\"\"Hardware: Pemko, Door Shoe, 2173DV35.625, Dark Bronze Aluminum\"\"",
+    "Type (from Hardware Set Items)": "Hinges,Closer,Cylindrical Passage,Door Shoe",
+    "Set Base Price": "$16.84",
+    "Components": "",
+    "Openings": "ID_H2_GR-03,ID_H2_GR-01,ID_H2_GR-02,ID_H2_GR-03,ID_H2_GR-03,ID_H2_GR-01,ID_H2_GR-02,ID_H2_GR-03,ID_H2_GR-03,ID_H2_GR-01,ID_H2_GR-02,ID_H2_GR-03,ID_H2_GR-03,ID_H2_GR-01,ID_H2_GR-02,ID_H2_GR-03,ID_H2_GR-03,ID_H2_GR-01,ID_H2_GR-02,ID_H2_GR-03",
+    "Quote Line Items": "515,516,517,518,521,522,523,524,527,528,529,530,533,534,535,536,539,540,541,542,545,546,547,548,551,552,553,554,557,558,559,560,563,564,565,566,569,570,571,572,575,576,577,578,581,582,583,584,604,605,606,607",
+    "File Uploads": "",
+    "File Uploads Record_ID": "",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  },
+  {
+    "Set Name": "Script Test_Brooklyn NY -",
+    "Projects": "Script Test_Brooklyn NY",
+    "Set ID": "",
+    "Extracted Data": "",
+    "Hardware Set Items": "\"\"Hardware: Hager, Closer, 5100 PAR ADJ 1-6 ALM HDCS BF, ALM\"\"",
+    "Type (from Hardware Set Items)": "Closer",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "",
+    "File Uploads Record_ID": "",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - 1",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "1",
+    "Extracted Data": "HARDWARE BY MFR CARD READER AS REQUIRED",
+    "Hardware Set Items": "\"\"Hardware: Pemko, Door Guard, PDLAA\"\"\",\"\"\"Hardware: Pemko, Smoke Seals, S773\"\"",
+    "Type (from Hardware Set Items)": "Door Guard,Smoke Seals",
+    "Set Base Price": "$0.00",
+    "Components": "\"\"Hardware: Pemko, Door Guard, PDLAA\"\"\",\"\"\"Hardware: Pemko, Smoke Seals, S773\"\"",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "5060,5061,5170,5171,5276,5277",
+    "Hardware Staging": "68,69"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - 2",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "2",
+    "Extracted Data": "1-1/2 PR HINGES, SILENCERS",
+    "Hardware Set Items": "\"\"Hardware: Rockwood, Viewer, 627\"\"\",\"\"\"Hardware: Pemko, Threshold, EV2325\"\"",
+    "Type (from Hardware Set Items)": "Viewer,Threshold",
+    "Set Base Price": "$0.00",
+    "Components": "\"\"Hardware: Rockwood, Viewer, 627\"\"\",\"\"\"Hardware: Pemko, Threshold, EV2325\"\"",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "5072,5073,5090,5091,5092,5200,5288,5305,5306",
+    "Hardware Staging": "70,71,72,73"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - 3",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "3",
+    "Extracted Data": "1-1/2 PR HINGES, PASSAGE LOCKSET, SILENCERS, STOP",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "5065,5066,5095,5097,5098,5099,5103,5104,5105,5108,5110,5111,5116,5117,5118,5121,5122,5127,5128,5129,5132,5133,5138,5139,5140,5143,5144,5149,5150,5151,5175,5176,5205,5207,5208,5210,5213,5214,5215,5217,5218,5220,5221,5225,5226,5227,5230,5231,5235,5236,5237,5240,5241,5245,5246,5247,5250,5251,5255,5256,5257,5281,5282,5309,5310,5311,5312,5313,5315,5318,5319,5320,5322,5323,5325,5326,5330,5331,5332,5335,5336,5340,5341,5342,5345,5346,5350,5351,5352,5355,5356,5360,5361,5362",
+    "Hardware Staging": "74,75,76,77"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - 4",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "4",
+    "Extracted Data": "1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS, STOP",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "5069,5070,5179,5180,5285,5286",
+    "Hardware Staging": "78,79,80,81"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - 5",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "5",
+    "Extracted Data": "HARDWARE BY MFR CARD READER AS REQUIRED",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "5071,5081,5088,5093,5181,5191,5192,5198,5203,5287,5296,5297,5303,5307",
+    "Hardware Staging": "82,83,84,85,86"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - 6",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "6",
+    "Extracted Data": "1-1/2 PR HINGES, SILENCERS, THRESHOLD",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "5087,5089,5197,5199,5302,5304",
+    "Hardware Staging": "87"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - 7",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "7",
+    "Extracted Data": "1-1/2 PR HINGES, EXIT DEVICE, SILENCERS",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "5109,5112,5120,5123,5131,5134,5142,5145,5182,5201,5219,5222,5229,5232,5239,5242,5249,5252,5324,5327,5334,5337,5344,5347,5354,5357",
+    "Hardware Staging": "88,89,90,91"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - 8",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "8",
+    "Extracted Data": "1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "5074,5106,5107,5183,5202,5216,5289,5321",
+    "Hardware Staging": "92,93,94,95"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - 9",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "9",
+    "Extracted Data": "1-1/2 PR HINGES, PRIVACY LOCKSET, SILENCERS, STOP",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "5075,5076,5082,5083,5085,5094,5096,5184,5185,5189,5190,5193,5195,5204,5206,5290,5291,5298,5300,5308",
+    "Hardware Staging": "96,97,98,99"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - 10",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "10",
+    "Extracted Data": "1-1/2 PR HINGES, PASSAGE LOCKSET, SILENCERS, STOP",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "5079,5080,5187,5188,5294,5295",
+    "Hardware Staging": "100,101,102,103"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - 11",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "11",
+    "Extracted Data": "1-1/2 PR HINGES, OFFICE LOCKSET, CARD READER AS REQUIRED, SILENCERS, STOP",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "5084,5194,5299",
+    "Hardware Staging": "104,105,106,107,108"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - 12",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "12",
+    "Extracted Data": "1-1/2 PR HINGES, CLASSROOM LOCKSET, SILENCERS, STOP",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "5086,5196,5301",
+    "Hardware Staging": "109,110,111,112"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - 13",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "13",
+    "Extracted Data": "1-1/2 PR HINGES, LATCHSET, CARD READER AS REQUIRED, SILENCERS, STOP",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "5100,5115,5119,5126,5130,5137,5141,5148,5152,5209,5224,5228,5234,5238,5244,5248,5254,5258,5314,5329,5333,5339,5343,5349,5353,5359,5363",
+    "Hardware Staging": "113,114,115,116"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - 14",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "14",
+    "Extracted Data": "1-1/2 PR HINGES, EXIT DEVICE (BLANK EXTERIOR FACE), SILENCERS",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "",
+    "Hardware Staging": "117,118,119"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - 15",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "15",
+    "Extracted Data": "3 PR HINGES, PASSAGE LATCHSET, SILENCERS",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "5077,5078,5186,5292,5293",
+    "Hardware Staging": "120,121,122"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - GR1",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "GR1",
+    "Extracted Data": "1-1/2 PR HINGES, ENTRANCE LOCKSET (CARD READER CONTROL), CLOSER (AT H/C ROOMS), DOOR VIEWER (NOT AT H/C ROOMS), SOUND GASKET AT FRAME, METAL THRESHOLD (ROLLOVER AT H/C ROOMS)",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "5153,5155,5157,5159,5161,5163,5165,5167",
+    "Hardware Staging": "123,124,125,126,127,128"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - GR2",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "GR2",
+    "Extracted Data": "1-1/2 PR HINGES, PRIVACY LOCKSET",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "5154,5156,5158,5160,5162,5164,5166,5168",
+    "Hardware Staging": "129,130"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - GR3",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "GR3",
+    "Extracted Data": "1-1/2 PR HINGES, PRIVACY LOCKSET (BLANK ON WALL SIDE)",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "",
+    "Hardware Staging": "131,132"
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - gr1",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "gr1",
+    "Extracted Data": "1-1/2 pr hinges, interconnected lockset (card reader control), closer (no hold open at h/c rooms), door viewer (no hold open at h/c rooms), smoke gasket at frame",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - gr2",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "gr2",
+    "Extracted Data": "1-1/2 pr hinges, privacy lockset, metal threshold (rollover at h/c rooms)",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  },
+  {
+    "Set Name": "\"Tru_Israel, IL\" - gr3",
+    "Projects": "Tru_Israel, IL",
+    "Set ID": "gr3",
+    "Extracted Data": "1-1/2 pr hinges, privacy lockset (blank on wall side)",
+    "Hardware Set Items": "",
+    "Type (from Hardware Set Items)": "",
+    "Set Base Price": "$0.00",
+    "Components": "",
+    "Openings": "",
+    "Quote Line Items": "",
+    "File Uploads": "Tru_Israel, IL 2025-07-10 16:38",
+    "File Uploads Record_ID": "rectY6G993QboIAHg",
+    "Doors Staging": "",
+    "Hardware Staging": ""
+  }
+]

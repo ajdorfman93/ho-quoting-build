@@ -1,9 +1,38 @@
-[\n  {
-  "﻿Mark,Projects,Frame Ref,Door Ref,Status,Doc ID,Attachments,Project,Selected,Select": "A101,Hyatt House_Brooklyn NY,A,2,New,,,\"Homewood Suites_Celebration FL,Homewood Suites_Celebration FL\",checked,Import"
-},\n  {
-  "﻿Mark,Projects,Frame Ref,Door Ref,Status,Doc ID,Attachments,Project,Selected,Select": ",\"Homewood Suites_Celebration FL,Homewood Suites_Celebration FL\",,,,,,\"Homewood Suites_Celebration FL,Homewood Suites_Celebration FL\",,"
-},\n  {
-  "﻿Mark,Projects,Frame Ref,Door Ref,Status,Doc ID,Attachments,Project,Selected,Select": ",,,,,,,,,"
-},\n  {
-  "﻿Mark,Projects,Frame Ref,Door Ref,Status,Doc ID,Attachments,Project,Selected,Select": ",,,,New,,,\"Homewood Suites_Celebration FL,Homewood Suites_Celebration FL\",checked,"
-}\n]\n
+[
+  {
+    "Mark": "A101",
+    "Projects": "Hyatt House_Brooklyn NY",
+    "Frame Ref": "A",
+    "Door Ref": "2",
+    "Status": "New",
+    "Doc ID": "",
+    "Attachments": "",
+    "Project": "Homewood Suites_Celebration FL,Homewood Suites_Celebration FL",
+    "Selected": "checked",
+    "Select": "Import"
+  },
+  {
+    "Mark": "",
+    "Projects": "Homewood Suites_Celebration FL,Homewood Suites_Celebration FL",
+    "Frame Ref": "",
+    "Door Ref": "",
+    "Status": "",
+    "Doc ID": "",
+    "Attachments": "",
+    "Project": "Homewood Suites_Celebration FL,Homewood Suites_Celebration FL",
+    "Selected": "",
+    "Select": ""
+  },
+  {
+    "Mark": "",
+    "Projects": "",
+    "Frame Ref": "",
+    "Door Ref": "",
+    "Status": "New",
+    "Doc ID": "",
+    "Attachments": "",
+    "Project": "Homewood Suites_Celebration FL,Homewood Suites_Celebration FL",
+    "Selected": "checked",
+    "Select": ""
+  }
+]

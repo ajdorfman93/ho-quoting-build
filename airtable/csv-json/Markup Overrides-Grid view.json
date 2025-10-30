@@ -1,33 +1,178 @@
-[\n  {
-  "﻿Markup Name,Customer (from Projects),Projects,Category,Markup %,Notes,M Composite Key,Quote Line Items,Quote Line Items 2": "\"Homewood Suites_Celebration FL, Homewood Suites_Celebration FL_Door_30%\",\"Cleveland Construction,Edgeworks\",\"Homewood Suites_Celebration FL,Homewood Suites_Celebration FL\",Door,30%,,\"Homewood Suites_Celebration FL, Homewood Suites_Celebration FL_Door\",\"2,1,12,65,67,69,71,73,87\","
-},\n  {
-  "﻿Markup Name,Customer (from Projects),Projects,Category,Markup %,Notes,M Composite Key,Quote Line Items,Quote Line Items 2": "Hyatt House_Brooklyn NY_Frame_25%,Edgeworks,Hyatt House_Brooklyn NY,Frame,25%,,Hyatt House_Brooklyn NY_Frame,\"3,19,25,27,29,31\","
-},\n  {
-  "﻿Markup Name,Customer (from Projects),Projects,Category,Markup %,Notes,M Composite Key,Quote Line Items,Quote Line Items 2": "_Hardware_10%,,,Hardware,10%,,_Hardware,\"4,13,66,68,70,89\","
-},\n  {
-  "﻿Markup Name,Customer (from Projects),Projects,Category,Markup %,Notes,M Composite Key,Quote Line Items,Quote Line Items 2": "__50%,,,,50%,,_,88,"
-},\n  {
-  "﻿Markup Name,Customer (from Projects),Projects,Category,Markup %,Notes,M Composite Key,Quote Line Items,Quote Line Items 2": "__55%,,,,55%,,_,\"18,32,83,84,90,107\","
-},\n  {
-  "﻿Markup Name,Customer (from Projects),Projects,Category,Markup %,Notes,M Composite Key,Quote Line Items,Quote Line Items 2": "__75%,,,,75%,,_,\"80,76,78\","
-},\n  {
-  "﻿Markup Name,Customer (from Projects),Projects,Category,Markup %,Notes,M Composite Key,Quote Line Items,Quote Line Items 2": "__30%,,,,30%,,_,\"77,79,81\","
-},\n  {
-  "﻿Markup Name,Customer (from Projects),Projects,Category,Markup %,Notes,M Composite Key,Quote Line Items,Quote Line Items 2": "__35%,,,,35%,,_,\"85,91,108\","
-},\n  {
-  "﻿Markup Name,Customer (from Projects),Projects,Category,Markup %,Notes,M Composite Key,Quote Line Items,Quote Line Items 2": "\"Script Test_Brooklyn NY, Script Test_Brooklyn NY_Door_25%\",\"Test Tuesday HO,Edgeworks\",\"Script Test_Brooklyn NY,Script Test_Brooklyn NY\",Door,25%,,\"Script Test_Brooklyn NY, Script Test_Brooklyn NY_Door\",\"93,109,148\","
-},\n  {
-  "﻿Markup Name,Customer (from Projects),Projects,Category,Markup %,Notes,M Composite Key,Quote Line Items,Quote Line Items 2": "\"Script Test_Brooklyn NY, Script Test_Brooklyn NY_Frame_30%\",\"Test Tuesday HO,Edgeworks\",\"Script Test_Brooklyn NY,Script Test_Brooklyn NY\",Frame,30%,,\"Script Test_Brooklyn NY, Script Test_Brooklyn NY_Frame\",149,"
-},\n  {
-  "﻿Markup Name,Customer (from Projects),Projects,Category,Markup %,Notes,M Composite Key,Quote Line Items,Quote Line Items 2": "\"Script Test_Brooklyn NY, Script Test_Brooklyn NY_Hardware_35%\",\"Test Tuesday HO,Edgeworks\",\"Script Test_Brooklyn NY,Script Test_Brooklyn NY\",Hardware,35%,,\"Script Test_Brooklyn NY, Script Test_Brooklyn NY_Hardware\",,"
-},\n  {
-  "﻿Markup Name,Customer (from Projects),Projects,Category,Markup %,Notes,M Composite Key,Quote Line Items,Quote Line Items 2": "\"Script Test_Brooklyn NY, Script Test_Brooklyn NY_Door SP_50%\",\"Test Tuesday HO,Edgeworks\",\"Script Test_Brooklyn NY,Script Test_Brooklyn NY\",Door SP,50%,,\"Script Test_Brooklyn NY, Script Test_Brooklyn NY_Door SP\",\"148,151,152\","
-},\n  {
-  "﻿Markup Name,Customer (from Projects),Projects,Category,Markup %,Notes,M Composite Key,Quote Line Items,Quote Line Items 2": "H2S Brooklyn _Brooklyn NY_Door_200%,Opechee Construction Corporation,H2S Brooklyn _Brooklyn NY,Door,200%,,H2S Brooklyn _Brooklyn NY_Door,\"468,477,450,459,471,453,444,462,439,434,458,476,470,452,467,438,461,433,449,443\","
-},\n  {
-  "﻿Markup Name,Customer (from Projects),Projects,Category,Markup %,Notes,M Composite Key,Quote Line Items,Quote Line Items 2": "Script Test_Brooklyn NY_Hardware_50%,Edgeworks,Script Test_Brooklyn NY,Hardware,50%,,Script Test_Brooklyn NY_Hardware,\"153,150\","
-},\n  {
-  "﻿Markup Name,Customer (from Projects),Projects,Category,Markup %,Notes,M Composite Key,Quote Line Items,Quote Line Items 2": "_Door_30%,,,Door,30%,,_Door,\"2,1,12,65,67,69,71,73,87\","
-},\n  {
-  "﻿Markup Name,Customer (from Projects),Projects,Category,Markup %,Notes,M Composite Key,Quote Line Items,Quote Line Items 2": "Homewood Suites_Celebration FL_Door_30%,Edgeworks,Homewood Suites_Celebration FL,Door,30%,,Homewood Suites_Celebration FL_Door,\"2,1,12,65,67,69,71,73,87\","
-}\n]\n
+[
+  {
+    "Markup Name": "Homewood Suites_Celebration FL, Homewood Suites_Celebration FL_Door_30%",
+    "Customer (from Projects)": "Cleveland Construction,Edgeworks",
+    "Projects": "Homewood Suites_Celebration FL,Homewood Suites_Celebration FL",
+    "Category": "Door",
+    "Markup %": "30%",
+    "Notes": "",
+    "M Composite Key": "Homewood Suites_Celebration FL, Homewood Suites_Celebration FL_Door",
+    "Quote Line Items": "2,1,12,65,67,69,71,73,87",
+    "Quote Line Items 2": ""
+  },
+  {
+    "Markup Name": "Hyatt House_Brooklyn NY_Frame_25%",
+    "Customer (from Projects)": "Edgeworks",
+    "Projects": "Hyatt House_Brooklyn NY",
+    "Category": "Frame",
+    "Markup %": "25%",
+    "Notes": "",
+    "M Composite Key": "Hyatt House_Brooklyn NY_Frame",
+    "Quote Line Items": "3,19,25,27,29,31",
+    "Quote Line Items 2": ""
+  },
+  {
+    "Markup Name": "_Hardware_10%",
+    "Customer (from Projects)": "",
+    "Projects": "",
+    "Category": "Hardware",
+    "Markup %": "10%",
+    "Notes": "",
+    "M Composite Key": "_Hardware",
+    "Quote Line Items": "4,13,66,68,70,89",
+    "Quote Line Items 2": ""
+  },
+  {
+    "Markup Name": "__50%",
+    "Customer (from Projects)": "",
+    "Projects": "",
+    "Category": "",
+    "Markup %": "50%",
+    "Notes": "",
+    "M Composite Key": "_",
+    "Quote Line Items": "88",
+    "Quote Line Items 2": ""
+  },
+  {
+    "Markup Name": "__55%",
+    "Customer (from Projects)": "",
+    "Projects": "",
+    "Category": "",
+    "Markup %": "55%",
+    "Notes": "",
+    "M Composite Key": "_",
+    "Quote Line Items": "18,32,83,84,90,107",
+    "Quote Line Items 2": ""
+  },
+  {
+    "Markup Name": "__75%",
+    "Customer (from Projects)": "",
+    "Projects": "",
+    "Category": "",
+    "Markup %": "75%",
+    "Notes": "",
+    "M Composite Key": "_",
+    "Quote Line Items": "80,76,78",
+    "Quote Line Items 2": ""
+  },
+  {
+    "Markup Name": "__30%",
+    "Customer (from Projects)": "",
+    "Projects": "",
+    "Category": "",
+    "Markup %": "30%",
+    "Notes": "",
+    "M Composite Key": "_",
+    "Quote Line Items": "77,79,81",
+    "Quote Line Items 2": ""
+  },
+  {
+    "Markup Name": "__35%",
+    "Customer (from Projects)": "",
+    "Projects": "",
+    "Category": "",
+    "Markup %": "35%",
+    "Notes": "",
+    "M Composite Key": "_",
+    "Quote Line Items": "85,91,108",
+    "Quote Line Items 2": ""
+  },
+  {
+    "Markup Name": "Script Test_Brooklyn NY, Script Test_Brooklyn NY_Door_25%",
+    "Customer (from Projects)": "Test Tuesday HO,Edgeworks",
+    "Projects": "Script Test_Brooklyn NY,Script Test_Brooklyn NY",
+    "Category": "Door",
+    "Markup %": "25%",
+    "Notes": "",
+    "M Composite Key": "Script Test_Brooklyn NY, Script Test_Brooklyn NY_Door",
+    "Quote Line Items": "93,109,148",
+    "Quote Line Items 2": ""
+  },
+  {
+    "Markup Name": "Script Test_Brooklyn NY, Script Test_Brooklyn NY_Frame_30%",
+    "Customer (from Projects)": "Test Tuesday HO,Edgeworks",
+    "Projects": "Script Test_Brooklyn NY,Script Test_Brooklyn NY",
+    "Category": "Frame",
+    "Markup %": "30%",
+    "Notes": "",
+    "M Composite Key": "Script Test_Brooklyn NY, Script Test_Brooklyn NY_Frame",
+    "Quote Line Items": "149",
+    "Quote Line Items 2": ""
+  },
+  {
+    "Markup Name": "Script Test_Brooklyn NY, Script Test_Brooklyn NY_Hardware_35%",
+    "Customer (from Projects)": "Test Tuesday HO,Edgeworks",
+    "Projects": "Script Test_Brooklyn NY,Script Test_Brooklyn NY",
+    "Category": "Hardware",
+    "Markup %": "35%",
+    "Notes": "",
+    "M Composite Key": "Script Test_Brooklyn NY, Script Test_Brooklyn NY_Hardware",
+    "Quote Line Items": "",
+    "Quote Line Items 2": ""
+  },
+  {
+    "Markup Name": "Script Test_Brooklyn NY, Script Test_Brooklyn NY_Door SP_50%",
+    "Customer (from Projects)": "Test Tuesday HO,Edgeworks",
+    "Projects": "Script Test_Brooklyn NY,Script Test_Brooklyn NY",
+    "Category": "Door SP",
+    "Markup %": "50%",
+    "Notes": "",
+    "M Composite Key": "Script Test_Brooklyn NY, Script Test_Brooklyn NY_Door SP",
+    "Quote Line Items": "148,151,152",
+    "Quote Line Items 2": ""
+  },
+  {
+    "Markup Name": "H2S Brooklyn _Brooklyn NY_Door_200%",
+    "Customer (from Projects)": "Opechee Construction Corporation",
+    "Projects": "H2S Brooklyn _Brooklyn NY",
+    "Category": "Door",
+    "Markup %": "200%",
+    "Notes": "",
+    "M Composite Key": "H2S Brooklyn _Brooklyn NY_Door",
+    "Quote Line Items": "468,477,450,459,471,453,444,462,439,434,458,476,470,452,467,438,461,433,449,443",
+    "Quote Line Items 2": ""
+  },
+  {
+    "Markup Name": "Script Test_Brooklyn NY_Hardware_50%",
+    "Customer (from Projects)": "Edgeworks",
+    "Projects": "Script Test_Brooklyn NY",
+    "Category": "Hardware",
+    "Markup %": "50%",
+    "Notes": "",
+    "M Composite Key": "Script Test_Brooklyn NY_Hardware",
+    "Quote Line Items": "153,150",
+    "Quote Line Items 2": ""
+  },
+  {
+    "Markup Name": "_Door_30%",
+    "Customer (from Projects)": "",
+    "Projects": "",
+    "Category": "Door",
+    "Markup %": "30%",
+    "Notes": "",
+    "M Composite Key": "_Door",
+    "Quote Line Items": "2,1,12,65,67,69,71,73,87",
+    "Quote Line Items 2": ""
+  },
+  {
+    "Markup Name": "Homewood Suites_Celebration FL_Door_30%",
+    "Customer (from Projects)": "Edgeworks",
+    "Projects": "Homewood Suites_Celebration FL",
+    "Category": "Door",
+    "Markup %": "30%",
+    "Notes": "",
+    "M Composite Key": "Homewood Suites_Celebration FL_Door",
+    "Quote Line Items": "2,1,12,65,67,69,71,73,87",
+    "Quote Line Items 2": ""
+  }
+]
