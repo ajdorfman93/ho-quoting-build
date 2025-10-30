@@ -2,9 +2,12 @@
   {
     "Name": "New Sunday Project _Monroe NY",
     "Project": "New Sunday Project _Monroe NY",
+    "Component": "",
     "Quote Line Items": "178",
     "Total Quantity": "23",
-    "Base Cost (With OR) (from Quote Line Items)": "$0.00"
+    "Base Price (from Component)": "",
+    "Base Cost (With OR) (from Quote Line Items)": "$0.00",
+    "Components copy1": ""
   },
   {
     "Name": "New Sunday Project _Monroe NY",
@@ -12,15 +15,19 @@
     "Component": "\"Door: Solid Core Wood, Flush, Pre-Painted\"",
     "Quote Line Items": "181,183,186",
     "Total Quantity": "27",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Door: Solid Core Wood, Flush, Pre-Painted\""
   },
   {
     "Name": "New Sunday Project _Monroe NY",
     "Project": "New Sunday Project _Monroe NY",
+    "Component": "",
     "Quote Line Items": "182,185,188",
     "Total Quantity": "73",
-    "Base Cost (With OR) (from Quote Line Items)": "$0.00"
+    "Base Price (from Component)": "",
+    "Base Cost (With OR) (from Quote Line Items)": "$0.00",
+    "Components copy1": ""
   },
   {
     "Name": "New Sunday Project _Monroe NY",
@@ -28,6 +35,7 @@
     "Component": "\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\"",
     "Quote Line Items": "180,179",
     "Total Quantity": "46",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\""
   },
@@ -37,131 +45,157 @@
     "Component": "\"Frame: Hollow Metal, Cased Welded, (16 Gauge)\"",
     "Quote Line Items": "184,187",
     "Total Quantity": "4",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Frame: Hollow Metal, Cased Welded, (16 Gauge)\""
   },
   {
-    "Name": "Project A _Brooklyn NY",
-    "Project": "Project A _Brooklyn NY",
+    "Name": "Project A _Brooklyn NY ",
+    "Project": "Project A _Brooklyn NY ",
+    "Component": "",
     "Quote Line Items": "189",
     "Total Quantity": "2",
-    "Base Cost (With OR) (from Quote Line Items)": "$0.00"
+    "Base Price (from Component)": "",
+    "Base Cost (With OR) (from Quote Line Items)": "$0.00",
+    "Components copy1": ""
   },
   {
-    "Name": "Project A _Brooklyn NY",
-    "Project": "Project A _Brooklyn NY",
+    "Name": "Project A _Brooklyn NY ",
+    "Project": "Project A _Brooklyn NY ",
+    "Component": "",
     "Quote Line Items": "191",
     "Total Quantity": "2",
-    "Base Cost (With OR) (from Quote Line Items)": "$0.00"
+    "Base Price (from Component)": "",
+    "Base Cost (With OR) (from Quote Line Items)": "$0.00",
+    "Components copy1": ""
   },
   {
-    "Name": "Project A _Brooklyn NY",
-    "Project": "Project A _Brooklyn NY",
+    "Name": "Project A _Brooklyn NY ",
+    "Project": "Project A _Brooklyn NY ",
     "Component": "\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\"",
     "Quote Line Items": "190,199",
     "Total Quantity": "12",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\""
   },
   {
-    "Name": "Project A _Brooklyn NY",
-    "Project": "Project A _Brooklyn NY",
+    "Name": "Project A _Brooklyn NY ",
+    "Project": "Project A _Brooklyn NY ",
+    "Component": "",
     "Quote Line Items": "194,200",
     "Total Quantity": "12",
-    "Base Cost (With OR) (from Quote Line Items)": "$0.00"
+    "Base Price (from Component)": "",
+    "Base Cost (With OR) (from Quote Line Items)": "$0.00",
+    "Components copy1": ""
   },
   {
-    "Name": "Project A _Brooklyn NY",
-    "Project": "Project A _Brooklyn NY",
+    "Name": "Project A _Brooklyn NY ",
+    "Project": "Project A _Brooklyn NY ",
+    "Component": "",
     "Quote Line Items": "192",
     "Total Quantity": "2",
-    "Base Cost (With OR) (from Quote Line Items)": "$0.00"
+    "Base Price (from Component)": "",
+    "Base Cost (With OR) (from Quote Line Items)": "$0.00",
+    "Components copy1": ""
   },
   {
-    "Name": "Project A _Brooklyn NY",
-    "Project": "Project A _Brooklyn NY",
+    "Name": "Project A _Brooklyn NY ",
+    "Project": "Project A _Brooklyn NY ",
     "Component": "\"Door: Solid Core Wood, Flush, Veneer\"",
     "Quote Line Items": "195",
     "Total Quantity": "10",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Door: Solid Core Wood, Flush, Veneer\""
   },
   {
-    "Name": "Project A _Brooklyn NY",
-    "Project": "Project A _Brooklyn NY",
+    "Name": "Project A _Brooklyn NY ",
+    "Project": "Project A _Brooklyn NY ",
     "Component": "\"Door: Solid Core Wood, Flush, Pre-Painted\"",
     "Quote Line Items": "193",
     "Total Quantity": "2",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Door: Solid Core Wood, Flush, Pre-Painted\""
   },
   {
-    "Name": "Project A _Brooklyn NY",
-    "Project": "Project A _Brooklyn NY",
+    "Name": "Project A _Brooklyn NY ",
+    "Project": "Project A _Brooklyn NY ",
     "Component": "\"Door: Solid Core Wood, Flush, Plastic Laminate \"",
     "Quote Line Items": "196",
     "Total Quantity": "2",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Door: Solid Core Wood, Flush, Plastic Laminate \""
   },
   {
-    "Name": "Project A _Brooklyn NY",
-    "Project": "Project A _Brooklyn NY",
+    "Name": "Project A _Brooklyn NY ",
+    "Project": "Project A _Brooklyn NY ",
+    "Component": "",
     "Quote Line Items": "197",
     "Total Quantity": "10",
-    "Base Cost (With OR) (from Quote Line Items)": "$0.00"
+    "Base Price (from Component)": "",
+    "Base Cost (With OR) (from Quote Line Items)": "$0.00",
+    "Components copy1": ""
   },
   {
-    "Name": "Project A _Brooklyn NY",
-    "Project": "Project A _Brooklyn NY",
+    "Name": "Project A _Brooklyn NY ",
+    "Project": "Project A _Brooklyn NY ",
     "Component": "\"Frame: Hollow Metal, Cased Welded, (16 Gauge)\"",
     "Quote Line Items": "198",
     "Total Quantity": "10",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Frame: Hollow Metal, Cased Welded, (16 Gauge)\""
   },
   {
-    "Name": "Project A _Brooklyn NY",
-    "Project": "Project A _Brooklyn NY",
+    "Name": "Project A _Brooklyn NY ",
+    "Project": "Project A _Brooklyn NY ",
     "Component": "\"Door: Solid Core Wood, Flush, Primed\"",
     "Quote Line Items": "201,202,205,208,211,214,217,222",
     "Total Quantity": "8",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Door: Solid Core Wood, Flush, Primed\""
   },
   {
-    "Name": "Project A _Brooklyn NY",
-    "Project": "Project A _Brooklyn NY",
+    "Name": "Project A _Brooklyn NY ",
+    "Project": "Project A _Brooklyn NY ",
     "Component": "\"Hardware: Hager, Push Plate, 30S 4x16, US26D\"",
     "Quote Line Items": "204,207,210,213,216,219,224",
     "Total Quantity": "7",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Hardware: Hager, Push Plate, 30S 4x16, US26D\""
   },
   {
-    "Name": "Project A _Brooklyn NY",
-    "Project": "Project A _Brooklyn NY",
+    "Name": "Project A _Brooklyn NY ",
+    "Project": "Project A _Brooklyn NY ",
     "Component": "\"Frame: Hollow Metal, Welded, (16 Gauge)\"",
     "Quote Line Items": "203,206,209,212,215,218,223",
     "Total Quantity": "7",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Frame: Hollow Metal, Welded, (16 Gauge)\""
   },
   {
-    "Name": "Project A _Brooklyn NY",
-    "Project": "Project A _Brooklyn NY",
+    "Name": "Project A _Brooklyn NY ",
+    "Project": "Project A _Brooklyn NY ",
     "Component": "\"Hardware: Hager, Door Push/Pull, 13J, US32D\"",
     "Quote Line Items": "220,225",
     "Total Quantity": "4",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Hardware: Hager, Door Push/Pull, 13J, US32D\""
   },
   {
-    "Name": "Project A _Brooklyn NY",
-    "Project": "Project A _Brooklyn NY",
+    "Name": "Project A _Brooklyn NY ",
+    "Project": "Project A _Brooklyn NY ",
     "Component": "\"Hardware: Hager, Door Pull, 34J 4x16, US32D\"",
     "Quote Line Items": "221,226",
     "Total Quantity": "2",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Hardware: Hager, Door Pull, 34J 4x16, US32D\""
   },
@@ -169,21 +203,30 @@
     "Name": "AW Hotel Scarborough ME_Scarborough ME 04074",
     "Project": "AW Hotel Scarborough ME_Scarborough ME 04074",
     "Component": "\"Door: Solid Core Wood, Flush, Primed\"",
+    "Quote Line Items": "",
     "Total Quantity": "0",
+    "Base Price (from Component)": "",
+    "Base Cost (With OR) (from Quote Line Items)": "",
     "Components copy1": "\"Door: Solid Core Wood, Flush, Primed\""
   },
   {
     "Name": "AW Hotel Scarborough ME_Scarborough ME 04074",
     "Project": "AW Hotel Scarborough ME_Scarborough ME 04074",
     "Component": "\"Frame: Hollow Metal, KD, (16 Gauge)\"",
+    "Quote Line Items": "",
     "Total Quantity": "0",
+    "Base Price (from Component)": "",
+    "Base Cost (With OR) (from Quote Line Items)": "",
     "Components copy1": "\"Frame: Hollow Metal, KD, (16 Gauge)\""
   },
   {
     "Name": "AW Hotel Scarborough ME_Scarborough ME 04074",
     "Project": "AW Hotel Scarborough ME_Scarborough ME 04074",
     "Component": "\"Door: Solid Core Wood, Flush, Pre-Painted\"",
+    "Quote Line Items": "",
     "Total Quantity": "0",
+    "Base Price (from Component)": "",
+    "Base Cost (With OR) (from Quote Line Items)": "",
     "Components copy1": "\"Door: Solid Core Wood, Flush, Pre-Painted\""
   },
   {
@@ -192,6 +235,7 @@
     "Component": "\"Door: Solid Core Wood, Flush, Plastic Laminate \"",
     "Quote Line Items": "410,420",
     "Total Quantity": "160",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Door: Solid Core Wood, Flush, Plastic Laminate \""
   },
@@ -201,6 +245,7 @@
     "Component": "\"Frame: Hollow Metal, KD, (16 Gauge)\"",
     "Quote Line Items": "411,421",
     "Total Quantity": "160",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Frame: Hollow Metal, KD, (16 Gauge)\""
   },
@@ -230,6 +275,7 @@
     "Component": "\"Hardware: Pemko, Latch, PDLAA10BE, Satin Bronze\"",
     "Quote Line Items": "414,424",
     "Total Quantity": "160",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Hardware: Pemko, Latch, PDLAA10BE, Satin Bronze\""
   },
@@ -249,6 +295,7 @@
     "Component": "\"Hardware: Pemko, Smoke Seals, S773BL17, Black\"",
     "Quote Line Items": "416,426",
     "Total Quantity": "160",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Hardware: Pemko, Smoke Seals, S773BL17, Black\""
   },
@@ -288,6 +335,7 @@
     "Component": "\"Hardware: Hager, Door Push/Pull, 13J, US32D\"",
     "Quote Line Items": "432",
     "Total Quantity": "1",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Hardware: Hager, Door Push/Pull, 13J, US32D\""
   },
@@ -297,6 +345,7 @@
     "Component": "\"Door: Solid Core Wood, Flush, Veneer\"",
     "Quote Line Items": "430",
     "Total Quantity": "1",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Door: Solid Core Wood, Flush, Veneer\""
   },
@@ -306,6 +355,7 @@
     "Component": "\"Frame: Hollow Metal, Cased Welded, (16 Gauge)\"",
     "Quote Line Items": "431",
     "Total Quantity": "1",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Frame: Hollow Metal, Cased Welded, (16 Gauge)\""
   },
@@ -315,6 +365,7 @@
     "Component": "\"Door: Solid Core Wood, Flush, Veneer\"",
     "Quote Line Items": "470,499,585",
     "Total Quantity": "5",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$200.00",
     "Components copy1": "\"Door: Solid Core Wood, Flush, Veneer\""
   },
@@ -344,6 +395,7 @@
     "Component": "\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\"",
     "Quote Line Items": "471,500,586",
     "Total Quantity": "5",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$100.00",
     "Components copy1": "\"Frame: Hollow Metal, Cased Welded, (18 Gauge)\""
   },
@@ -373,6 +425,7 @@
     "Component": "\"Door: Solid Core Wood, Flush, Plastic Laminate \"",
     "Quote Line Items": "476,506",
     "Total Quantity": "2",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$10000.00",
     "Components copy1": "\"Door: Solid Core Wood, Flush, Plastic Laminate \""
   },
@@ -382,6 +435,7 @@
     "Component": "\"Frame: Hollow Metal, KD, (16 Gauge)\"",
     "Quote Line Items": "477,507",
     "Total Quantity": "2",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$100000.00",
     "Components copy1": "\"Frame: Hollow Metal, KD, (16 Gauge)\""
   },
@@ -391,6 +445,7 @@
     "Component": "\"Hardware: Hager, Push Plate, 30S 4x16, US26D\"",
     "Quote Line Items": "478,508",
     "Total Quantity": "2",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$290.00",
     "Components copy1": "\"Hardware: Hager, Push Plate, 30S 4x16, US26D\""
   },
@@ -410,6 +465,7 @@
     "Component": "\"Door: Solid Core Wood, Flush, Plastic Laminate \"",
     "Quote Line Items": "525,549,555,561,567,573,579,602",
     "Total Quantity": "441",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$200.00",
     "Components copy1": "\"Door: Solid Core Wood, Flush, Plastic Laminate \""
   },
@@ -417,7 +473,10 @@
     "Name": "\"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\", \"Home 2 Suites - Springfield, OH_\"",
     "Project": "\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\",\"Home 2 Suites - Springfield, OH_\"",
     "Component": "\"Frame: Hollow Metal, KD, (16 Gauge)\"",
+    "Quote Line Items": "",
     "Total Quantity": "0",
+    "Base Price (from Component)": "",
+    "Base Cost (With OR) (from Quote Line Items)": "",
     "Components copy1": "\"Frame: Hollow Metal, KD, (16 Gauge)\""
   },
   {
@@ -426,6 +485,7 @@
     "Component": "\"Frame: , Timely Frame, Pre-Finish, (18 Gauge)\"",
     "Quote Line Items": "526,550,556,562,568,574,580,603",
     "Total Quantity": "441",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$500.00",
     "Components copy1": "\"Frame: , Timely Frame, Pre-Finish, (18 Gauge)\""
   },
@@ -435,6 +495,7 @@
     "Component": "\"Hardware: Hager, Cylindrical Passage, 2510 2-3/4 WTN ASA, US26D\"",
     "Quote Line Items": "527,557,563,551,569,575,581,604",
     "Total Quantity": "441",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Hardware: Hager, Cylindrical Passage, 2510 2-3/4 WTN ASA, US26D\""
   },
@@ -464,6 +525,7 @@
     "Component": "\"Hardware: Pemko, Door Shoe, 2173DV35.625, Dark Bronze Aluminum\"",
     "Quote Line Items": "524,530,554,560,566,572,578,584,607",
     "Total Quantity": "546",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Hardware: Pemko, Door Shoe, 2173DV35.625, Dark Bronze Aluminum\""
   },
@@ -473,6 +535,7 @@
     "Component": "\"Hardware: Hager, Closer, 5200 TRK ADJ 1-6 ALM HOTA, ALM\"",
     "Quote Line Items": "587",
     "Total Quantity": "1",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$0.00",
     "Components copy1": "\"Hardware: Hager, Closer, 5200 TRK ADJ 1-6 ALM HOTA, ALM\""
   },
@@ -482,6 +545,7 @@
     "Component": "\"Door: Hollow Core Wood, Flush, Plastic Laminate \"",
     "Quote Line Items": "591",
     "Total Quantity": "2",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$300.00",
     "Components copy1": "\"Door: Hollow Core Wood, Flush, Plastic Laminate \""
   },
@@ -491,6 +555,7 @@
     "Component": "\"Frame: Hollow Metal, Welded, (16 Gauge)\"",
     "Quote Line Items": "592",
     "Total Quantity": "2",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$100.00",
     "Components copy1": "\"Frame: Hollow Metal, Welded, (16 Gauge)\""
   },
@@ -500,6 +565,7 @@
     "Component": "\"Door: Hollow Core Wood, 2 Panel, Pre-Painted\"",
     "Quote Line Items": "593",
     "Total Quantity": "1",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$75.00",
     "Components copy1": "\"Door: Hollow Core Wood, 2 Panel, Pre-Painted\""
   },
@@ -509,6 +575,7 @@
     "Component": "\"Frame: Hollow Metal, Welded, (18 Gauge)\"",
     "Quote Line Items": "594",
     "Total Quantity": "1",
+    "Base Price (from Component)": "",
     "Base Cost (With OR) (from Quote Line Items)": "$50.00",
     "Components copy1": "\"Frame: Hollow Metal, Welded, (18 Gauge)\""
   },
@@ -518,7 +585,9 @@
     "Component": "\"Frame: Hollow Metal, Cased Welded, (16 Gauge)\"",
     "Quote Line Items": "595,597,598,600",
     "Total Quantity": "6",
-    "Base Cost (With OR) (from Quote Line Items)": "$0.00"
+    "Base Price (from Component)": "",
+    "Base Cost (With OR) (from Quote Line Items)": "$0.00",
+    "Components copy1": ""
   },
   {
     "Name": "\"Tru by Hilton _Monroe, PA\"",
@@ -526,6 +595,8 @@
     "Component": "\"Door: Solid Core Wood, Flush, Plastic Laminate \"",
     "Quote Line Items": "596,599",
     "Total Quantity": "3",
-    "Base Cost (With OR) (from Quote Line Items)": "$0.00"
+    "Base Price (from Component)": "",
+    "Base Cost (With OR) (from Quote Line Items)": "$0.00",
+    "Components copy1": ""
   }
 ]

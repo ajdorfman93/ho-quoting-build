@@ -12,105 +12,120 @@
     "Type": "Spring Hinge",
     "Functional Group": "Hang",
     "Subgroup": "Hinges & Pivots",
-    "Priority": "1"
+    "Priority": "1",
+    "Components": ""
   },
   {
     "Type Name": "Pivot Hinge",
     "Type": "Pivot Hinge",
     "Functional Group": "Hang",
     "Subgroup": "Hinges & Pivots",
-    "Priority": "1"
+    "Priority": "1",
+    "Components": ""
   },
   {
     "Type Name": "HW Hinges",
     "Type": "HW Hinges",
     "Functional Group": "Hang",
     "Subgroup": "Hinges & Pivots",
-    "Priority": "1"
+    "Priority": "1",
+    "Components": ""
   },
   {
     "Type Name": "SS Hinges",
     "Type": "SS Hinges",
     "Functional Group": "Hang",
     "Subgroup": "Hinges & Pivots",
-    "Priority": "1"
+    "Priority": "1",
+    "Components": ""
   },
   {
     "Type Name": "Barn Door Track",
     "Type": "Barn Door Track",
     "Functional Group": "Hang",
     "Subgroup": "Sliding Systems",
-    "Priority": "1"
+    "Priority": "1",
+    "Components": ""
   },
   {
     "Type Name": "Storeroom Lock",
     "Type": "Storeroom Lock",
     "Functional Group": "Secure",
     "Subgroup": "Locks",
-    "Priority": "2"
+    "Priority": "2",
+    "Components": ""
   },
   {
     "Type Name": "Office Lock",
     "Type": "Office Lock",
     "Functional Group": "Secure",
     "Subgroup": "Locks",
-    "Priority": "2"
+    "Priority": "2",
+    "Components": ""
   },
   {
     "Type Name": "Classroom Lock",
     "Type": "Classroom Lock",
     "Functional Group": "Secure",
     "Subgroup": "Locks",
-    "Priority": "2"
+    "Priority": "2",
+    "Components": ""
   },
   {
     "Type Name": "Passage Lock",
     "Type": "Passage Lock",
     "Functional Group": "Secure",
     "Subgroup": "Locks",
-    "Priority": "2"
+    "Priority": "2",
+    "Components": ""
   },
   {
     "Type Name": "Privacy Lock",
     "Type": "Privacy Lock",
     "Functional Group": "Secure",
     "Subgroup": "Locks",
-    "Priority": "2"
+    "Priority": "2",
+    "Components": ""
   },
   {
     "Type Name": "Communicating Lock",
     "Type": "Communicating Lock",
     "Functional Group": "Secure",
     "Subgroup": "Locks",
-    "Priority": "2"
+    "Priority": "2",
+    "Components": ""
   },
   {
     "Type Name": "Single Dummy",
     "Type": "Single Dummy",
     "Functional Group": "Secure",
     "Subgroup": "Locks",
-    "Priority": "2"
+    "Priority": "2",
+    "Components": ""
   },
   {
     "Type Name": "Double Dummy",
     "Type": "Double Dummy",
     "Functional Group": "Secure",
     "Subgroup": "Locks",
-    "Priority": "2"
+    "Priority": "2",
+    "Components": ""
   },
   {
     "Type Name": "Deadlock",
     "Type": "Deadlock",
     "Functional Group": "Secure",
     "Subgroup": "Bolts & Latches",
-    "Priority": "2"
+    "Priority": "2",
+    "Components": ""
   },
   {
     "Type Name": "Deadbolt",
     "Type": "Deadbolt",
     "Functional Group": "Secure",
     "Subgroup": "Bolts & Latches",
-    "Priority": "2"
+    "Priority": "2",
+    "Components": ""
   },
   {
     "Type Name": "Flush Bolt",
@@ -125,7 +140,8 @@
     "Type": "Fire Bolt",
     "Functional Group": "Secure",
     "Subgroup": "Bolts & Latches",
-    "Priority": "2"
+    "Priority": "2",
+    "Components": ""
   },
   {
     "Type Name": "Exit Device",
@@ -140,28 +156,32 @@
     "Type": "Rim Exit Device",
     "Functional Group": "Secure",
     "Subgroup": "Exit Devices",
-    "Priority": "2"
+    "Priority": "2",
+    "Components": ""
   },
   {
     "Type Name": "SVR Exit Device",
     "Type": "SVR Exit Device",
     "Functional Group": "Secure",
     "Subgroup": "Exit Devices",
-    "Priority": "2"
+    "Priority": "2",
+    "Components": ""
   },
   {
     "Type Name": "CVR Exit Device",
     "Type": "CVR Exit Device",
     "Functional Group": "Secure",
     "Subgroup": "Exit Devices",
-    "Priority": "2"
+    "Priority": "2",
+    "Components": ""
   },
   {
     "Type Name": "Card Reader",
     "Type": "Card Reader",
     "Functional Group": "Secure",
     "Subgroup": "Access Control",
-    "Priority": "2"
+    "Priority": "2",
+    "Components": ""
   },
   {
     "Type Name": "Strike",
@@ -192,84 +212,96 @@
     "Type": "Floor Stop",
     "Functional Group": "Control",
     "Subgroup": "Stops & Bumpers",
-    "Priority": "3"
+    "Priority": "3",
+    "Components": ""
   },
   {
     "Type Name": "Overhead Stop",
     "Type": "Overhead Stop",
     "Functional Group": "Control",
     "Subgroup": "Stops & Bumpers",
-    "Priority": "3"
+    "Priority": "3",
+    "Components": ""
   },
   {
     "Type Name": "Hinge Pine Stop",
     "Type": "Hinge Pine Stop",
     "Functional Group": "Control",
     "Subgroup": "Stops & Bumpers",
-    "Priority": "3"
+    "Priority": "3",
+    "Components": ""
   },
   {
     "Type Name": "Roller Bumper",
     "Type": "Roller Bumper",
     "Functional Group": "Control",
     "Subgroup": "Stops & Bumpers",
-    "Priority": "3"
+    "Priority": "3",
+    "Components": ""
   },
   {
     "Type Name": "Silencer",
     "Type": "Silencer",
     "Functional Group": "Control",
     "Subgroup": "Silencers",
-    "Priority": "3"
+    "Priority": "3",
+    "Components": ""
   },
   {
     "Type Name": "Threshold",
     "Type": "Threshold",
     "Functional Group": "Protect",
     "Subgroup": "Bottoms & Seals",
-    "Priority": "4"
+    "Priority": "4",
+    "Components": ""
   },
   {
     "Type Name": "Door Bottom",
     "Type": "Door Bottom",
     "Functional Group": "Protect",
     "Subgroup": "Bottoms & Seals",
-    "Priority": "4"
+    "Priority": "4",
+    "Components": ""
   },
   {
     "Type Name": "Door Sweep",
     "Type": "Door Sweep",
     "Functional Group": "Protect",
     "Subgroup": "Bottoms & Seals",
-    "Priority": "4"
+    "Priority": "4",
+    "Components": ""
   },
   {
     "Type Name": "Door Shoe",
     "Type": "Door Shoe",
     "Functional Group": "Protect",
     "Subgroup": "Bottoms & Seals",
-    "Priority": "4"
+    "Priority": "4",
+    "Components": ""
   },
   {
     "Type Name": "Smoke Seal",
     "Type": "Smoke Seal",
     "Functional Group": "Protect",
     "Subgroup": "Bottoms & Seals",
-    "Priority": "4"
+    "Priority": "4",
+    "Components": ""
   },
   {
     "Type Name": "Drip Cap",
     "Type": "Drip Cap",
     "Functional Group": "Protect",
     "Subgroup": "Bottoms & Seals",
-    "Priority": "4"
+    "Priority": "4",
+    "Components": ""
   },
   {
     "Type Name": "Kick Plate",
     "Type": "Kick Plate",
     "Functional Group": "Protect",
     "Subgroup": "Plates & Guards",
-    "Priority": "4"
+    "Priority": "4",
+    "Components": ""
   },
   {
     "Type Name": "Push Plate",
@@ -284,7 +316,8 @@
     "Type": "Door Pull",
     "Functional Group": "Protect",
     "Subgroup": "Pulls & Handles",
-    "Priority": "4"
+    "Priority": "4",
+    "Components": ""
   },
   {
     "Type Name": "Door Push/Pull",
@@ -299,42 +332,47 @@
     "Type": "Flush Pull",
     "Functional Group": "Protect",
     "Subgroup": "Pulls & Handles",
-    "Priority": "4"
+    "Priority": "4",
+    "Components": ""
   },
   {
     "Type Name": "Pull",
     "Type": "Pull",
     "Functional Group": "Protect",
     "Subgroup": "Pulls & Handles",
-    "Priority": "4"
+    "Priority": "4",
+    "Components": ""
   },
   {
     "Type Name": "Ball Catch",
     "Type": "Ball Catch",
     "Functional Group": "Accessories",
     "Subgroup": "Accessories",
-    "Priority": "5"
+    "Priority": "5",
+    "Components": ""
   },
   {
     "Type Name": "Privacy Door Latch",
     "Type": "Privacy Door Latch",
     "Functional Group": "Accessories",
     "Subgroup": "Accessories",
-    "Priority": "5"
+    "Priority": "5",
+    "Components": ""
   },
   {
     "Type Name": "Screw Pack",
     "Type": "Screw Pack",
     "Functional Group": "Accessories",
     "Subgroup": "Accessories",
-    "Priority": "5"
+    "Priority": "5",
+    "Components": ""
   },
   {
     "Type Name": "Screws",
     "Type": "Screws",
     "Functional Group": "Accessories",
     "Subgroup": "Accessories",
-    "Priority": "5"
-  },
-  {}
+    "Priority": "5",
+    "Components": ""
+  }
 ]
