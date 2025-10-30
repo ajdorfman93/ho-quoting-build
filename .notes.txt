@@ -217,3 +217,4 @@
     52.  user should be able to change column type from the field configuration dropdown. the code should record in the database, so create a new table within neon, for the column type and any relevant settings for that column type.
     for example:
     formula, Table reference, record reference, currency type, number format, date format, etc... refer to imgReferences\airtable_dropdown_specs.txt for all settings for each column type.
+    53.  in airtable/page.tsx, id="table-select" should not be a dropdown. it should be a tab bar with each tab representing a different table from the neon database. clicking on a tab switches to that table in the table component. implement this change. app/page.tsx should remain unchanged as a dropdown for selecting tables.

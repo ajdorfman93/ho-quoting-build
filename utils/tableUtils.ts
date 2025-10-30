@@ -1,6 +1,7 @@
 // utils/tableUtils.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as React from "react";
+import Sortable from "sortablejs";
 import {
   FaAlignCenter,
   FaAlignLeft,
@@ -1372,6 +1373,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     );
   });
   const latestRowsRef = React.useRef(rows);
+  const latestColumnsRef = React.useRef(columns);
+  const headerRowRef = React.useRef<HTMLDivElement | null>(null);
+  const rowsContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const columnSortableRef = React.useRef<Sortable | null>(null);
+  const rowSortableRef = React.useRef<Sortable | null>(null);
+  const headerColumnIndicesRef = React.useRef<number[]>([]);
+  const renderedRowIndexesRef = React.useRef<number[]>([]);
   const pendingColumnCommitRef = React.useRef<ColumnSpec<T>[] | null>(null);
   const availableViews = React.useMemo(
     () => VIEW_DEFINITIONS.map((def) => ({ ...def, instanceId: def.id, displayName: def.name })),
@@ -1428,8 +1436,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const [sortConfig, setSortConfig] = React.useState<{ columnKey: string; direction: "asc" | "desc" } | null>(null);
   const [groupConfig, setGroupConfig] = React.useState<{ columnKey: string } | null>(null);
   const [colorConfig, setColorConfig] = React.useState<{ columnKey: string } | null>(null);
-  const columnDragRef = React.useRef<{ from: number } | null>(null);
-  const rowDragRef = React.useRef<{ from: number } | null>(null);
   const editOriginalRef = React.useRef<any>(null);
   const headerMenu = useContextMenu();
   const cellMenu = useCellContextMenu();
@@ -1438,8 +1444,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   }, []);
   const formatClipboardRef = React.useRef<CellStyle | null>(null);
   const [ratingPreview, setRatingPreview] = React.useState<{ r: number; c: number; value: number } | null>(null);
-  const [columnDragHover, setColumnDragHover] = React.useState<{ from: number; to: number } | null>(null);
-  const [rowDragHover, setRowDragHover] = React.useState<{ from: number; to: number } | null>(null);
   const viewsDropdownPlacement = useAutoDropdownPlacement(viewsDropdownOpen, viewsTriggerRef, viewsDropdownRef, { offset: 8 });
   const fieldsMenuPlacement = useAutoDropdownPlacement(fieldsMenuOpen, fieldsButtonRef, fieldsMenuRef, { offset: 8 });
   const filterMenuPlacement = useAutoDropdownPlacement(filterMenuOpen, filterButtonRef, filterMenuRef, { offset: 8 });
@@ -1469,6 +1473,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   React.useEffect(() => {
     latestRowsRef.current = rows;
   }, [rows]);
+  React.useEffect(() => {
+    latestColumnsRef.current = columns;
+  }, [columns]);
 
   React.useEffect(() => {
     if (!availableViews.some((view) => view.instanceId === activeView)) {
@@ -1529,6 +1536,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     push({ rows: nextRows, columns: nextCols });
     onChange?.({ rows: deepClone(nextRows), columns: deepClone(nextCols) });
   }, [rows, columns, push, onChange]);
+  const commitRef = React.useRef(commit);
+  React.useEffect(() => {
+    commitRef.current = commit;
+  }, [commit]);
 
   /* sizing */
   const [headerHeight, setHeaderHeight] = React.useState(initialHeaderHeight);
@@ -1789,6 +1800,151 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const rect = cell.getBoundingClientRect();
     setRecordLinkDropdownAnchor({ element: cell, rect });
   }, [recordLinkDropdown, viewport.scrollLeft, viewport.scrollTop, colWidths, rowHeights]);
+
+  React.useEffect(() => {
+    const container = headerRowRef.current;
+    if (!container) return;
+    const sortable = Sortable.create(container, {
+      animation: 150,
+      draggable: "[data-header-cell='true']",
+      handle: "[data-header-cell='true']",
+      filter: "[data-resize-handle='true'], [data-header-menu-trigger='true'], input, textarea, select, button, [contenteditable='true']",
+      onEnd: () => {
+        const nodes = Array.from(container.querySelectorAll<HTMLElement>("[data-header-cell='true']"));
+        const nextVisibleOrder = nodes
+          .map((node) => Number(node.dataset.columnIndex))
+          .filter((index) => Number.isFinite(index));
+        const originalVisibleOrder = headerColumnIndicesRef.current;
+        if (!nextVisibleOrder.length || nextVisibleOrder.length !== originalVisibleOrder.length) {
+          return;
+        }
+        let changed = false;
+        for (let i = 0; i < nextVisibleOrder.length; i += 1) {
+          if (nextVisibleOrder[i] !== originalVisibleOrder[i]) {
+            changed = true;
+            break;
+          }
+        }
+        if (!changed) {
+          return;
+        }
+        const totalColumns = latestColumnsRef.current.length;
+        const queue = [...nextVisibleOrder];
+        const originalSet = new Set(originalVisibleOrder);
+        const merged: number[] = [];
+        for (let idx = 0; idx < totalColumns; idx += 1) {
+          if (originalSet.has(idx)) {
+            const nextIdx = queue.shift();
+            if (typeof nextIdx === "number" && Number.isFinite(nextIdx)) {
+              merged.push(nextIdx);
+            } else {
+              merged.push(idx);
+            }
+          } else {
+            merged.push(idx);
+          }
+        }
+        if (queue.length) {
+          return;
+        }
+        const previousOrder = latestColumnsRef.current.map((_col, index) => index);
+        const isSame = merged.every((value, index) => value === previousOrder[index]);
+        if (isSame) {
+          return;
+        }
+        const nextColumns = merged.map((index) => latestColumnsRef.current[index]);
+        const nextWidths = merged.map((index) => colWidthsRef.current[index] ?? minColumnWidth);
+        latestColumnsRef.current = nextColumns;
+        colWidthsRef.current = nextWidths;
+        setColumns(nextColumns);
+        setColWidths(nextWidths);
+        setSelection(null);
+        setActiveCell(null);
+        setEditing(null);
+        commitRef.current?.(latestRowsRef.current, nextColumns);
+      }
+    });
+    columnSortableRef.current = sortable;
+    return () => {
+      sortable.destroy();
+      columnSortableRef.current = null;
+    };
+  }, [minColumnWidth]);
+
+  React.useEffect(() => {
+    const container = rowsContainerRef.current;
+    if (!container) return;
+    const sortable = Sortable.create(container, {
+      animation: 150,
+      handle: "[data-row-handle='true']",
+      draggable: "[data-row-index]",
+      onEnd: () => {
+        const nodes = Array.from(container.querySelectorAll<HTMLElement>("[data-row-index]"));
+        const nextVisibleOrder = nodes
+          .map((node) => Number(node.dataset.rowIndex))
+          .filter((index) => Number.isFinite(index));
+        const originalVisibleOrder = renderedRowIndexesRef.current;
+        if (!nextVisibleOrder.length || nextVisibleOrder.length !== originalVisibleOrder.length) {
+          return;
+        }
+        let changed = false;
+        for (let i = 0; i < nextVisibleOrder.length; i += 1) {
+          if (nextVisibleOrder[i] !== originalVisibleOrder[i]) {
+            changed = true;
+            break;
+          }
+        }
+        if (!changed) {
+          return;
+        }
+        const totalRows = latestRowsRef.current.length;
+        const queue = [...nextVisibleOrder];
+        const originalSet = new Set(originalVisibleOrder);
+        const merged: number[] = [];
+        for (let idx = 0; idx < totalRows; idx += 1) {
+          if (originalSet.has(idx)) {
+            const nextIdx = queue.shift();
+            if (typeof nextIdx === "number" && Number.isFinite(nextIdx)) {
+              merged.push(nextIdx);
+            } else {
+              merged.push(idx);
+            }
+          } else {
+            merged.push(idx);
+          }
+        }
+        if (queue.length) {
+          return;
+        }
+        const previousOrder = latestRowsRef.current.map((_row, index) => index);
+        const isSame = merged.every((value, index) => value === previousOrder[index]);
+        if (isSame) {
+          return;
+        }
+        const nextRows = merged.map((index) => latestRowsRef.current[index]);
+        const nextHeights = merged.map((index) => rowHeightsRef.current[index] ?? ROW_HEIGHT_PRESETS[rowHeightPresetRef.current]);
+        latestRowsRef.current = nextRows;
+        rowHeightsRef.current = nextHeights;
+        setRows(nextRows);
+        setRowHeights(nextHeights);
+        setSelection(null);
+        setActiveCell(null);
+        setEditing(null);
+        commitRef.current?.(nextRows, latestColumnsRef.current);
+      }
+    });
+    rowSortableRef.current = sortable;
+    return () => {
+      sortable.destroy();
+      rowSortableRef.current = null;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (rowSortableRef.current) {
+      rowSortableRef.current.option("disabled", isRowReorderLocked);
+    }
+  }, [isRowReorderLocked]);
 
   const handleScroll = React.useCallback(() => {
     const el = tableContainerRef.current;
@@ -3739,6 +3895,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const { start: columnRenderStart, end: columnRenderEnd } = visibleRangeFromOffsets(columnOffsets, columnStartOffset, columnEndOffset);
 
   const renderedRowIndexes = visibleRowIndexes.slice(rowRenderStart, rowRenderEnd);
+  React.useEffect(() => {
+    renderedRowIndexesRef.current = renderedRowIndexes;
+  }, [renderedRowIndexes]);
   const renderedColumnIndices: number[] = [];
   for (let i = columnRenderStart; i < columnRenderEnd; i++) renderedColumnIndices.push(i);
 
@@ -3747,6 +3906,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const columnSpacerLeft = columnOffsets[columnRenderStart] ?? 0;
   const columnSpacerRight = Math.max(0, totalColumnWidth - (columnOffsets[columnRenderEnd] ?? totalColumnWidth));
   const headerColumnIndices = renderedColumnIndices.length ? renderedColumnIndices : columns.map((_col, idx) => idx);
+  React.useEffect(() => {
+    headerColumnIndicesRef.current = headerColumnIndices;
+  }, [headerColumnIndices]);
   const bodyColumnIndices = headerColumnIndices;
   const isLoadMorePending = typeof loadingMoreRows === "boolean" ? loadingMoreRows : internalLoadMorePending;
   const resizeGuideContainerHeight = tableContainerRef.current?.scrollHeight ?? (headerHeight + totalVisibleRowHeight + 120);
@@ -3795,6 +3957,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     onClear: () => void;
     onDone: () => void;
     onCancel: () => void;
+    onCreateOption?: (label: string) => void;
   }
 
   function MultipleSelectDropdown({
@@ -3805,16 +3968,28 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     onToggle,
     onClear,
     onDone,
-    onCancel
+    onCancel,
+    onCreateOption
   }: MultipleSelectDropdownProps) {
     const searchRef = React.useRef<HTMLInputElement | null>(null);
     React.useEffect(() => {
       searchRef.current?.focus();
     }, []);
-    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const trimmedSearch = searchTerm.trim();
+    const normalizedSearch = trimmedSearch.toLowerCase();
+    const hasExactMatch = normalizedSearch
+      ? options.some((option) => option.label.trim().toLowerCase() === normalizedSearch)
+      : false;
     const filteredOpts = normalizedSearch
       ? options.filter((option) => option.label.toLowerCase().includes(normalizedSearch))
       : options;
+    const canCreateOption = Boolean(onCreateOption) && Boolean(trimmedSearch) && !hasExactMatch;
+    const showCreateButton = canCreateOption && filteredOpts.length === 0;
+
+    const handleCreateOption = () => {
+      if (!showCreateButton || !onCreateOption) return;
+      onCreateOption(trimmedSearch);
+    };
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Escape") {
@@ -3823,6 +3998,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         onCancel();
       } else if (event.key === "Enter") {
         event.preventDefault();
+        if (showCreateButton && onCreateOption) {
+          onCreateOption(trimmedSearch);
+          return;
+        }
         onDone();
       }
     };
@@ -3847,16 +4026,25 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
             ))
           )
         : null,
-      h("div", { className: "px-3" },
+      h("div", { className: "px-3 flex items-center gap-2" },
         h("input", {
           ref: searchRef,
           type: "text",
           value: searchTerm,
           onChange: (event: React.ChangeEvent<HTMLInputElement>) => onSearchChange(event.target.value),
           onKeyDown: handleKeyDown,
-          className: "w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
+          className: "flex-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
           placeholder: "Search options"
-        })
+        }),
+        showCreateButton
+          ? h("button", {
+              type: "button",
+              className: "inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-500 text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-blue-400 dark:text-blue-200 dark:hover:bg-blue-500/10 dark:focus:ring-blue-500",
+              onClick: handleCreateOption,
+              "aria-label": trimmedSearch ? `Add option \"${trimmedSearch}\"` : "Add option",
+              title: trimmedSearch ? `Add \"${trimmedSearch}\"` : "Add option"
+            }, h(FaPlus, { className: "h-3.5 w-3.5" }))
+          : null
       ),
       h("div", { className: "max-h-60 overflow-y-auto py-1", role: "listbox" },
         filteredOpts.length
@@ -3922,6 +4110,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     onSearchChange: (value: string) => void;
     onSelect: (nextValue: SelectOption | null) => void;
     onCancel: () => void;
+    onCreateOption?: (label: string) => void;
   }
 
   function SingleSelectDropdown({
@@ -3930,7 +4119,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     searchTerm,
     onSearchChange,
     onSelect,
-    onCancel
+    onCancel,
+    onCreateOption
   }: SingleSelectDropdownProps) {
     const searchRef = React.useRef<HTMLInputElement | null>(null);
     const [activeIndex, setActiveIndex] = React.useState<number>(-1);
@@ -3939,10 +4129,16 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     React.useEffect(() => {
       searchRef.current?.focus();
     }, []);
-    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const trimmedSearch = searchTerm.trim();
+    const normalizedSearch = trimmedSearch.toLowerCase();
+    const hasExactMatch = normalizedSearch
+      ? options.some((option) => option.label.trim().toLowerCase() === normalizedSearch)
+      : false;
     const filteredOpts = normalizedSearch
       ? options.filter((option) => option.label.toLowerCase().includes(normalizedSearch))
       : options;
+    const canCreateOption = Boolean(onCreateOption) && Boolean(trimmedSearch) && !hasExactMatch;
+    const showCreateButton = canCreateOption && filteredOpts.length === 0;
 
     React.useEffect(() => {
       if (!filteredOpts.length) {
@@ -3963,6 +4159,11 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         return 0;
       });
     }, [filteredOpts, currentIdentifier]);
+
+    const handleCreateOption = () => {
+      if (!showCreateButton || !onCreateOption) return;
+      onCreateOption(trimmedSearch);
+    };
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Escape") {
@@ -3994,21 +4195,34 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         const option = filteredOpts[activeIndex] ?? filteredOpts[0];
         if (option) {
           onSelect(option);
+          return;
+        }
+        if (showCreateButton && onCreateOption) {
+          onCreateOption(trimmedSearch);
         }
       }
     };
 
     return h("div", { className: "flex w-full flex-col gap-2 py-2" },
-      h("div", { className: "px-3" },
+      h("div", { className: "px-3 flex items-center gap-2" },
         h("input", {
           ref: searchRef,
           type: "text",
           value: searchTerm,
           onChange: (event: React.ChangeEvent<HTMLInputElement>) => onSearchChange(event.target.value),
           onKeyDown: handleKeyDown,
-          className: "w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
+          className: "flex-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
           placeholder: "Find an option"
-        })
+        }),
+        showCreateButton
+          ? h("button", {
+              type: "button",
+              className: "inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-500 text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-blue-400 dark:text-blue-200 dark:hover:bg-blue-500/10 dark:focus:ring-blue-500",
+              onClick: handleCreateOption,
+              "aria-label": trimmedSearch ? `Add option \"${trimmedSearch}\"` : "Add option",
+              title: trimmedSearch ? `Add \"${trimmedSearch}\"` : "Add option"
+            }, h(FaPlus, { className: "h-3.5 w-3.5" }))
+          : null
       ),
       h("div", { className: "max-h-60 overflow-y-auto py-1", role: "listbox" },
         filteredOpts.length
@@ -4180,23 +4394,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   /* ---- render grid ---- */
 
   // Header row
-  const columnPlaceholderLeft = columnDragHover ? sum(colWidths, 0, columnDragHover.to) : null;
-  const columnPlaceholderWidth = columnDragHover ? (colWidths[columnDragHover.from] ?? minColumnWidth) : null;
-  const columnPlaceholderHeader = columnPlaceholderLeft != null && columnPlaceholderWidth != null ? h("div", {
-    className: "pointer-events-none absolute rounded border-2 border-dashed border-blue-400 bg-blue-400/10",
-    style: { left: `${ROW_NUMBER_COLUMN_WIDTH + columnPlaceholderLeft}px`, top: 4, height: `${headerHeight - 8}px`, width: `${columnPlaceholderWidth}px` }
-  }) : null;
-  const columnPlaceholderBody = columnPlaceholderLeft != null && columnPlaceholderWidth != null ? h("div", {
-    className: "pointer-events-none absolute border-2 border-dashed border-blue-400 bg-blue-400/10",
-    style: { left: `${ROW_NUMBER_COLUMN_WIDTH + columnPlaceholderLeft}px`, top: 0, bottom: 0, width: `${columnPlaceholderWidth}px` }
-  }) : null;
-
-  const rowPlaceholderTop = rowDragHover ? sum(rowHeights, 0, rowDragHover.to) : null;
-  const rowPlaceholderHeight = rowDragHover ? (rowHeights[rowDragHover.from] ?? minRowHeight) : null;
-  const rowPlaceholderElement = rowPlaceholderTop != null && rowPlaceholderHeight != null ? h("div", {
-    className: "pointer-events-none absolute border-2 border-dashed border-blue-400 bg-blue-400/10",
-    style: { top: `${rowPlaceholderTop}px`, left: 0, right: 0, height: `${rowPlaceholderHeight}px` }
-  }) : null;
   const columnResizeGuideLine = columnResizeGuide ? h(React.Fragment, null,
     h("div", {
       className: mergeClasses(
@@ -4726,6 +4923,65 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     loadMoreButton
   );
 
+  function addSelectOption(columnIndex: number, rawLabel: string, mode: "single" | "multiple"): SelectOption | null {
+    const label = typeof rawLabel === "string" ? rawLabel.trim() : "";
+    if (!label) return null;
+    const configKey: "singleSelect" | "multipleSelect" = mode === "multiple" ? "multipleSelect" : "singleSelect";
+    const column = columns[columnIndex];
+    if (!column) return null;
+    const baseOptions = Array.isArray(column.config?.[configKey]?.options)
+      ? (column.config?.[configKey]?.options as SelectOption[])
+      : [];
+    const normalizedLabel = label.toLowerCase();
+    const existing = baseOptions.find((opt) =>
+      String(opt.label ?? "").trim().toLowerCase() === normalizedLabel
+    );
+    if (existing) {
+      return { ...existing };
+    }
+
+    let createdOption: SelectOption | null = null;
+    setColumns((prev) => {
+      const current = prev[columnIndex];
+      if (!current) return prev;
+      const currentOptions = Array.isArray(current.config?.[configKey]?.options)
+        ? (current.config?.[configKey]?.options as SelectOption[])
+        : [];
+      const duplicate = currentOptions.find((opt) =>
+        String(opt.label ?? "").trim().toLowerCase() === normalizedLabel
+      );
+      if (duplicate) {
+        createdOption = { ...duplicate };
+        return prev;
+      }
+      const next = deepClone(prev);
+      const target = next[columnIndex];
+      if (!target) return prev;
+      const nextConfig = target.config ? { ...target.config } : ({} as NonNullable<ColumnSpec<T>["config"]>);
+      const bucket = (nextConfig[configKey] ?? {}) as { options?: SelectOption[] };
+      const optionsList: SelectOption[] = Array.isArray(bucket.options) ? bucket.options.slice() : [];
+      const usedIds = new Set(optionsList.map((opt) => String(opt.id ?? "").trim()).filter(Boolean));
+      let baseId = label
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      if (!baseId) baseId = "option";
+      let candidateId = baseId;
+      let suffix = 1;
+      while (!candidateId || usedIds.has(candidateId)) {
+        candidateId = `${baseId}-${suffix++}`;
+      }
+      const newOption: SelectOption = { id: candidateId, label };
+      optionsList.push(newOption);
+      nextConfig[configKey] = { ...bucket, options: optionsList };
+      target.config = Object.keys(nextConfig).length ? nextConfig : undefined;
+      pendingColumnCommitRef.current = next;
+      createdOption = { ...newOption };
+      return next;
+    });
+    return createdOption;
+  }
+
   const selectDropdownElement = selectDropdown ? (() => {
     const { r, c, mode, search } = selectDropdown;
     const column = columns[c];
@@ -4780,6 +5036,18 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         setCellValue(r, c, []);
       };
 
+      const handleCreateOption = (label: string) => {
+        const created = addSelectOption(c, label, "multiple");
+        if (!created) return;
+        const identifier = optionIdentifier(created);
+        const currentIdentifiers = new Set(selectedValues.map((opt) => optionIdentifier(opt)));
+        if (!currentIdentifiers.has(identifier)) {
+          const nextSelected = [...selectedValues, cloneOption(created)];
+          setCellValue(r, c, nextSelected.map((opt) => ({ ...opt })));
+        }
+        updateSelectDropdownSearch("");
+      };
+
       return h(FloatingMenuSurface, {
         key: "select-dropdown",
         className: "fixed z-50 rounded-xl border border-zinc-200 bg-white p-0 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900",
@@ -4799,7 +5067,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           onToggle: toggleOption,
           onClear: clearSelection,
           onDone: () => commitEdit(),
-          onCancel: () => cancelEdit()
+          onCancel: () => cancelEdit(),
+          onCreateOption: handleCreateOption
         })
       );
     }
@@ -4825,6 +5094,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       commitEdit();
     };
 
+    const handleCreateOption = (label: string) => {
+      const created = addSelectOption(c, label, "single");
+      if (!created) return;
+      updateSelectDropdownSearch("");
+      handleSelect(created);
+    };
+
     return h(FloatingMenuSurface, {
       key: "select-dropdown",
       className: "fixed z-50 rounded-xl border border-zinc-200 bg-white p-0 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900",
@@ -4842,7 +5118,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         searchTerm: search,
         onSearchChange: updateSelectDropdownSearch,
         onSelect: handleSelect,
-        onCancel: () => cancelEdit()
+        onCancel: () => cancelEdit(),
+        onCreateOption: handleCreateOption
       })
     );
   })() : null;

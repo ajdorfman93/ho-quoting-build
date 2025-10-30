@@ -45,6 +45,10 @@ type GridDiff = {
   updatedRows: Array<{ id: string; values: Record<string, unknown> }>;
 };
 
+interface InteractiveGridDemoProps {
+  tableSelectorVariant?: "dropdown" | "tabs";
+}
+
 const PAGE_SIZE = 100;
 
 function cloneState(state: GridState): GridState {
@@ -273,7 +277,10 @@ export function InteractiveGrid<T extends Record<string, unknown>>({
   });
 }
 
-export default function InteractiveGridDemo() {
+export default function InteractiveGridDemo({
+  tableSelectorVariant = "dropdown",
+}: InteractiveGridDemoProps = {}) {
+  const tableLabelId = React.useId();
   const [tables, setTables] = React.useState<TableMetadata[]>([]);
   const [activeTable, setActiveTable] = React.useState<string | null>(null);
   const [gridState, setGridState] = React.useState<GridState | null>(null);
@@ -340,18 +347,25 @@ export default function InteractiveGridDemo() {
     [replaceState]
   );
 
+  const selectTable = React.useCallback(
+    async (tableName: string) => {
+      if (!tableName) return;
+      await loadTable(tableName);
+    },
+    [loadTable]
+  );
+
   const refreshTable = React.useCallback(async () => {
     if (!activeTable) return;
     await loadTable(activeTable, { showSpinner: false });
   }, [activeTable, loadTable]);
 
-  const handleTableSelect = React.useCallback(
+  const handleDropdownChange = React.useCallback(
     async (event: React.ChangeEvent<HTMLSelectElement>) => {
       const nextTable = event.target.value;
-      if (!nextTable) return;
-      await loadTable(nextTable);
+      await selectTable(nextTable);
     },
-    [loadTable]
+    [selectTable]
   );
 
   const applyColumnChanges = React.useCallback(
@@ -671,29 +685,74 @@ export default function InteractiveGridDemo() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <label
-            htmlFor="table-select"
-            className="text-sm font-medium text-zinc-600 dark:text-zinc-300"
-          >
-            Table
-          </label>
-          <select
-            id="table-select"
-            value={activeTable ?? ""}
-            onChange={handleTableSelect}
-            className="min-w-[220px] rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-zinc-200"
-          >
-            <option value="" disabled>
-              Select a table
-            </option>
-            {tables.map((table) => (
-              <option key={table.table_name} value={table.table_name}>
-                {table.display_name}
+        {tableSelectorVariant === "tabs" ? (
+          <div className="flex flex-col gap-2">
+            <span
+              id={tableLabelId}
+              className="text-sm font-medium text-zinc-600 dark:text-zinc-300"
+            >
+              Table
+            </span>
+            <div
+              id="table-select"
+              role="tablist"
+              aria-labelledby={tableLabelId}
+              className="flex overflow-x-auto flex-wrap gap-2"
+            >
+              {tables.length > 0 ? (
+                tables.map((table) => {
+                  const isActive = table.table_name === activeTable;
+                  return (
+                    <button
+                      key={table.table_name}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+                        isActive
+                          ? "border-blue-500 bg-blue-600 text-white shadow-sm dark:border-blue-400 dark:bg-blue-500"
+                          : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100 dark:border-slate-700/60 dark:bg-slate-800/60 dark:text-slate-200 dark:hover:bg-slate-700/60"
+                      }`}
+                      onClick={() => {
+                        void selectTable(table.table_name);
+                      }}
+                    >
+                      {table.display_name}
+                    </button>
+                  );
+                })
+              ) : (
+                <span className="rounded-lg border border-dashed border-zinc-300 px-3 py-1.5 text-xs text-zinc-500 dark:border-slate-700/60 dark:text-slate-400">
+                  No tables available
+                </span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <label
+              htmlFor="table-select"
+              className="text-sm font-medium text-zinc-600 dark:text-zinc-300"
+            >
+              Table
+            </label>
+            <select
+              id="table-select"
+              value={activeTable ?? ""}
+              onChange={handleDropdownChange}
+              className="min-w-[220px] rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-zinc-200"
+            >
+              <option value="" disabled>
+                Select a table
               </option>
-            ))}
-          </select>
-        </div>
+              {tables.map((table) => (
+                <option key={table.table_name} value={table.table_name}>
+                  {table.display_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
           {loading && <span>Loading…</span>}
           {syncing && !loading && <span>Syncing changes…</span>}

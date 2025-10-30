@@ -4,7 +4,7 @@ The HO Quoting rebuild uses a single AI surface today: the **Field agents** menu
 
 The menu is defined in `utils/tableUtils.ts` (`FIELD_AGENT_ACTIONS`) and rendered for every instance of the shared table component that both `app/page.tsx` and `app/airtable/page.tsx` consume. Each entry captures the intent, iconography, and copy that is shown to the user.
 
-> 2025-10-30 — The `/airtable` route now renders the same Neon-backed `InteractiveGridDemo` that powers the home page. No local JSON is loaded; all reads and writes flow through the `/api/tables/*` endpoints and the Neon `column_metadata` / `column_type_settings` tables. Keep this in mind when wiring new agent behaviors—the two surfaces are functionally identical.
+> 2025-10-30 — The `/airtable` route now wraps the shared `InteractiveGridDemo` inside `AirtableWorkspace.tsx` for custom chrome. No local JSON is loaded; all reads and writes flow through the `/api/tables/*` endpoints and the Neon `column_metadata` / `column_type_settings` tables. Keep this in mind when wiring new agent behaviors—the two surfaces remain functionally identical.
 
 ## Agent Catalog
 
