@@ -85,6 +85,10 @@ function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
+function toAriaBoolean(value: boolean): "true" | "false" {
+  return value ? "true" : "false";
+}
+
 export default function AirtableWorkspace({ project }: { project: AirtableProject }) {
   const [activeNav, setActiveNav] = React.useState<NavKey>("data");
   const [activeTableSlug, setActiveTableSlug] = React.useState<string | null>(
@@ -526,7 +530,7 @@ function DataPanel({
                       ? "border-cyan-500/60 bg-cyan-500/10 text-cyan-100"
                       : "text-slate-300 hover:bg-slate-900/60",
                   )}
-                  aria-pressed={Boolean(view.badge)}
+                  aria-pressed={toAriaBoolean(Boolean(view.badge))}
                 >
                   <span className="mt-0.5">{view.icon}</span>
                   <span className="flex-1">
@@ -611,8 +615,8 @@ function DataPanel({
                   isDragSource && "opacity-60",
                   isDragTarget && "ring-2 ring-cyan-400/80",
                 )}
-                aria-pressed={isActive}
-                aria-grabbed={tabDragSlug.current === entry.slug}
+                aria-pressed={toAriaBoolean(isActive)}
+                aria-grabbed={toAriaBoolean(tabDragSlug.current === entry.slug)}
               >
                 {entry.label}
               </button>
@@ -719,7 +723,7 @@ function RecordToolbar({ table }: { table: AirtableTableDefinition }) {
             onClick={() => setSnapshotsOpen((prev) => !prev)}
             className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-transparent px-3 py-1.5 text-xs uppercase tracking-wide text-slate-400 transition hover:bg-[#121f3c]"
             aria-haspopup="true"
-            aria-expanded={snapshotsOpen}
+            aria-expanded={toAriaBoolean(snapshotsOpen)}
           >
             <FaHistory className="h-3.5 w-3.5" aria-hidden />
             Snapshots

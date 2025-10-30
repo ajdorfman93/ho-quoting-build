@@ -27,13 +27,18 @@ function cloneConfig<T>(value: T | undefined | null): T | undefined {
 }
 
 function toColumnSpec(meta: ColumnMetadata): ColumnSpec<TableRow> {
-  const rawConfig = (meta.config ?? {}) as ColumnSpec<TableRow>["config"];
+  const typeFromSettings = meta.type_settings?.column_type;
+  const rawConfig = (
+    meta.type_settings?.settings ?? meta.config ?? {}
+  ) as ColumnSpec<TableRow>["config"];
   const config = rawConfig && Object.keys(rawConfig).length ? cloneConfig(rawConfig) : undefined;
 
   return {
     key: meta.column_name,
     name: meta.display_name,
-    type: (meta.data_type as ColumnSpec<TableRow>["type"]) ?? "singleLineText",
+    type: (typeFromSettings as ColumnSpec<TableRow>["type"]) ??
+      (meta.data_type as ColumnSpec<TableRow>["type"]) ??
+      "singleLineText",
     width: meta.width ?? 220,
     config
   };
@@ -53,24 +58,81 @@ function normalizeValue(input: unknown): string | null {
   return String(input);
 }
 
+type ColumnMetadataQueryRow = {
+  table_name: string;
+  column_name: string;
+  display_name: string;
+  data_type: string;
+  config: Record<string, unknown> | null;
+  position: number;
+  is_nullable: boolean;
+  width: number;
+  created_at: string | null;
+  updated_at: string | null;
+  type_settings_column_type: string | null;
+  type_settings_settings: Record<string, unknown> | null;
+  type_settings_created_at: string | null;
+  type_settings_updated_at: string | null;
+};
+
 async function fetchColumnMetadata(
   client: PoolClient,
   tableName: string
 ): Promise<ColumnMetadata[]> {
-  const { rows } = await client.query<ColumnMetadata>(
+  const { rows } = await client.query<ColumnMetadataQueryRow>(
     `
-      SELECT table_name, column_name, display_name, data_type, config, position, is_nullable, width, created_at, updated_at
-      FROM column_metadata
-      WHERE table_name = $1
-      ORDER BY position ASC;
+      SELECT
+        cm.table_name,
+        cm.column_name,
+        cm.display_name,
+        cm.data_type,
+        cm.config,
+        cm.position,
+        cm.is_nullable,
+        cm.width,
+        cm.created_at,
+        cm.updated_at,
+        cts.column_type AS type_settings_column_type,
+        cts.settings AS type_settings_settings,
+        cts.created_at AS type_settings_created_at,
+        cts.updated_at AS type_settings_updated_at
+      FROM column_metadata cm
+      LEFT JOIN column_type_settings cts
+        ON cm.table_name = cts.table_name
+       AND cm.column_name = cts.column_name
+      WHERE cm.table_name = $1
+      ORDER BY cm.position ASC;
     `,
     [tableName]
   );
 
-  return rows.map((row) => ({
-    ...row,
-    config: row.config ?? {},
-  }));
+  return rows.map((row) => {
+    const config = row.config ?? {};
+    const typeSettings = row.type_settings_column_type
+      ? {
+          table_name: row.table_name,
+          column_name: row.column_name,
+          column_type: row.type_settings_column_type,
+          settings: row.type_settings_settings ?? {},
+          created_at: row.type_settings_created_at ?? undefined,
+          updated_at: row.type_settings_updated_at ?? undefined,
+        }
+      : null;
+
+    return {
+      table_name: row.table_name,
+      column_name: row.column_name,
+      display_name: row.display_name,
+      data_type: row.data_type,
+      config,
+      position: row.position,
+      is_nullable: row.is_nullable,
+      width: row.width,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      type_settings: typeSettings,
+    } satisfies ColumnMetadata;
+  });
 }
 
 export async function listTables(): Promise<TableMetadata[]> {
@@ -249,6 +311,19 @@ export async function createColumn(
       ]
     );
 
+    const columnType = input.type ?? "singleLineText";
+    await client.query(
+      `
+        INSERT INTO column_type_settings (table_name, column_name, column_type, settings)
+        VALUES ($1, $2, $3, $4::jsonb)
+        ON CONFLICT (table_name, column_name)
+        DO UPDATE SET column_type = EXCLUDED.column_type,
+                      settings = EXCLUDED.settings,
+                      updated_at = NOW();
+      `,
+      [safeTable, columnKey, columnType, JSON.stringify(input.config ?? {})]
+    );
+
     const [meta] = await fetchColumnMetadata(client, safeTable).then((rows) =>
       rows.filter((row) => row.column_name === columnKey)
     );
@@ -307,6 +382,41 @@ export async function updateColumn(
       rows.filter((row) => row.column_name === columnKey)
     );
 
+    if (!meta) {
+      throw new Error(`Column ${columnKey} not found on ${tableName}`);
+    }
+
+    const nextType =
+      input.type ??
+      meta.type_settings?.column_type ??
+      meta.data_type ??
+      "singleLineText";
+    const nextConfig =
+      input.config ??
+      meta.type_settings?.settings ??
+      meta.config ??
+      {};
+
+    await client.query(
+      `
+        INSERT INTO column_type_settings (table_name, column_name, column_type, settings)
+        VALUES ($1, $2, $3, $4::jsonb)
+        ON CONFLICT (table_name, column_name)
+        DO UPDATE SET column_type = EXCLUDED.column_type,
+                      settings = EXCLUDED.settings,
+                      updated_at = NOW();
+      `,
+      [safeTable, safeColumn, nextType, JSON.stringify(nextConfig)]
+    );
+
+    const [updatedMeta] = await fetchColumnMetadata(client, safeTable).then(
+      (rows) => rows.filter((row) => row.column_name === columnKey)
+    );
+
+    if (!updatedMeta) {
+      throw new Error(`Column ${columnKey} not found on ${tableName}`);
+    }
+
     emitTableChange({
       table: safeTable,
       type: "columnUpdated",
@@ -314,7 +424,7 @@ export async function updateColumn(
       timestamp: new Date().toISOString(),
     });
 
-    return toColumnSpec(meta);
+    return toColumnSpec(updatedMeta);
   });
 }
 

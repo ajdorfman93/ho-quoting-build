@@ -8,6 +8,15 @@ export type TableMetadata = {
   updated_at: string;
 };
 
+export type ColumnTypeSettings = {
+  table_name: string;
+  column_name: string;
+  column_type: string;
+  settings: Record<string, unknown>;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type ColumnMetadata = {
   table_name: string;
   column_name: string;
@@ -19,6 +28,7 @@ export type ColumnMetadata = {
   width: number;
   created_at?: string;
   updated_at?: string;
+  type_settings?: ColumnTypeSettings | null;
 };
 
 const NON_ALPHANUMERIC = /[^a-z0-9]+/gi;

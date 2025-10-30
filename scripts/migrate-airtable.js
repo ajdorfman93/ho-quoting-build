@@ -9,7 +9,7 @@ const { randomUUID } = require("crypto");
 const dotenv = require("dotenv");
 
 const ROOT_DIR = path.resolve(__dirname, "..");
-const DATA_DIR = path.join(ROOT_DIR, "airtable", "csv-json");
+const DATA_DIR = path.join(ROOT_DIR, "airtable", "json");
 
 dotenv.config({ path: path.join(ROOT_DIR, ".env.local") });
 
@@ -78,6 +78,22 @@ async function ensureMetaTables(client) {
   await client.query(`
     ALTER TABLE column_metadata
       ADD COLUMN IF NOT EXISTS width INTEGER NOT NULL DEFAULT 160;
+  `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS column_type_settings (
+      table_name TEXT NOT NULL,
+      column_name TEXT NOT NULL,
+      column_type TEXT NOT NULL,
+      settings JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (table_name, column_name),
+      CONSTRAINT column_type_settings_column_fk
+        FOREIGN KEY (table_name, column_name)
+        REFERENCES column_metadata(table_name, column_name)
+        ON DELETE CASCADE
+    );
   `);
 
   await client.query(`
@@ -181,6 +197,18 @@ async function migrateSingleTable(client, filePath) {
                       updated_at = NOW();
       `,
       [tableName, key, rawName, columnKeys.get(rawName).position]
+    );
+
+    await client.query(
+      `
+        INSERT INTO column_type_settings (table_name, column_name, column_type, settings)
+        VALUES ($1, $2, 'singleLineText', '{}'::jsonb)
+        ON CONFLICT (table_name, column_name)
+        DO UPDATE SET column_type = EXCLUDED.column_type,
+                      settings = EXCLUDED.settings,
+                      updated_at = NOW();
+      `,
+      [tableName, key]
     );
   }
 
