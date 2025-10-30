@@ -128,8 +128,8 @@ async function fetchColumnMetadata(
       position: row.position,
       is_nullable: row.is_nullable,
       width: row.width,
-      created_at: row.created_at,
-      updated_at: row.updated_at,
+      created_at: row.created_at ?? undefined,
+      updated_at: row.updated_at ?? undefined,
       type_settings: typeSettings,
     } satisfies ColumnMetadata;
   });
