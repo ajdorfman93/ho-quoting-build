@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Sortable from "sortablejs";
+import Sortable from "sortablejs/modular/sortable.esm.js";
 import {
   renderInteractiveTable,
   type ColumnSpec,

@@ -41,9 +41,10 @@ declare module "sortablejs" {
   export default Sortable;
 }
 
-declare module "sortablejs/plugins/MultiDrag" {
-  const MultiDrag: {
-    new (): any;
-  };
-  export default MultiDrag;
+declare module "sortablejs/modular/sortable.esm.js" {
+  import SortableModule from "sortablejs";
+  export const MultiDrag: new () => any;
+  export const Swap: new () => any;
+  export const Sortable: typeof SortableModule;
+  export default SortableModule;
 }

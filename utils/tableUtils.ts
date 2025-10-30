@@ -1,7 +1,7 @@
 ﻿// utils/tableUtils.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as React from "react";
-import Sortable from "sortablejs";
+import Sortable, { MultiDrag } from "sortablejs/modular/sortable.esm.js";
 import {
   FaAlignCenter,
   FaAlignLeft,
@@ -198,6 +198,15 @@ type FieldAgentAction = {
 };
 
 type SortableHandle = ReturnType<(typeof Sortable)["create"]>;
+
+const ensureMultiDragMounted = () => {
+  if (typeof window === "undefined") return;
+  const globalScope = window as typeof window & { __sortableMultiDragMounted?: boolean };
+  if (!globalScope.__sortableMultiDragMounted) {
+    Sortable.mount(new MultiDrag());
+    globalScope.__sortableMultiDragMounted = true;
+  }
+};
 
 const FIELD_AGENT_ACTIONS: FieldAgentAction[] = [
   { id: "analyze-attachment", label: "Analyze attachment", icon: FaFileAlt, description: "Summarize and extract insights from the selected file." },
@@ -1817,6 +1826,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   React.useEffect(() => {
     const container = headerRowRef.current;
     if (!container) return;
+    ensureMultiDragMounted();
     const sortable = Sortable.create(container, {
       animation: SORTABLE_ANIMATION_MS,
       easing: SORTABLE_EASING,
@@ -1895,6 +1905,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   React.useEffect(() => {
     const container = rowsContainerRef.current;
     if (!container) return;
+    ensureMultiDragMounted();
     const sortable = Sortable.create(container, {
       animation: SORTABLE_ANIMATION_MS,
       easing: SORTABLE_EASING,
