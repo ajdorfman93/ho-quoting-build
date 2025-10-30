@@ -2,18 +2,18 @@
 /**
  * csv-to-json.js — CSV → JSON (files or directories)
  *
- * Updates in this build:
- * - **Empty cells ALWAYS emit []** (no empty strings), for every header.
- * - All headers included for every row.
+ * Behavior:
+ * - Empty cells ALWAYS emit [] (never ""), for all headers.
+ * - All headers included per row.
  * - Encoding: UTF-8 (BOM/none), UTF-16 LE/BE; strips BOM
  * - CSV parsing with quotes/escaped quotes
  * - Default pretty=2; use --pretty=0 to minify
- * - Arrays: CSV-aware splitting + City/State comma rule (', ' + two uppercase letters)
+ * - Array splitting is CSV-aware + City/State comma rule (', ' + two uppercase letters)
+ * - If a list is quoted per item (e.g., "A, B, C", "D, E"), we FLATTEN each quoted token by further splitting on commas (not City/State).
  * - Plain text unless --infer-types
  * - Directory mode (recursive) supported
- */
-
-//                  node csv-to-json.js airtable/csv
+ */ 
+//         node csv-to-json.js airtable\csv
 
 import fs from 'fs';
 import path from 'path';
@@ -92,7 +92,10 @@ if (!arrayFieldsRaw) {
     'Hardware Set','Hardware Sets',
     'Hardware Set Items','Hardware Set Item',
     'Components','Items','Item Ids','Quote Line Item Ids',
-    'Projects'
+    'Projects',
+    // Added per user examples:
+    'Type (from Hardware Set Items)',
+    'Component Summary'
   ].join(',');
 }
 const arrayFields = new Set(arrayFieldsRaw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
@@ -161,27 +164,24 @@ function unwrapQuotesOnce(s) {
   if (v.length >= 2 && v[0] === '"' && v[v.length - 1] === '"') v = v.slice(1, -1);
   else if (v.length >= 2 && v[0] === '“' && v[v.length - 1] === '”') v = v.slice(1, -1);
   v = v.replace(/\\"/g, '"').replace(/""/g, '"');
-  v = v.replace(/_$/, '');
+  // Preserve trailing underscores; do NOT strip them.
   return v.trim();
 }
 
-function splitArraySmart(val) {
-  const s = String(val).trim();
-  if (s === '') return [];
-  const looksQuotedList = /(^"|, ")/.test(s) && s.includes('"');
-  if (looksQuotedList) {
-    return parseRow(s, ',').map(t => unwrapQuotesOnce(t)).filter(t => t !== '');
-  }
+function splitByCommaSmartNoQuotes(s) {
+  const src = String(s).trim();
+  if (src === '') return [];
   const out = [];
   let buf = '';
-  for (let i = 0; i < s.length; i++) {
-    const ch = s[i];
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
     if (ch === ',') {
-      if (isCityStateComma(s, i)) { buf += ch; }
-      else {
+      if (isCityStateComma(src, i)) {
+        buf += ch; // keep City, ST comma
+      } else {
         out.push(buf.trim());
         buf = '';
-        if (i + 1 < s.length && s[i + 1] === ' ') i++;
+        if (i + 1 < src.length && src[i + 1] === ' ') i++;
       }
     } else {
       buf += ch;
@@ -189,6 +189,23 @@ function splitArraySmart(val) {
   }
   out.push(buf.trim());
   return out.map(unwrapQuotesOnce).filter(t => t !== '');
+}
+
+function splitArraySmart(val) {
+  const s = String(val).trim();
+  if (s === '') return [];
+  const looksQuotedList = /(^"|, ")/.test(s) && s.includes('"');
+  if (looksQuotedList) {
+    const toks = parseRow(s, ',').map(t => unwrapQuotesOnce(t)).filter(t => t !== '');
+    const expanded = [];
+    for (const t of toks) {
+      const parts = splitByCommaSmartNoQuotes(t);
+      if (parts.length) expanded.push(...parts);
+    }
+    return expanded;
+  }
+  // Unquoted list
+  return splitByCommaSmartNoQuotes(s);
 }
 
 /* -------------------- Value coercion ------------------- */
