@@ -42,6 +42,7 @@ import {
   FaPercent,
   FaPhoneAlt,
   FaProjectDiagram,
+  FaMinus,
   FaSearch,
   FaSlidersH,
   FaSortAmountDown,
@@ -152,7 +153,15 @@ type HiddenColumnEntry<T extends Record<string, any> = any> = {
 
 type ConfirmAction<T extends Record<string, any> = any> =
   | { type: "deleteRows"; range: { start: number; end: number; count: number } }
-  | { type: "deleteColumns"; indices: number[]; columns: Array<ColumnSpec<T>> };
+  | { type: "deleteColumns"; indices: number[]; columns: Array<ColumnSpec<T>> }
+  | {
+      type: "deleteSelectOption";
+      columnIndex: number;
+      columnKey: string;
+      columnName: string;
+      mode: "single" | "multiple";
+      option: SelectOption;
+    };
 
 type ViewDefinition = {
   id: string;
@@ -2611,6 +2620,75 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     commit(nextRows, columns);
   }
 
+  function performRemoveSelectOption(action: Extract<ConfirmAction<T>, { type: "deleteSelectOption" }>) {
+    const { columnKey, columnIndex, mode, option } = action;
+    if (!columns.length) return;
+    const normalizedKey = String(columnKey);
+    let resolvedIndex = columns.findIndex((col) => String(col.key) === normalizedKey);
+    if (resolvedIndex < 0) {
+      resolvedIndex = clamp(columnIndex, 0, columns.length - 1);
+    }
+    const column = columns[resolvedIndex];
+    if (!column) return;
+    const configKey: "singleSelect" | "multipleSelect" = mode === "multiple" ? "multipleSelect" : "singleSelect";
+    const existingOptions = Array.isArray(column.config?.[configKey]?.options)
+      ? (column.config?.[configKey]?.options as SelectOption[])
+      : [];
+    const identifier = optionIdentifier(option);
+    if (!identifier) return;
+    if (!existingOptions.some((opt) => optionIdentifier(opt) === identifier)) {
+      return;
+    }
+
+    const nextColumns = deepClone(columns);
+    const targetColumn = nextColumns[resolvedIndex];
+    if (!targetColumn) return;
+    const nextConfig = targetColumn.config ? { ...targetColumn.config } : ({} as NonNullable<ColumnSpec<T>["config"]>);
+    const bucket = { ...(nextConfig[configKey] ?? {}) } as { options?: SelectOption[] };
+    const currentOptions = Array.isArray(bucket.options) ? bucket.options.slice() : [];
+    const filteredOptions = currentOptions.filter((opt) => optionIdentifier(opt) !== identifier);
+    nextConfig[configKey] = { ...bucket, options: filteredOptions };
+    targetColumn.config = Object.keys(nextConfig).length ? nextConfig : undefined;
+
+    const columnKeyResolved = targetColumn.key as keyof T;
+    let didChangeRows = false;
+    const nextRows = rows.map((row) => {
+      const currentValue = (row as any)[columnKeyResolved];
+      if (mode === "single") {
+        const resolved = resolveOptionMeta(column, currentValue);
+        if (!resolved) return row;
+        if (optionIdentifier(resolved) !== identifier) return row;
+        const nextRow = { ...row } as Record<string, any>;
+        nextRow[columnKeyResolved as string] = null;
+        didChangeRows = true;
+        return nextRow as T;
+      }
+      if (!Array.isArray(currentValue) || !currentValue.length) return row;
+      const retained: any[] = [];
+      let localChanged = false;
+      for (const entry of currentValue) {
+        const resolved = resolveOptionMeta(column, entry);
+        if (resolved && optionIdentifier(resolved) === identifier) {
+          localChanged = true;
+          continue;
+        }
+        retained.push(entry);
+      }
+      if (!localChanged) return row;
+      const nextRow = { ...row } as Record<string, any>;
+      nextRow[columnKeyResolved as string] = retained;
+      didChangeRows = true;
+      return nextRow as T;
+    });
+
+    setColumns(nextColumns);
+    if (didChangeRows) {
+      setRows(nextRows);
+      latestRowsRef.current = nextRows;
+    }
+    commit(didChangeRows ? nextRows : rows, nextColumns);
+  }
+
   function performRemoveRows(range: { start: number; end: number }) {
     const start = Math.max(0, range.start);
     const end = Math.min(rows.length - 1, range.end);
@@ -3205,6 +3283,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       performRemoveRows({ start: confirmAction.range.start, end: confirmAction.range.end });
     } else if (confirmAction.type === "deleteColumns") {
       performRemoveColumnsByIndex(confirmAction.indices);
+    } else if (confirmAction.type === "deleteSelectOption") {
+      performRemoveSelectOption(confirmAction);
     }
     setConfirmAction(null);
   }
@@ -3876,6 +3956,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     onDone: () => void;
     onCancel: () => void;
     onCreateOption?: (label: string) => void;
+    onRequestDelete?: (option: SelectOption) => void;
   }
 
   function MultipleSelectDropdown({
@@ -3887,25 +3968,35 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     onClear,
     onDone,
     onCancel,
-    onCreateOption
+    onCreateOption,
+    onRequestDelete
   }: MultipleSelectDropdownProps) {
     const searchRef = React.useRef<HTMLInputElement | null>(null);
+    const [isComposing, setIsComposing] = React.useState(false);
+
     React.useEffect(() => {
       searchRef.current?.focus();
     }, []);
+
     const trimmedSearch = searchTerm.trim();
     const normalizedSearch = trimmedSearch.toLowerCase();
-    const hasExactMatch = normalizedSearch
-      ? options.some((option) => option.label.trim().toLowerCase() === normalizedSearch)
+    const shouldMatch = !isComposing && normalizedSearch.length > 0;
+    const hasExactMatch = shouldMatch
+      ? options.some((option) => String(option.label ?? "").trim().toLowerCase() === normalizedSearch)
       : false;
-    const filteredOpts = normalizedSearch
-      ? options.filter((option) => option.label.toLowerCase().includes(normalizedSearch))
+    const filteredOpts = shouldMatch
+      ? options.filter((option) => String(option.label ?? "").toLowerCase().includes(normalizedSearch))
       : options;
-    const canCreateOption = Boolean(onCreateOption) && Boolean(trimmedSearch) && !hasExactMatch;
-    const showCreateButton = canCreateOption && filteredOpts.length === 0;
+    const showCreateButton = Boolean(onCreateOption) && Boolean(trimmedSearch);
+    const createDisabled = hasExactMatch;
+    const createTitle = createDisabled
+      ? "This option already exists."
+      : trimmedSearch
+        ? `Add \"${trimmedSearch}\"`
+        : "Add option";
 
     const handleCreateOption = () => {
-      if (!showCreateButton || !onCreateOption) return;
+      if (!showCreateButton || createDisabled || !onCreateOption) return;
       onCreateOption(trimmedSearch);
     };
 
@@ -3914,14 +4005,22 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         event.preventDefault();
         event.stopPropagation();
         onCancel();
-      } else if (event.key === "Enter") {
+        return;
+      }
+      if (event.key === "Enter") {
         event.preventDefault();
-        if (showCreateButton && onCreateOption) {
+        if (showCreateButton && !createDisabled && onCreateOption) {
           onCreateOption(trimmedSearch);
           return;
         }
         onDone();
       }
+    };
+
+    const handleCompositionStart = () => setIsComposing(true);
+    const handleCompositionEnd = (event: React.CompositionEvent<HTMLInputElement>) => {
+      setIsComposing(false);
+      onSearchChange(event.currentTarget.value);
     };
 
     return h("div", { className: "flex w-full flex-col gap-2 py-2" },
@@ -3951,16 +4050,22 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           value: searchTerm,
           onChange: (event: React.ChangeEvent<HTMLInputElement>) => onSearchChange(event.target.value),
           onKeyDown: handleKeyDown,
+          onCompositionStart: handleCompositionStart,
+          onCompositionEnd: handleCompositionEnd,
           className: "flex-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
           placeholder: "Search options"
         }),
         showCreateButton
           ? h("button", {
               type: "button",
-              className: "inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-500 text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-blue-400 dark:text-blue-200 dark:hover:bg-blue-500/10 dark:focus:ring-blue-500",
+              className: mergeClasses(
+                "inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-500 text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-blue-400 dark:text-blue-200 dark:hover:bg-blue-500/10 dark:focus:ring-blue-500",
+                createDisabled && "cursor-not-allowed opacity-60 hover:bg-transparent dark:hover:bg-transparent"
+              ),
               onClick: handleCreateOption,
               "aria-label": trimmedSearch ? `Add option \"${trimmedSearch}\"` : "Add option",
-              title: trimmedSearch ? `Add \"${trimmedSearch}\"` : "Add option"
+              title: createTitle,
+              disabled: createDisabled
             }, h(FaPlus, { className: "h-3.5 w-3.5" }))
           : null
       ),
@@ -3969,14 +4074,15 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           ? filteredOpts.map((option) => {
               const identifier = optionIdentifier(option);
               const isSelected = selectedValues.some((value) => optionIdentifier(value) === identifier);
+              const rawLabel = String(option.label ?? option.id ?? "");
+              const optionLabel = rawLabel.trim() || rawLabel || identifier;
               const swatchStyle: React.CSSProperties = option.color
                 ? { backgroundColor: option.color, borderColor: option.color }
                 : {};
-              return h("button", {
-                key: option.id,
-                type: "button",
+              return h("div", {
+                key: option.id ?? identifier,
                 className: mergeClasses(
-                  "flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors",
+                  "flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer",
                   isSelected
                     ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-200"
                     : "hover:bg-zinc-100 dark:hover:bg-neutral-800"
@@ -3985,12 +4091,27 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
                 role: "option",
                 "aria-selected": isSelected ? "true" : "false"
               },
-                h("span", {
-                  className: "h-2.5 w-2.5 rounded-full border border-zinc-300",
-                  style: swatchStyle
-                }),
-                h("span", { className: "flex-1 text-left" }, option.label),
-                isSelected ? h(FaCheck, { className: "h-3.5 w-3.5" }) : null
+                h("div", { className: "flex flex-1 items-center gap-2" },
+                  h("span", {
+                    className: "h-2.5 w-2.5 rounded-full border border-zinc-300",
+                    style: swatchStyle
+                  }),
+                  h("span", { className: "flex-1 truncate text-left" }, optionLabel)
+                ),
+                h("div", { className: "flex items-center gap-2" },
+                  isSelected ? h(FaCheck, { className: "h-3.5 w-3.5" }) : null,
+                  onRequestDelete
+                    ? h("button", {
+                        type: "button",
+                        className: "inline-flex h-6 w-6 items-center justify-center rounded-md border border-red-200 text-red-500 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-200 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-900/30 dark:focus:ring-red-500",
+                        onClick: (event: React.MouseEvent) => {
+                          event.stopPropagation();
+                          onRequestDelete(option);
+                        },
+                        title: `Delete option ${optionLabel}`
+                      }, h(FaMinus, { className: "h-3 w-3" }))
+                    : null
+                )
               );
             })
           : h("div", { className: "px-3 py-2 text-sm text-zinc-400 dark:text-neutral-500" }, "No options found")
@@ -4029,6 +4150,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     onSelect: (nextValue: SelectOption | null) => void;
     onCancel: () => void;
     onCreateOption?: (label: string) => void;
+    onRequestDelete?: (option: SelectOption) => void;
   }
 
   function SingleSelectDropdown({
@@ -4038,10 +4160,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     onSearchChange,
     onSelect,
     onCancel,
-    onCreateOption
+    onCreateOption,
+    onRequestDelete
   }: SingleSelectDropdownProps) {
     const searchRef = React.useRef<HTMLInputElement | null>(null);
     const [activeIndex, setActiveIndex] = React.useState<number>(-1);
+    const [isComposing, setIsComposing] = React.useState(false);
     const currentIdentifier = currentValue ? optionIdentifier(currentValue) : null;
 
     React.useEffect(() => {
@@ -4049,14 +4173,20 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     }, []);
     const trimmedSearch = searchTerm.trim();
     const normalizedSearch = trimmedSearch.toLowerCase();
-    const hasExactMatch = normalizedSearch
-      ? options.some((option) => option.label.trim().toLowerCase() === normalizedSearch)
+    const shouldMatch = !isComposing && normalizedSearch.length > 0;
+    const hasExactMatch = shouldMatch
+      ? options.some((option) => String(option.label ?? "").trim().toLowerCase() === normalizedSearch)
       : false;
-    const filteredOpts = normalizedSearch
-      ? options.filter((option) => option.label.toLowerCase().includes(normalizedSearch))
+    const filteredOpts = shouldMatch
+      ? options.filter((option) => String(option.label ?? "").toLowerCase().includes(normalizedSearch))
       : options;
-    const canCreateOption = Boolean(onCreateOption) && Boolean(trimmedSearch) && !hasExactMatch;
-    const showCreateButton = canCreateOption && filteredOpts.length === 0;
+    const showCreateButton = Boolean(onCreateOption) && Boolean(trimmedSearch);
+    const createDisabled = hasExactMatch;
+    const createTitle = createDisabled
+      ? "This option already exists."
+      : trimmedSearch
+        ? `Add \"${trimmedSearch}\"`
+        : "Add option";
 
     React.useEffect(() => {
       if (!filteredOpts.length) {
@@ -4079,7 +4209,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     }, [filteredOpts, currentIdentifier]);
 
     const handleCreateOption = () => {
-      if (!showCreateButton || !onCreateOption) return;
+      if (!showCreateButton || createDisabled || !onCreateOption) return;
       onCreateOption(trimmedSearch);
     };
 
@@ -4103,23 +4233,29 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         event.preventDefault();
         if (!filteredOpts.length) return;
         setActiveIndex((prev) => {
-          const next = prev > 0 ? prev - 1 : 0;
-          return next;
-        });
+        const next = prev > 0 ? prev - 1 : 0;
+        return next;
+      });
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (showCreateButton && !createDisabled && onCreateOption) {
+        onCreateOption(trimmedSearch);
         return;
       }
-      if (event.key === "Enter") {
-        event.preventDefault();
-        const option = filteredOpts[activeIndex] ?? filteredOpts[0];
-        if (option) {
-          onSelect(option);
-          return;
-        }
-        if (showCreateButton && onCreateOption) {
-          onCreateOption(trimmedSearch);
-        }
+      const option = filteredOpts[activeIndex] ?? filteredOpts[0];
+      if (option) {
+        onSelect(option);
+        return;
       }
-    };
+    }
+  };
+  const handleCompositionStart = () => setIsComposing(true);
+  const handleCompositionEnd = (event: React.CompositionEvent<HTMLInputElement>) => {
+    setIsComposing(false);
+    onSearchChange(event.currentTarget.value);
+  };
 
     return h("div", { className: "flex w-full flex-col gap-2 py-2" },
       h("div", { className: "px-3 flex items-center gap-2" },
@@ -4129,16 +4265,22 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           value: searchTerm,
           onChange: (event: React.ChangeEvent<HTMLInputElement>) => onSearchChange(event.target.value),
           onKeyDown: handleKeyDown,
+          onCompositionStart: handleCompositionStart,
+          onCompositionEnd: handleCompositionEnd,
           className: "flex-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
           placeholder: "Find an option"
         }),
         showCreateButton
           ? h("button", {
               type: "button",
-              className: "inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-500 text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-blue-400 dark:text-blue-200 dark:hover:bg-blue-500/10 dark:focus:ring-blue-500",
+              className: mergeClasses(
+                "inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-500 text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-blue-400 dark:text-blue-200 dark:hover:bg-blue-500/10 dark:focus:ring-blue-500",
+                createDisabled && "cursor-not-allowed opacity-60 hover:bg-transparent dark:hover:bg-transparent"
+              ),
               onClick: handleCreateOption,
               "aria-label": trimmedSearch ? `Add option \"${trimmedSearch}\"` : "Add option",
-              title: trimmedSearch ? `Add \"${trimmedSearch}\"` : "Add option"
+              title: createTitle,
+              disabled: createDisabled
             }, h(FaPlus, { className: "h-3.5 w-3.5" }))
           : null
       ),
@@ -4149,11 +4291,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
               const isSelected = currentIdentifier === identifier;
               const isActive = idx === activeIndex;
               const pillStyle = optionPillStylesFromColor(option.color);
-              return h("button", {
-                key: option.id ?? option.label,
-                type: "button",
+              const rawLabel = String(option.label ?? option.id ?? "");
+              const optionLabel = rawLabel.trim() || rawLabel || identifier;
+              return h("div", {
+                key: option.id ?? optionLabel ?? idx,
                 className: mergeClasses(
-                  "flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors",
+                  "flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer",
                   isActive ? "bg-zinc-100 dark:bg-neutral-800" : "hover:bg-zinc-100 dark:hover:bg-neutral-800",
                   isSelected && !isActive && "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-200"
                 ),
@@ -4166,8 +4309,19 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
                   h("span", {
                     className: "inline-flex max-w-full items-center rounded-full border px-3 py-1 text-sm font-medium",
                     style: pillStyle
-                  }, option.label)
-                )
+                  }, optionLabel)
+                ),
+                onRequestDelete
+                  ? h("button", {
+                      type: "button",
+                      className: "inline-flex h-6 w-6 items-center justify-center rounded-md border border-red-200 text-red-500 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-200 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-900/30 dark:focus:ring-red-500",
+                      onClick: (event: React.MouseEvent) => {
+                        event.stopPropagation();
+                        onRequestDelete(option);
+                      },
+                      title: `Delete option ${optionLabel}`
+                    }, h(FaMinus, { className: "h-3 w-3" }))
+                  : null
               );
             })
           : h("div", { className: "px-3 py-2 text-sm text-zinc-400 dark:text-neutral-500" }, "No options found")
@@ -4867,6 +5021,24 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     return createdOption;
   }
 
+  function requestRemoveSelectOption(columnIndex: number, option: SelectOption, mode: "single" | "multiple") {
+    const column = columns[columnIndex];
+    if (!column) return;
+    const snapshot: SelectOption = {
+      id: option.id ?? option.label ?? "",
+      label: option.label ?? option.id ?? "",
+      ...(option.color ? { color: option.color } : {})
+    };
+    setConfirmAction({
+      type: "deleteSelectOption",
+      columnIndex,
+      columnKey: String(column.key),
+      columnName: String(column.name ?? column.key ?? "Untitled field"),
+      mode,
+      option: snapshot
+    });
+  }
+
   const selectDropdownElement = selectDropdown ? (() => {
     const { r, c, mode, search } = selectDropdown;
     const column = columns[c];
@@ -4953,7 +5125,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           onClear: clearSelection,
           onDone: () => commitEdit(),
           onCancel: () => cancelEdit(),
-          onCreateOption: handleCreateOption
+          onCreateOption: handleCreateOption,
+          onRequestDelete: (option: SelectOption) => requestRemoveSelectOption(c, option, "multiple")
         })
       );
     }
@@ -5004,7 +5177,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         onSearchChange: updateSelectDropdownSearch,
         onSelect: handleSelect,
         onCancel: () => cancelEdit(),
-        onCreateOption: handleCreateOption
+        onCreateOption: handleCreateOption,
+        onRequestDelete: (option: SelectOption) => requestRemoveSelectOption(c, option, "single")
       })
     );
   })() : null;
@@ -6848,7 +7022,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       onClick: (ev: React.MouseEvent) => ev.stopPropagation(),
       "data-modal-surface": "confirm"
     },
-      h("h2", { className: "text-lg font-semibold text-red-600 dark:text-red-300" }, confirmAction.type === "deleteRows" ? "Delete rows?" : "Delete fields?"),
+      h("h2", { className: "text-lg font-semibold text-red-600 dark:text-red-300" },
+        confirmAction.type === "deleteRows"
+          ? "Delete rows?"
+          : confirmAction.type === "deleteColumns"
+            ? "Delete fields?"
+            : "Delete option?"
+      ),
       (() => {
         if (confirmAction.type === "deleteRows") {
           const { count } = confirmAction.range;
@@ -6857,11 +7037,17 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
               : `Are you sure you want to delete ${count} rows? This action cannot be undone.`
           );
         }
-        const names = confirmAction.columns.map((col) => String(col?.name ?? "Untitled")).join(", ");
+        if (confirmAction.type === "deleteColumns") {
+          const names = confirmAction.columns.map((col) => String(col?.name ?? "Untitled")).join(", ");
+          return h("p", { className: "mt-3 text-sm text-zinc-600 dark:text-neutral-300" },
+            confirmAction.columns.length === 1
+              ? `Delete the field "${names}"? This will remove its values from all rows.`
+              : `Delete ${confirmAction.columns.length} fields (${names})? This will remove their values from all rows.`
+          );
+        }
+        const optionLabel = String(confirmAction.option.label ?? confirmAction.option.id ?? "");
         return h("p", { className: "mt-3 text-sm text-zinc-600 dark:text-neutral-300" },
-          confirmAction.columns.length === 1
-            ? `Delete the field "${names}"? This will remove its values from all rows.`
-            : `Delete ${confirmAction.columns.length} fields (${names})? This will remove their values from all rows.`
+          `Delete option "${optionLabel}" from this field? It will be removed from all records that use it.`
         );
       })(),
       h("div", { className: "mt-5 flex justify-end gap-2" },
@@ -6876,7 +7062,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           onClick: confirmDeletion
         }, confirmAction.type === "deleteRows"
           ? (confirmAction.range.count === 1 ? "Delete row" : `Delete ${confirmAction.range.count} rows`)
-          : (confirmAction.columns.length === 1 ? "Delete field" : `Delete ${confirmAction.columns.length} fields`))
+          : confirmAction.type === "deleteColumns"
+            ? (confirmAction.columns.length === 1 ? "Delete field" : `Delete ${confirmAction.columns.length} fields`)
+            : "Delete option")
       )
     )
   ) : null;
