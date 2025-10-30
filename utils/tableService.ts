@@ -184,8 +184,8 @@ export async function getTableData(
         LEFT JOIN column_type_settings cts
           ON cm.table_name = cts.table_name
          AND cm.column_name = cts.column_name
-        WHERE table_name = $1
-        ORDER BY position ASC;
+        WHERE cm.table_name = $1
+        ORDER BY cm.position ASC;
       `,
       [safeTable]
     ),
