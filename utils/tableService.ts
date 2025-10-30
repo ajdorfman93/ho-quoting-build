@@ -125,7 +125,7 @@ export async function getTableData(
   }
 
   const metadata = tableResult.rows[0];
-  let airtableColumnLookup: Map<string, ColumnSpec<any>> | null = null;
+  let airtableColumnLookup: Map<string, ColumnSpec<TableRow>> | null = null;
 
   if (metadata.source_file) {
     try {
@@ -133,17 +133,18 @@ export async function getTableData(
       if (definition) {
         airtableColumnLookup = new Map();
         for (const column of definition.columns) {
+          const castColumn = column as ColumnSpec<TableRow>;
           const displayKey = normalizeColumnLabel(String(column.name ?? ""));
-          if (displayKey) airtableColumnLookup.set(displayKey, column);
+          if (displayKey) airtableColumnLookup.set(displayKey, castColumn);
 
           const keyKey = normalizeColumnLabel(String(column.key ?? ""));
           if (keyKey && !airtableColumnLookup.has(keyKey)) {
-            airtableColumnLookup.set(keyKey, column);
+            airtableColumnLookup.set(keyKey, castColumn);
           }
 
           const prefixedKey = normalizeColumnLabel(`col_${String(column.key ?? "")}`);
           if (prefixedKey && !airtableColumnLookup.has(prefixedKey)) {
-            airtableColumnLookup.set(prefixedKey, column);
+            airtableColumnLookup.set(prefixedKey, castColumn);
           }
         }
       }
@@ -161,7 +162,7 @@ export async function getTableData(
         normalizeColumnLabel(String(spec.key ?? "")),
       ].filter(Boolean);
 
-      let match: ColumnSpec<any> | undefined;
+      let match: ColumnSpec<TableRow> | undefined;
       for (const key of candidates) {
         const found = airtableColumnLookup.get(key);
         if (found) {

@@ -33,7 +33,7 @@ if (!globalWithPool.__neonPool) {
 
 export async function query<
   R extends QueryResultRow = QueryResultRow,
-  I extends any[] = any[]
+  I extends unknown[] = unknown[]
 >(
   text: string | QueryConfig<I>,
   params?: QueryConfigValues<I>
