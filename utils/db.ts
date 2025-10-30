@@ -1,4 +1,11 @@
-import { Pool, PoolClient, QueryConfig, QueryResult } from "pg";
+import {
+  Pool,
+  PoolClient,
+  QueryConfig,
+  QueryResult,
+  QueryResultRow,
+  QueryConfigValues,
+} from "pg";
 
 type GlobalWithPool = typeof globalThis & {
   __neonPool?: Pool;
@@ -24,9 +31,12 @@ if (!globalWithPool.__neonPool) {
   globalWithPool.__neonPool = pool;
 }
 
-export async function query<R = unknown, I extends unknown[] = unknown[]>(
+export async function query<
+  R extends QueryResultRow = QueryResultRow,
+  I extends any[] = any[]
+>(
   text: string | QueryConfig<I>,
-  params?: I
+  params?: QueryConfigValues<I>
 ): Promise<QueryResult<R>> {
   if (typeof text === "string") {
     return pool.query<R, I>(text, params);
