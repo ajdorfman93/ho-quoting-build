@@ -391,6 +391,17 @@ function normalizeFieldConfig(type: ColumnType, config: ColumnSpec["config"] | u
       base.lookup = lookup;
       break;
     }
+    case "formula": {
+      const formula = { ...(base.formula ?? {}) };
+      const expression = typeof formula.expression === "string" ? formula.expression : "";
+      const references = Array.isArray(formula.references)
+        ? Array.from(new Set(formula.references.map((ref) => String(ref))))
+        : [];
+      formula.expression = expression;
+      formula.references = references;
+      base.formula = formula;
+      break;
+    }
     default:
       break;
   }
@@ -599,6 +610,10 @@ export interface ColumnSpec<T extends Record<string, any> = any> {
       limitEnabled?: boolean;
       limit?: number | null;
     };
+    formula?: {
+      expression?: string;
+      references?: string[];
+    };
   };
   /** For computed columns */
   formula?: (row: T, rowIndex: number, rows: T[]) => any;
@@ -606,6 +621,1087 @@ export interface ColumnSpec<T extends Record<string, any> = any> {
   lookup?: (row: T) => any;
   readOnly?: boolean; // formula/rollup/lookup and system fields default to true
 }
+
+/* -----------------------------------------------------------
+ * Formula utilities (tokenizer, highlighting, validation)
+ * ---------------------------------------------------------*/
+
+type FormulaTokenType =
+  | "whitespace"
+  | "number"
+  | "string"
+  | "identifier"
+  | "function"
+  | "operator"
+  | "comparison"
+  | "comma"
+  | "parenthesis"
+  | "field"
+  | "boolean"
+  | "error";
+
+interface FormulaTokenMeta {
+  message?: string;
+  fieldName?: string;
+  validField?: boolean;
+}
+
+interface FormulaToken {
+  type: FormulaTokenType;
+  value: string;
+  start: number;
+  end: number;
+  meta?: FormulaTokenMeta;
+}
+
+type FormulaAstNode =
+  | { type: "NumberLiteral"; value: number }
+  | { type: "StringLiteral"; value: string }
+  | { type: "BooleanLiteral"; value: boolean }
+  | { type: "NullLiteral"; value: null }
+  | { type: "FieldReference"; name: string }
+  | { type: "UnaryExpression"; operator: string; argument: FormulaAstNode }
+  | { type: "BinaryExpression"; operator: string; left: FormulaAstNode; right: FormulaAstNode }
+  | { type: "FunctionCall"; name: string; args: FormulaAstNode[] };
+
+interface FormulaParseResult {
+  ast: FormulaAstNode | null;
+  errors: string[];
+}
+
+interface FormulaAnalysis {
+  tokens: FormulaToken[];
+  references: string[];
+  unknownReferences: string[];
+  errors: string[];
+  isValid: boolean;
+  ast: FormulaAstNode | null;
+}
+
+interface FormulaColumnLookupEntry<T extends Record<string, any>> {
+  column: ColumnSpec<T>;
+  index: number;
+  key: string;
+}
+
+interface FormulaColumnLookup<T extends Record<string, any>> {
+  byName: Map<string, FormulaColumnLookupEntry<T>>;
+  byKey: Map<string, FormulaColumnLookupEntry<T>>;
+}
+
+interface FormulaRuntimeScope<T extends Record<string, any>> {
+  row: T;
+  rowIndex: number;
+  rows: T[];
+  getRowId?: (row: T, index: number) => string | number;
+  columnLookup: FormulaColumnLookup<T>;
+  compiledFormulas: Map<string, CompiledFormulaEntry<T>>;
+}
+
+interface CompiledFormulaEntry<T extends Record<string, any>> {
+  expression: string;
+  ast: FormulaAstNode | null;
+  dependencies: string[];
+  errors: string[];
+  evaluate: (scope: FormulaRuntimeScope<T>, visited: Set<string>) => any;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (ch) => {
+    switch (ch) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case "\"":
+        return "&quot;";
+      case "'":
+        return "&#39;";
+      default:
+        return ch;
+    }
+  });
+}
+
+function formatFormulaTokenValue(value: string): string {
+  return escapeHtml(value)
+    .replace(/\r\n|\n|\r/g, "<br/>")
+    .replace(/\t/g, "&nbsp;&nbsp;&nbsp;&nbsp;")
+    .replace(/ /g, "&nbsp;");
+}
+
+function normalizeFieldName(name: string | null | undefined): string {
+  return typeof name === "string" ? name.trim().toLowerCase() : "";
+}
+
+function parseStringLiteral(raw: string): string {
+  if (!raw) return "";
+  const quote = raw[0];
+  if ((quote !== "\"" && quote !== "'") || raw.length < 2) return raw;
+  const inner = raw.slice(1, -1);
+  const doubled = quote + quote;
+  return inner.replace(new RegExp(doubled, "g"), quote);
+}
+
+type BinaryOperatorInfo = { precedence: number; associativity: "left" | "right"; symbol: string };
+
+const BINARY_OPERATOR_INFO: Record<string, BinaryOperatorInfo> = {
+  "^": { precedence: 5, associativity: "right", symbol: "^" },
+  "*": { precedence: 4, associativity: "left", symbol: "*" },
+  "/": { precedence: 4, associativity: "left", symbol: "/" },
+  "+": { precedence: 3, associativity: "left", symbol: "+" },
+  "-": { precedence: 3, associativity: "left", symbol: "-" },
+  "&": { precedence: 2, associativity: "left", symbol: "&" },
+  "=": { precedence: 1, associativity: "left", symbol: "=" },
+  "<>": { precedence: 1, associativity: "left", symbol: "<>" },
+  "<": { precedence: 1, associativity: "left", symbol: "<" },
+  "<=": { precedence: 1, associativity: "left", symbol: "<=" },
+  ">": { precedence: 1, associativity: "left", symbol: ">" },
+  ">=": { precedence: 1, associativity: "left", symbol: ">=" }
+};
+
+function getBinaryOperatorInfo(token: FormulaToken): BinaryOperatorInfo | null {
+  if (token.type !== "operator" && token.type !== "comparison") return null;
+  const info = BINARY_OPERATOR_INFO[token.value];
+  return info ?? null;
+}
+
+function tokenizeFormulaExpression(expression: string): FormulaToken[] {
+  const tokens: FormulaToken[] = [];
+  const length = expression.length;
+  let index = 0;
+
+  while (index < length) {
+    const start = index;
+    const char = expression[index];
+
+    if (/\s/.test(char)) {
+      let value = char;
+      index += 1;
+      while (index < length && /\s/.test(expression[index])) {
+        value += expression[index];
+        index += 1;
+      }
+      tokens.push({ type: "whitespace", value, start, end: index });
+      continue;
+    }
+
+    if (char === "\"" || char === "'") {
+      const quote = char;
+      let value = quote;
+      index += 1;
+      let closed = false;
+      while (index < length) {
+        const current = expression[index];
+        value += current;
+        index += 1;
+        if (current === quote) {
+          if (expression[index] === quote) {
+            value += expression[index];
+            index += 1;
+            continue;
+          }
+          closed = true;
+          break;
+        }
+      }
+      if (!closed) {
+        tokens.push({
+          type: "error",
+          value,
+          start,
+          end: index,
+          meta: { message: "Unterminated string literal." }
+        });
+      } else {
+        tokens.push({ type: "string", value, start, end: index });
+      }
+      continue;
+    }
+
+    if (char === "{") {
+      let value = "{";
+      let fieldName = "";
+      index += 1;
+      let closed = false;
+      while (index < length) {
+        const current = expression[index];
+        if (current === "}") {
+          value += "}";
+          index += 1;
+          closed = true;
+          break;
+        }
+        value += current;
+        fieldName += current;
+        index += 1;
+      }
+      if (closed) {
+        tokens.push({
+          type: "field",
+          value,
+          start,
+          end: index,
+          meta: { fieldName: fieldName.trim() }
+        });
+      } else {
+        tokens.push({
+          type: "error",
+          value,
+          start,
+          end: index,
+          meta: { message: "Missing closing brace for field reference." }
+        });
+      }
+      continue;
+    }
+
+    if (/\d/.test(char) || (char === "." && /\d/.test(expression[index + 1] ?? ""))) {
+      let value = char;
+      index += 1;
+      let hasDot = char === ".";
+      while (index < length) {
+        const current = expression[index];
+        if (current === "." && !hasDot) {
+          hasDot = true;
+          value += current;
+          index += 1;
+          continue;
+        }
+        if (/[0-9]/.test(current)) {
+          value += current;
+          index += 1;
+          continue;
+        }
+        if ((current === "e" || current === "E") && /[+\-0-9]/.test(expression[index + 1] ?? "")) {
+          value += current;
+          index += 1;
+          if (expression[index] === "+" || expression[index] === "-") {
+            value += expression[index];
+            index += 1;
+          }
+          while (index < length && /[0-9]/.test(expression[index])) {
+            value += expression[index];
+            index += 1;
+          }
+          continue;
+        }
+        break;
+      }
+      tokens.push({ type: "number", value, start, end: index });
+      continue;
+    }
+
+    if (/[A-Za-z_]/.test(char)) {
+      let value = char;
+      index += 1;
+      while (index < length) {
+        const current = expression[index];
+        if (/[A-Za-z0-9_.]/.test(current)) {
+          value += current;
+          index += 1;
+        } else {
+          break;
+        }
+      }
+      tokens.push({ type: "identifier", value, start, end: index });
+      continue;
+    }
+
+    if (char === "(" || char === ")") {
+      tokens.push({ type: "parenthesis", value: char, start, end: index + 1 });
+      index += 1;
+      continue;
+    }
+
+    if (char === "," || char === ";") {
+      tokens.push({ type: "comma", value: char, start, end: index + 1 });
+      index += 1;
+      continue;
+    }
+
+    if (char === "<" || char === ">" || char === "=") {
+      let value = char;
+      const nextChar = expression[index + 1];
+      if ((char === "<" && (nextChar === ">" || nextChar === "=")) || (char === ">" && nextChar === "=")) {
+        value += nextChar;
+        index += 2;
+      } else {
+        index += 1;
+      }
+      tokens.push({ type: "comparison", value, start, end: index });
+      continue;
+    }
+
+    if ("+-*/^&%".includes(char)) {
+      tokens.push({ type: "operator", value: char, start, end: index + 1 });
+      index += 1;
+      continue;
+    }
+
+    tokens.push({
+      type: "error",
+      value: char,
+      start,
+      end: index + 1,
+      meta: { message: `Unexpected character '${char}'.` }
+    });
+    index += 1;
+  }
+
+  return tokens;
+}
+
+function classifyFormulaTokens(tokens: FormulaToken[]): FormulaToken[] {
+  const result: FormulaToken[] = [];
+  for (let i = 0; i < tokens.length; i += 1) {
+    const token = tokens[i];
+    if (token.type === "identifier") {
+      const upper = token.value.toUpperCase();
+      if (upper === "TRUE" || upper === "FALSE") {
+        result.push({ ...token, type: "boolean" });
+        continue;
+      }
+      const nextToken = tokens.slice(i + 1).find((candidate) => candidate.type !== "whitespace");
+      if (nextToken && nextToken.type === "parenthesis" && nextToken.value === "(") {
+        result.push({ ...token, type: "function" });
+        continue;
+      }
+    }
+    result.push(token);
+  }
+  return result;
+}
+
+class FormulaParser {
+  private tokens: FormulaToken[];
+  private index = 0;
+
+  constructor(tokens: FormulaToken[]) {
+    this.tokens = tokens.filter((token) => token.type !== "whitespace");
+  }
+
+  private peek(): FormulaToken | null {
+    return this.tokens[this.index] ?? null;
+  }
+
+  private consume(): FormulaToken {
+    const token = this.tokens[this.index];
+    if (!token) throw new Error("Unexpected end of formula.");
+    this.index += 1;
+    return token;
+  }
+
+  private match(type: FormulaTokenType, value?: string): boolean {
+    const token = this.peek();
+    if (!token || token.type !== type) return false;
+    if (typeof value !== "undefined" && token.value !== value) return false;
+    this.consume();
+    return true;
+  }
+
+  private expect(type: FormulaTokenType, value?: string): FormulaToken {
+    const token = this.peek();
+    if (!token || token.type !== type || (value !== undefined && token.value !== value)) {
+      const expectation = value ? `${type} '${value}'` : type;
+      const actual = token ? `${token.type} '${token.value}'` : "end of formula";
+      throw new Error(`Expected ${expectation} but found ${actual}.`);
+    }
+    return this.consume();
+  }
+
+  private parsePrimary(): FormulaAstNode {
+    const token = this.consume();
+    switch (token.type) {
+      case "number":
+        return { type: "NumberLiteral", value: Number(token.value) };
+      case "string":
+        return { type: "StringLiteral", value: parseStringLiteral(token.value) };
+      case "boolean":
+        return { type: "BooleanLiteral", value: token.value.toLowerCase() === "true" };
+      case "field": {
+        const fieldName = token.meta?.fieldName ?? "";
+        return { type: "FieldReference", name: fieldName };
+      }
+      case "function": {
+        const name = token.value.toUpperCase();
+        return this.parseFunctionCall(name);
+      }
+      case "parenthesis":
+        if (token.value === "(") {
+          const expression = this.parseExpression(0);
+          this.expect("parenthesis", ")");
+          return expression;
+        }
+        throw new Error(`Unexpected token '${token.value}'.`);
+      case "operator":
+        if (token.value === "+" || token.value === "-") {
+          const argument = this.parseExpression(5);
+          return { type: "UnaryExpression", operator: token.value, argument };
+        }
+        throw new Error(`Unexpected operator '${token.value}'.`);
+      case "identifier": {
+        const name = token.value.trim();
+        if (!name) {
+          throw new Error("Unexpected identifier.");
+        }
+        return { type: "FieldReference", name };
+      }
+      default:
+        throw new Error(`Unexpected token '${token.value}'.`);
+    }
+  }
+
+  private parseFunctionCall(name: string): FormulaAstNode {
+    this.expect("parenthesis", "(");
+    const args: FormulaAstNode[] = [];
+    if (this.match("parenthesis", ")")) {
+      return { type: "FunctionCall", name, args };
+    }
+    while (true) {
+      args.push(this.parseExpression(0));
+      if (this.match("comma")) {
+        continue;
+      }
+      this.expect("parenthesis", ")");
+      break;
+    }
+    return { type: "FunctionCall", name, args };
+  }
+
+  parseExpression(minPrecedence = 0): FormulaAstNode {
+    let left = this.parsePrimary();
+    while (true) {
+      const token = this.peek();
+      if (!token) break;
+      const operatorInfo = getBinaryOperatorInfo(token);
+      if (!operatorInfo || operatorInfo.precedence < minPrecedence) break;
+      this.consume();
+      const nextPrecedence =
+        operatorInfo.associativity === "left"
+          ? operatorInfo.precedence + 1
+          : operatorInfo.precedence;
+      const right = this.parseExpression(nextPrecedence);
+      left = { type: "BinaryExpression", operator: operatorInfo.symbol, left, right };
+    }
+    return left;
+  }
+
+  parse(): FormulaParseResult {
+    if (this.tokens.length === 0) {
+      return { ast: null, errors: [] };
+    }
+    try {
+      const ast = this.parseExpression(0);
+      const remaining = this.peek();
+      if (remaining) {
+        return {
+          ast,
+          errors: [`Unexpected token '${remaining.value}' at character ${remaining.start + 1}.`]
+        };
+      }
+      return { ast, errors: [] };
+    } catch (error: any) {
+      return { ast: null, errors: [error?.message ?? "Formula parse error."] };
+    }
+  }
+}
+
+function parseFormulaAst(tokens: FormulaToken[]): FormulaParseResult {
+  const parser = new FormulaParser(tokens);
+  return parser.parse();
+}
+
+function analyzeFormulaExpression<T extends Record<string, any>>(
+  expression: string,
+  columns: ColumnSpec<T>[]
+): FormulaAnalysis {
+  const rawTokens = tokenizeFormulaExpression(expression);
+  const tokens = classifyFormulaTokens(rawTokens).map((token) => ({ ...token }));
+  const errors: string[] = [];
+  const referencesSet = new Set<string>();
+  const unknownReferencesSet = new Set<string>();
+  const knownFields = new Map<string, string>();
+  columns.forEach((col) => {
+    const normalized = normalizeFieldName(col.name);
+    if (normalized) knownFields.set(normalized, col.name);
+  });
+
+  const parenStack: FormulaToken[] = [];
+  tokens.forEach((token) => {
+    if (token.type === "parenthesis") {
+      if (token.value === "(") {
+        parenStack.push(token);
+      } else {
+        const last = parenStack.pop();
+        if (!last) {
+          errors.push(`Unmatched closing parenthesis at character ${token.start + 1}.`);
+        }
+      }
+    }
+    if (token.type === "field") {
+      const fieldName = (token.meta?.fieldName ?? "").trim();
+      if (fieldName) {
+        referencesSet.add(fieldName);
+        const normalized = normalizeFieldName(fieldName);
+        const exists = knownFields.has(normalized);
+        token.meta = { ...(token.meta ?? {}), validField: exists, fieldName };
+        if (!exists) {
+          unknownReferencesSet.add(fieldName);
+        }
+      } else {
+        token.meta = { ...(token.meta ?? {}), validField: false };
+        errors.push("Empty field reference {} detected.");
+      }
+    }
+    if (token.type === "error") {
+      const message = token.meta?.message ?? `Syntax error near '${token.value}'.`;
+      errors.push(message);
+    }
+  });
+
+  if (parenStack.length) {
+    const first = parenStack[parenStack.length - 1];
+    errors.push(`Unmatched opening parenthesis at character ${first.start + 1}.`);
+  }
+
+  const unknownReferences = Array.from(unknownReferencesSet);
+  if (unknownReferences.length) {
+    const label = unknownReferences.length === 1 ? "field" : "fields";
+    errors.push(`Unknown ${label} referenced: ${unknownReferences.map((ref) => `{${ref}}`).join(", ")}.`);
+  }
+
+  let ast: FormulaAstNode | null = null;
+  const trimmedExpression = expression.trim();
+  if (trimmedExpression) {
+    const parseResult = parseFormulaAst(tokens);
+    if (parseResult.errors.length) {
+      errors.push(...parseResult.errors);
+    } else {
+      ast = parseResult.ast;
+    }
+  }
+
+  const references = Array.from(referencesSet);
+  const isValid = errors.length === 0;
+
+  return {
+    tokens,
+    references,
+    unknownReferences,
+    errors,
+    isValid,
+    ast
+  };
+}
+
+const FORMULA_TOKEN_CLASS_MAP: Partial<Record<FormulaTokenType, string>> = {
+  number: "text-purple-600 dark:text-purple-300",
+  string: "text-amber-600 dark:text-amber-300",
+  identifier: "text-sky-600 dark:text-sky-300",
+  function: "text-blue-600 dark:text-blue-300 font-semibold",
+  operator: "text-zinc-500 dark:text-zinc-300",
+  comparison: "text-zinc-500 dark:text-zinc-300",
+  comma: "text-zinc-400 dark:text-zinc-500",
+  parenthesis: "text-purple-500 dark:text-purple-300",
+  boolean: "text-indigo-600 dark:text-indigo-300",
+  error: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200"
+};
+
+function renderFormulaTokens(tokens: FormulaToken[]): string {
+  if (!tokens.length) return "";
+  return tokens.map((token) => {
+    if (token.type === "whitespace") {
+      return formatFormulaTokenValue(token.value);
+    }
+    if (token.type === "field") {
+      const valid = token.meta?.validField ?? false;
+      const className = valid
+        ? "text-emerald-600 font-medium dark:text-emerald-300"
+        : "text-red-600 font-semibold underline decoration-red-400 dark:text-red-300";
+      return `<span class="${className}">${formatFormulaTokenValue(token.value)}</span>`;
+    }
+    const className = FORMULA_TOKEN_CLASS_MAP[token.type];
+    const formatted = formatFormulaTokenValue(token.value);
+    if (!className) return formatted;
+    return `<span class="${className}">${formatted}</span>`;
+  }).join("");
+}
+
+function formulaColumnKey<T extends Record<string, any>>(column: ColumnSpec<T>, index: number): string {
+  if (column.key != null) return String(column.key);
+  return `formula-${index}`;
+}
+
+function createFormulaColumnLookup<T extends Record<string, any>>(columns: ColumnSpec<T>[]): FormulaColumnLookup<T> {
+  const byName = new Map<string, FormulaColumnLookupEntry<T>>();
+  const byKey = new Map<string, FormulaColumnLookupEntry<T>>();
+  columns.forEach((column, index) => {
+    const key = formulaColumnKey(column, index);
+    const entry: FormulaColumnLookupEntry<T> = { column, index, key };
+    byKey.set(key, entry);
+    const normalizedName = normalizeFieldName(column.name);
+    if (normalizedName && !byName.has(normalizedName)) {
+      byName.set(normalizedName, entry);
+    }
+  });
+  return { byName, byKey };
+}
+
+function compileFormulaColumns<T extends Record<string, any>>(columns: ColumnSpec<T>[]): Map<string, CompiledFormulaEntry<T>> {
+  const compiled = new Map<string, CompiledFormulaEntry<T>>();
+  columns.forEach((column, index) => {
+    if (column.type !== "formula") return;
+    const key = formulaColumnKey(column, index);
+    const expression = column.config?.formula?.expression ?? "";
+    if (!expression.trim()) {
+      compiled.set(key, {
+        expression,
+        ast: null,
+        dependencies: [],
+        errors: [],
+        evaluate: () => ""
+      });
+      return;
+    }
+    const analysis = analyzeFormulaExpression(expression, columns);
+    const errors = [...analysis.errors];
+    const ast = analysis.ast ?? null;
+    const evaluate =
+      ast && errors.length === 0
+        ? (scope: FormulaRuntimeScope<T>, visited: Set<string>) => evaluateFormulaAst(ast, scope, visited)
+        : () => "#ERROR";
+    compiled.set(key, {
+      expression,
+      ast,
+      dependencies: analysis.references,
+      errors,
+      evaluate
+    });
+  });
+  return compiled;
+}
+
+function evaluateFormulaAst<T extends Record<string, any>>(
+  node: FormulaAstNode,
+  scope: FormulaRuntimeScope<T>,
+  visited: Set<string>
+): any {
+  switch (node.type) {
+    case "NumberLiteral":
+      return node.value;
+    case "StringLiteral":
+      return node.value;
+    case "BooleanLiteral":
+      return node.value;
+    case "NullLiteral":
+      return null;
+    case "FieldReference":
+      return resolveFieldValue(node.name, scope, visited);
+    case "UnaryExpression": {
+      const value = evaluateFormulaAst(node.argument, scope, visited);
+      switch (node.operator) {
+        case "+":
+          return toNumber(value);
+        case "-":
+          return -toNumber(value);
+        default:
+          throw new Error(`Unsupported unary operator '${node.operator}'.`);
+      }
+    }
+    case "BinaryExpression": {
+      const left = evaluateFormulaAst(node.left, scope, visited);
+      const right = evaluateFormulaAst(node.right, scope, visited);
+      return applyBinaryOperator(node.operator, left, right);
+    }
+    case "FunctionCall": {
+      const fn = FORMULA_FUNCTIONS[node.name];
+      if (!fn) {
+        throw new Error(`Unknown function '${node.name}'.`);
+      }
+      const args = node.args.map((arg) => evaluateFormulaAst(arg, scope, visited));
+      return fn(args, scope);
+    }
+    default:
+      return null;
+  }
+}
+
+function resolveFieldValue<T extends Record<string, any>>(
+  fieldName: string,
+  scope: FormulaRuntimeScope<T>,
+  visited: Set<string>
+): any {
+  const normalized = normalizeFieldName(fieldName);
+  let entry = scope.columnLookup.byName.get(normalized);
+  if (!entry) {
+    entry = scope.columnLookup.byKey.get(fieldName) ?? scope.columnLookup.byKey.get(normalized) ?? null;
+  }
+  if (!entry) {
+    throw new Error(`Unknown field reference '{${fieldName}}'.`);
+  }
+  const { column, key } = entry;
+  if (column.type === "formula") {
+    const compiled = scope.compiledFormulas.get(key);
+    if (!compiled) throw new Error(`Formula not compiled for column '${column.name}'.`);
+    if (visited.has(key)) throw new Error(`Circular reference detected for '${column.name}'.`);
+    visited.add(key);
+    try {
+      return compiled.evaluate(scope, visited);
+    } finally {
+      visited.delete(key);
+    }
+  }
+  if (column.type === "lookup" && typeof column.lookup === "function") {
+    try {
+      return column.lookup(scope.row);
+    } catch {
+      return "";
+    }
+  }
+  if (column.type === "rollup" && typeof column.rollup === "function") {
+    try {
+      const linked = (scope.row as any)[column.key as keyof T];
+      const array = Array.isArray(linked) ? linked : [];
+      return column.rollup(array);
+    } catch {
+      return "";
+    }
+  }
+  return (scope.row as any)[column.key as keyof T];
+}
+
+function applyBinaryOperator(operator: string, left: any, right: any): any {
+  switch (operator) {
+    case "+":
+      return toNumber(left) + toNumber(right);
+    case "-":
+      return toNumber(left) - toNumber(right);
+    case "*":
+      return toNumber(left) * toNumber(right);
+    case "/": {
+      const denominator = toNumber(right);
+      if (denominator === 0) return Infinity;
+      return toNumber(left) / denominator;
+    }
+    case "^":
+      return Math.pow(toNumber(left), toNumber(right));
+    case "&":
+      return toStringValue(left) + toStringValue(right);
+    case "=":
+      return compareEquality(left, right);
+    case "<>":
+      return !compareEquality(left, right);
+    case "<":
+      return compareRelational(left, right, "<");
+    case "<=":
+      return compareRelational(left, right, "<=");
+    case ">":
+      return compareRelational(left, right, ">");
+    case ">=":
+      return compareRelational(left, right, ">=");
+    default:
+      throw new Error(`Unsupported operator '${operator}'.`);
+  }
+}
+
+function compareRelational(left: any, right: any, operator: "<" | "<=" | ">" | ">="): boolean {
+  const leftNumber = asNumber(left);
+  const rightNumber = asNumber(right);
+  if (leftNumber !== null && rightNumber !== null) {
+    switch (operator) {
+      case "<":
+        return leftNumber < rightNumber;
+      case "<=":
+        return leftNumber <= rightNumber;
+      case ">":
+        return leftNumber > rightNumber;
+      case ">=":
+        return leftNumber >= rightNumber;
+    }
+  }
+  const comparison = toStringValue(left).localeCompare(toStringValue(right), undefined, { sensitivity: "base" });
+  switch (operator) {
+    case "<":
+      return comparison < 0;
+    case "<=":
+      return comparison <= 0;
+    case ">":
+      return comparison > 0;
+    case ">=":
+      return comparison >= 0;
+    default:
+      return false;
+  }
+}
+
+function compareEquality(left: any, right: any): boolean {
+  if (left == null && right == null) return true;
+  const leftNumber = asNumber(left);
+  const rightNumber = asNumber(right);
+  if (leftNumber !== null && rightNumber !== null) {
+    return leftNumber === rightNumber;
+  }
+  return toStringValue(left).trim().toLowerCase() === toStringValue(right).trim().toLowerCase();
+}
+
+function flattenArgs(args: any[]): any[] {
+  const result: any[] = [];
+  args.forEach((arg) => {
+    if (Array.isArray(arg)) {
+      result.push(...flattenArgs(arg));
+    } else {
+      result.push(arg);
+    }
+  });
+  return result;
+}
+
+function toNumber(value: any): number {
+  const numeric = asNumber(value);
+  return numeric ?? 0;
+}
+
+function asNumber(value: any): number | null {
+  if (value == null || value === "") return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "boolean") return value ? 1 : 0;
+  if (value instanceof Date) return value.getTime();
+  const normalized = String(value).replace(/,/g, "").trim();
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toBoolean(value: any): boolean {
+  if (value == null) return false;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  const normalized = toStringValue(value).trim().toLowerCase();
+  if (!normalized) return false;
+  if (["false", "no", "0", "off"].includes(normalized)) return false;
+  return true;
+}
+
+function toStringValue(value: any): string {
+  if (value == null) return "";
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map((item) => toStringValue(item)).join(", ");
+  return String(value);
+}
+
+function toDate(value: any): Date | null {
+  if (value instanceof Date) return new Date(value.getTime());
+  if (typeof value === "number") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  if (typeof value === "string") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return null;
+}
+
+function shiftDate(date: Date, amount: number, unit: string): Date | null {
+  const result = new Date(date.getTime());
+  switch (unit) {
+    case "year":
+    case "years":
+      result.setUTCFullYear(result.getUTCFullYear() + amount);
+      break;
+    case "month":
+    case "months":
+      result.setUTCMonth(result.getUTCMonth() + amount);
+      break;
+    case "week":
+    case "weeks":
+      result.setUTCDate(result.getUTCDate() + amount * 7);
+      break;
+    case "day":
+    case "days":
+      result.setUTCDate(result.getUTCDate() + amount);
+      break;
+    case "hour":
+    case "hours":
+      result.setUTCHours(result.getUTCHours() + amount);
+      break;
+    case "minute":
+    case "minutes":
+      result.setUTCMinutes(result.getUTCMinutes() + amount);
+      break;
+    case "second":
+    case "seconds":
+      result.setUTCSeconds(result.getUTCSeconds() + amount);
+      break;
+    default:
+      return null;
+  }
+  return result;
+}
+
+function differenceInUnit(end: Date, start: Date, unit: string): number {
+  const diffMs = end.getTime() - start.getTime();
+  switch (unit) {
+    case "second":
+    case "seconds":
+      return diffMs / 1000;
+    case "minute":
+    case "minutes":
+      return diffMs / (1000 * 60);
+    case "hour":
+    case "hours":
+      return diffMs / (1000 * 60 * 60);
+    case "day":
+    case "days":
+      return diffMs / (1000 * 60 * 60 * 24);
+    case "week":
+    case "weeks":
+      return diffMs / (1000 * 60 * 60 * 24 * 7);
+    case "month":
+    case "months":
+      return (
+        (end.getUTCFullYear() - start.getUTCFullYear()) * 12 +
+        (end.getUTCMonth() - start.getUTCMonth())
+      );
+    case "year":
+    case "years":
+      return end.getUTCFullYear() - start.getUTCFullYear();
+    default:
+      return diffMs;
+  }
+}
+
+const FORMULA_FUNCTIONS: Record<string, (args: any[], scope: FormulaRuntimeScope<any>) => any> = {
+  SUM: (args) => flattenArgs(args).reduce((acc, value) => acc + toNumber(value), 0),
+  AVERAGE: (args) => {
+    const values = flattenArgs(args).map(toNumber);
+    if (!values.length) return 0;
+    return values.reduce((acc, value) => acc + value, 0) / values.length;
+  },
+  MIN: (args) => {
+    const values = flattenArgs(args).map(toNumber);
+    return values.length ? Math.min(...values) : 0;
+  },
+  MAX: (args) => {
+    const values = flattenArgs(args).map(toNumber);
+    return values.length ? Math.max(...values) : 0;
+  },
+  ABS: (args) => Math.abs(toNumber(args[0])),
+  ROUND: (args) => {
+    const value = toNumber(args[0]);
+    const digits = Math.trunc(toNumber(args[1] ?? 0));
+    const factor = Math.pow(10, digits);
+    return Math.round(value * factor) / factor;
+  },
+  ROUNDUP: (args) => {
+    const value = toNumber(args[0]);
+    const digits = Math.trunc(toNumber(args[1] ?? 0));
+    const factor = Math.pow(10, digits);
+    return Math.ceil(value * factor) / factor;
+  },
+  ROUNDDOWN: (args) => {
+    const value = toNumber(args[0]);
+    const digits = Math.trunc(toNumber(args[1] ?? 0));
+    const factor = Math.pow(10, digits);
+    return Math.floor(value * factor) / factor;
+  },
+  INT: (args) => Math.trunc(toNumber(args[0])),
+  IF: (args) => (toBoolean(args[0]) ? args[1] ?? "" : args[2] ?? ""),
+  AND: (args) => flattenArgs(args).every((value) => toBoolean(value)),
+  OR: (args) => flattenArgs(args).some((value) => toBoolean(value)),
+  NOT: (args) => !toBoolean(args[0]),
+  LEN: (args) => toStringValue(args[0]).length,
+  UPPER: (args) => toStringValue(args[0]).toUpperCase(),
+  LOWER: (args) => toStringValue(args[0]).toLowerCase(),
+  TRIM: (args) => toStringValue(args[0]).trim(),
+  LEFT: (args) => {
+    const str = toStringValue(args[0]);
+    const count = Math.max(0, Math.trunc(toNumber(args[1] ?? 1)));
+    return str.slice(0, count);
+  },
+  RIGHT: (args) => {
+    const str = toStringValue(args[0]);
+    const count = Math.max(0, Math.trunc(toNumber(args[1] ?? 1)));
+    return count ? str.slice(-count) : "";
+  },
+  MID: (args) => {
+    const str = toStringValue(args[0]);
+    const start = Math.max(0, Math.trunc(toNumber(args[1] ?? 1) - 1));
+    const length = Math.max(0, Math.trunc(toNumber(args[2] ?? str.length)));
+    return str.slice(start, start + length);
+  },
+  CONCAT: (args) => flattenArgs(args).map(toStringValue).join(""),
+  CONCATENATE: (args) => flattenArgs(args).map(toStringValue).join(""),
+  TEXT: (args) => toStringValue(args[0]),
+  VALUE: (args) => toNumber(args[0]),
+  TODAY: () => new Date().toISOString().slice(0, 10),
+  NOW: () => new Date().toISOString(),
+  DATE: (args) => {
+    const year = Math.trunc(toNumber(args[0] ?? 0));
+    const month = Math.trunc(toNumber(args[1] ?? 1));
+    const day = Math.trunc(toNumber(args[2] ?? 1));
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+  },
+  YEAR: (args) => {
+    const date = toDate(args[0]);
+    return date ? date.getUTCFullYear() : "";
+  },
+  MONTH: (args) => {
+    const date = toDate(args[0]);
+    return date ? date.getUTCMonth() + 1 : "";
+  },
+  DAY: (args) => {
+    const date = toDate(args[0]);
+    return date ? date.getUTCDate() : "";
+  },
+  DATEADD: (args) => {
+    const date = toDate(args[0]);
+    if (!date) return "";
+    const amount = toNumber(args[1] ?? 0);
+    const unit = String(args[2] ?? "days").toLowerCase();
+    const shifted = shiftDate(date, amount, unit);
+    return shifted ? shifted.toISOString().slice(0, 10) : "";
+  },
+  DATETIME_DIFF: (args) => {
+    const end = toDate(args[0]);
+    const start = toDate(args[1]);
+    if (!end || !start) return "";
+    const unit = String(args[2] ?? "days").toLowerCase();
+    return differenceInUnit(end, start, unit);
+  },
+  RECORD_ID: (args, scope) => {
+    const explicit = scope.getRowId?.(scope.row, scope.rowIndex);
+    if (explicit != null) return String(explicit);
+    if ((scope.row as any).id != null) return String((scope.row as any).id);
+    if ((scope.row as any).ID != null) return String((scope.row as any).ID);
+    return "";
+  },
+  BLANK: () => "",
+  ISBLANK: (args) => {
+    const value = args[0];
+    if (value == null) return true;
+    if (typeof value === "string") return value.trim() === "";
+    if (Array.isArray(value)) return value.length === 0;
+    return false;
+  },
+  ISNUMBER: (args) => asNumber(args[0]) !== null,
+  ISTEXT: (args) => typeof args[0] === "string",
+  SWITCH: (args) => {
+    if (!args.length) return "";
+    const pivot = args[0];
+    for (let i = 1; i < args.length - 1; i += 2) {
+      if (compareEquality(pivot, args[i])) return args[i + 1];
+    }
+    if ((args.length - 1) % 2 === 1) {
+      return args[args.length - 1];
+    }
+    return "";
+  }
+};
 
 export interface InteractiveTableProps<T extends Record<string, any> = any> {
   /** Initial rows */
@@ -1398,6 +2494,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       ({ readOnly: ["formula","rollup","lookup","createdTime","lastModifiedTime","createdBy","lastModifiedBy"].includes(c.type) ? true : c.readOnly, ...c })
     );
   });
+  const columnLookup = React.useMemo(() => createFormulaColumnLookup(columns), [columns]);
+  const compiledFormulas = React.useMemo(() => compileFormulaColumns(columns), [columns]);
   const latestRowsRef = React.useRef(rows);
   const latestColumnsRef = React.useRef(columns);
   const headerRowRef = React.useRef<HTMLDivElement | null>(null);
@@ -2108,15 +3206,33 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   function getCellValue(r: number, c: number) {
     const row = rows[r];
     const col = columns[c];
-    const key = col.key as keyof T;
     if (!row || !col) return "";
-    if (col.type === "formula" && typeof col.formula === "function") {
-      try { return col.formula(row, r, rows); } catch { return ""; }
+    if (col.type === "formula") {
+      const key = formulaColumnKey(col, c);
+      const compiled = compiledFormulas.get(key);
+      if (!compiled) return "";
+      if (compiled.errors.length) {
+        return compiled.errors[0] ?? "";
+      }
+      try {
+        const scope: FormulaRuntimeScope<T> = {
+          row,
+          rowIndex: r,
+          rows,
+          getRowId,
+          columnLookup,
+          compiledFormulas
+        };
+        return compiled.evaluate(scope, new Set([key]));
+      } catch (error) {
+        console.warn(`Formula evaluation error in column "${col.name}":`, error);
+        return "#ERROR";
+      }
     }
     if (col.type === "lookup" && typeof col.lookup === "function") {
       try { return col.lookup(row); } catch { return ""; }
     }
-    return (row as any)[key];
+    return (row as any)[col.key as keyof T];
   }
 
   function setCellValue(r: number, c: number, value: any, options?: { commit?: boolean }) {
@@ -5485,6 +6601,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const currentTypeLabel = ALL_TYPES.find((opt) => opt.value === draftType)?.label ?? String(draftType);
     const typeIcon = renderColumnIcon(draftType);
     const typeOptions = ALL_TYPES.map((opt) => h("option", { key: opt.value, value: opt.value }, opt.label));
+    let formulaValidation: { isValid: boolean; errors: string[] } | null = null;
 
     const renderToggle = (label: string, checked: boolean, onChange: (next: boolean) => void, description?: string) =>
       h("label", {
@@ -6137,6 +7254,75 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       );
     };
 
+    const buildFormulaContent = () => {
+      const expression = draftConfig.formula?.expression ?? "";
+      const analysis = analyzeFormulaExpression(expression, columns);
+      formulaValidation = { isValid: analysis.isValid, errors: analysis.errors };
+      const handleFormulaChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const value = event.currentTarget.value;
+        const nextAnalysis = analyzeFormulaExpression(value, columns);
+        updateFieldConfigDraft((config) => {
+          const next = { ...(config.formula ?? {}) };
+          next.expression = value;
+          next.references = nextAnalysis.references;
+          config.formula = next;
+        });
+      };
+      const highlightHtml = renderFormulaTokens(analysis.tokens) || "&nbsp;";
+      const unknownLookup = new Set(analysis.unknownReferences.map((ref) => ref.toLowerCase()));
+      const referenceChips = analysis.references.length
+        ? analysis.references.map((ref, index) => {
+            const isUnknown = unknownLookup.has(ref.toLowerCase());
+            return h("span", {
+              key: ref || `ref-${index}`,
+              className: mergeClasses(
+                "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium tracking-wide",
+                isUnknown
+                  ? "border-red-300 bg-red-50 text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200"
+                  : "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-200"
+              )
+            }, `{${ref}}`);
+          })
+        : [];
+      const rows = Math.max(4, Math.min(12, expression.split(/\r?\n/).length + 2));
+      return h("div", { className: "space-y-4" },
+        h("div", { className: "space-y-2" },
+          h("label", { className: "flex flex-col gap-2 text-sm" },
+            h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Formula expression"),
+            h("textarea", {
+              value: expression,
+              rows,
+              onChange: handleFormulaChange,
+              placeholder: "e.g. TRIM({Project}) & \"_\" & TRIM({Category})",
+              className: "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 font-mono text-sm leading-6 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            })
+          ),
+          h("div", {
+            className: "rounded-lg border border-zinc-200 bg-white dark:border-neutral-700 dark:bg-neutral-900"
+          },
+            h("div", {
+              className: "max-h-40 overflow-auto whitespace-pre-wrap px-3 py-2 font-mono text-xs leading-5 text-left text-zinc-700 dark:text-neutral-200",
+              dangerouslySetInnerHTML: { __html: highlightHtml }
+            })
+          )
+        ),
+        referenceChips.length
+          ? h("div", { className: "flex flex-wrap gap-2 text-xs" }, ...referenceChips)
+          : h("div", {
+              className: "rounded-lg border border-dashed border-zinc-300 px-3 py-2 text-xs text-zinc-500 dark:border-neutral-700 dark:text-neutral-400"
+            }, "Reference other fields by wrapping the field name in braces, e.g. {Quantity}."),
+        analysis.errors.length
+          ? h("div", { className: "space-y-1 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200" },
+              ...analysis.errors.map((error, idx) => h("div", { key: `formula-error-${idx}` }, error))
+            )
+          : h("div", {
+              className: "rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-200"
+            }, analysis.references.length
+              ? `Formula references ${analysis.references.length} field${analysis.references.length === 1 ? "" : "s"}.`
+              : "Formula ready. Add field references to compute values dynamically.")
+      );
+    };
+
     let typeContent: React.ReactNode;
     switch (draftType) {
       case "singleLineText":
@@ -6163,6 +7349,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       case "lookup":
         typeContent = buildLookupContent();
         break;
+      case "formula":
+        typeContent = buildFormulaContent();
+        break;
       default:
         typeContent = h("div", { className: "rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300" },
           "Field configuration controls are not available for this column type. You can still rename the field."
@@ -6171,6 +7360,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     }
 
     const handleSave = () => {
+      if (formulaValidation && !formulaValidation.isValid) {
+        return;
+      }
       const trimmedName = draftName.trim() || column.name;
       const normalized = normalizeFieldConfig(draftType, draftConfig);
       if (draftType !== column.type) {
@@ -6208,6 +7400,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
     const bodyNode = h("div", { className: "max-h-[60vh] overflow-y-auto px-4 py-4 space-y-4" }, typeContent);
 
+    const saveDisabled = formulaValidation ? !formulaValidation.isValid : false;
     const footerNode = h("div", { className: "flex items-center justify-end gap-2 border-t border-zinc-200 px-4 py-3 dark:border-neutral-700" },
       h("button", {
         type: "button",
@@ -6216,8 +7409,15 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       }, "Cancel"),
       h("button", {
         type: "button",
-        className: "rounded-full bg-amber-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-neutral-900",
-        onClick: handleSave
+        className: mergeClasses(
+          "rounded-full px-4 py-1.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400",
+          saveDisabled
+            ? "cursor-not-allowed bg-amber-300/80 text-white opacity-75 dark:bg-amber-500/40 dark:text-neutral-200"
+            : "bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-neutral-900"
+        ),
+        onClick: handleSave,
+        disabled: saveDisabled,
+        title: saveDisabled && formulaValidation?.errors[0] ? formulaValidation.errors[0] : undefined
       }, "Save")
     );
 
