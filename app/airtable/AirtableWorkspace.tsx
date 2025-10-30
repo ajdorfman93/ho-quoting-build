@@ -10,6 +10,7 @@ import type {
   AirtableProject,
   AirtableTableDefinition,
 } from "@/utils/airtableLoader";
+import { formatCountValue as formatCount } from "@/utils/tableUtils";
 import {
   FaBars,
   FaCheckSquare,
@@ -42,6 +43,33 @@ const WORKSPACE_BADGE = "TEST";
 
 const INITIAL_ROW_BATCH_SIZE = 200;
 const ROW_BATCH_SIZE = 200;
+
+const MONTH_NAMES = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+function formatDateUtc(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  const month = MONTH_NAMES[parsed.getUTCMonth()] ?? "";
+  const day = String(parsed.getUTCDate()).padStart(2, "0");
+  const year = parsed.getUTCFullYear();
+  const hours = String(parsed.getUTCHours()).padStart(2, "0");
+  const minutes = String(parsed.getUTCMinutes()).padStart(2, "0");
+  return `${month} ${day}, ${year} ${hours}:${minutes} UTC`;
+}
 
 type NavKey = (typeof NAV_ITEMS)[number]["id"];
 
@@ -187,11 +215,10 @@ function WorkspaceHeader({
   onNavChange: (next: NavKey) => void;
   lastGenerated: string;
 }) {
-  const formattedTimestamp = React.useMemo(() => {
-    const parsed = new Date(lastGenerated);
-    if (Number.isNaN(parsed.getTime())) return null;
-    return parsed.toLocaleString();
-  }, [lastGenerated]);
+  const formattedTimestamp = React.useMemo(
+    () => formatDateUtc(lastGenerated),
+    [lastGenerated],
+  );
 
   return (
     <header className="border-b border-slate-900 bg-[#0f172a] shadow-[0_18px_36px_rgba(4,16,36,0.65)]">
@@ -341,7 +368,7 @@ function DataPanel({
         id: `${table.slug}-grid`,
         label: primaryView,
         icon: <FaThLarge className="h-3.5 w-3.5 text-slate-300" aria-hidden />,
-        description: `${table.summary.rowCount.toLocaleString()} records`,
+        description: `${formatCount(table.summary.rowCount)} records`,
         badge: "Selected",
       },
     ];
@@ -619,13 +646,10 @@ function RecordToolbar({ table }: { table: AirtableTableDefinition }) {
   const snapshotsRef = React.useRef<HTMLDivElement | null>(null);
   const viewLabel = table.viewName ?? "Grid view";
 
-  const formattedLastAnalyzed = React.useMemo(() => {
-    const raw = summary.lastAnalyzed;
-    if (!raw) return null;
-    const parsed = new Date(raw);
-    if (Number.isNaN(parsed.getTime())) return raw;
-    return parsed.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-  }, [summary.lastAnalyzed]);
+  const formattedLastAnalyzed = React.useMemo(
+    () => formatDateUtc(summary.lastAnalyzed),
+    [summary.lastAnalyzed],
+  );
 
   const snapshotItems = React.useMemo(
     () => {
@@ -636,7 +660,7 @@ function RecordToolbar({ table }: { table: AirtableTableDefinition }) {
           detail: formattedLastAnalyzed
             ? `Generated ${formattedLastAnalyzed}`
             : "Generated from latest CSV ingest",
-          badge: `${summary.rowCount.toLocaleString()} records`,
+          badge: `${formatCount(summary.rowCount)} records`,
         },
         {
           id: "source",
@@ -742,7 +766,7 @@ function RecordToolbar({ table }: { table: AirtableTableDefinition }) {
           <FaShareAlt className="h-3 w-3" aria-hidden />
           Share and sync
         </span>
-        <span className="text-slate-500">{summary.rowCount.toLocaleString()} records</span>
+        <span className="text-slate-500">{formatCount(summary.rowCount)} records</span>
       </div>
     </div>
   );

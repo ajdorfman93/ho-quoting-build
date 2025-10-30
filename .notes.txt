@@ -200,4 +200,5 @@
     45. the user should be able to view and edit data in each neon table through the interactive table component. this includes creating, updating, and deleting columns, fields and rows
     46. implement real-time synchronization between the table component and the neon database
     . use the neon database connection to fetch and save data. you may need to modify the table component to work with neon data instead of json data. you may also need to create new api routes to handle database operations.try to make a new utils file if necessary to handle any database interactions.
-    47. 
+    47. if header's value is [], show as empty cell instead of string "[]"
+    48. hide aria-label="Select all rows" checkbox in top left corner of table until hover over it.

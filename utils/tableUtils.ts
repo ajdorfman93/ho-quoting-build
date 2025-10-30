@@ -581,6 +581,13 @@ function formatNumber(
   return parts.join(decimals ? "." : "");
 }
 
+export function formatCountValue(value: number): string {
+  if (!Number.isFinite(value)) return String(value);
+  const [integerPart, fractionalPart] = String(value).split(".");
+  const withSeparators = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return fractionalPart ? `${withSeparators}.${fractionalPart}` : withSeparators;
+}
+
 function formatCurrency(
   n: number,
   cfg: NonNullable<ColumnSpec["config"]>["currency"] | undefined
@@ -624,13 +631,62 @@ function formatDuration(seconds: number): string {
   return parts.join(":");
 }
 
+const MONTH_NAMES_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTH_NAMES_LONG = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December"
+];
+const WEEKDAY_NAMES_LONG = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday"
+];
+
+function formatUtcTimeShort(date: Date): string {
+  let hours = date.getUTCHours();
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+  const suffix = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+  return `${hours}:${minutes} ${suffix} UTC`;
+}
+
 function formatDateValue(value: unknown, format?: string): string {
   if (!value) return "";
   const date = value instanceof Date ? value : new Date(value as any);
   if (Number.isNaN(date.getTime())) return "";
+
+  const monthIndex = date.getUTCMonth();
+  const dayOfMonth = date.getUTCDate();
+  const yearFull = date.getUTCFullYear();
+  const yearShort = String(yearFull).slice(-2);
+  const monthShort = MONTH_NAMES_SHORT[monthIndex] ?? "";
+  const monthLong = MONTH_NAMES_LONG[monthIndex] ?? "";
+  const dayPadded = String(dayOfMonth).padStart(2, "0");
+  const shortDate = `${String(monthIndex + 1).padStart(2, "0")}/${dayPadded}/${yearShort}`;
+  const mediumDate = `${monthShort} ${dayOfMonth}, ${yearFull}`;
+  const longDate = `${monthLong} ${dayOfMonth}, ${yearFull}`;
+  const weekday = WEEKDAY_NAMES_LONG[date.getUTCDay()] ?? "";
+  const fullDate = `${weekday}, ${longDate}`;
+  const datetime = `${mediumDate} ${formatUtcTimeShort(date)}`;
+
   if (!format) {
-    return date.toLocaleDateString(undefined, { dateStyle: "medium" });
+    return mediumDate;
   }
+
   const token = format.toLowerCase();
   switch (token) {
     case "iso":
@@ -638,19 +694,19 @@ function formatDateValue(value: unknown, format?: string): string {
     case "iso-date":
       return date.toISOString().split("T")[0] ?? date.toISOString();
     case "short":
-      return date.toLocaleDateString(undefined, { dateStyle: "short" });
+      return shortDate;
     case "medium":
-      return date.toLocaleDateString(undefined, { dateStyle: "medium" });
+      return mediumDate;
     case "long":
-      return date.toLocaleDateString(undefined, { dateStyle: "long" });
+      return longDate;
     case "full":
-      return date.toLocaleDateString(undefined, { dateStyle: "full" });
+      return fullDate;
     case "time":
-      return date.toLocaleTimeString(undefined, { timeStyle: "short" });
+      return formatUtcTimeShort(date);
     case "datetime":
-      return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+      return datetime;
     default:
-      return date.toLocaleDateString(undefined, { dateStyle: "medium" });
+      return mediumDate;
   }
 }
 

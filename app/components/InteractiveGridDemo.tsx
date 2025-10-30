@@ -5,6 +5,7 @@ import {
   renderInteractiveTable,
   type ColumnSpec,
   type InteractiveTableProps,
+  formatCountValue,
 } from "@/utils/tableUtils";
 import type { TableMetadata } from "@/utils/schema";
 
@@ -698,8 +699,8 @@ export default function InteractiveGridDemo() {
           {syncing && !loading && <span>Syncing changes…</span>}
           {!loading && !syncing && gridState && (
             <span>
-              Showing {gridState.rows.length.toLocaleString()} of{" "}
-              {totalRows.toLocaleString()} rows
+              Showing {formatCountValue(gridState.rows.length)} of{" "}
+              {formatCountValue(totalRows)} rows
             </span>
           )}
         </div>

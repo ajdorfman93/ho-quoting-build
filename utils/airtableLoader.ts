@@ -4,6 +4,8 @@
 import fs from "fs/promises";
 import path from "path";
 import { ColumnSpec, ColumnType, SelectOption } from "@/utils/tableUtils";
+import { listTables, getTableData, type TableRow } from "@/utils/tableService";
+import type { TableMetadata } from "@/utils/schema";
 
 const DATA_DIR = path.join(process.cwd(), "airtable", "csv-json");
 const AUTOMATIONS_DIR = path.join(process.cwd(), "airtable", "js");
@@ -11,6 +13,7 @@ const AUTOMATIONS_DIR = path.join(process.cwd(), "airtable", "js");
 const RECORD_ID_REGEX = /^rec[0-9A-Za-z]{14}$/;
 const PERCENT_REGEX = /%$/;
 const SEPARATOR_REGEX = /[,;|]/;
+const DATABASE_ROW_BATCH_SIZE = 500;
 
 type GenericRow = Record<string, any>;
 
@@ -103,10 +106,16 @@ const SELECT_COLORS = [
 ];
 
 export async function loadAirtableProject(): Promise<AirtableProject> {
-  const rawTables = await readRawTables();
+  const [fileTables, databaseTables, automations] = await Promise.all([
+    readRawTables(),
+    readDatabaseTables(),
+    readAutomations()
+  ]);
+
+  const rawTables = mergeRawTables(fileTables, databaseTables);
   const recordIdIndex = buildRecordIdIndex(rawTables);
   const tables = rawTables.map((table) => buildTableDefinition(table, recordIdIndex));
-  const automations = await readAutomations();
+
   return {
     tables,
     automations,
@@ -140,6 +149,88 @@ async function readRawTables(): Promise<RawTable[]> {
   }
 
   return tables;
+}
+
+async function readDatabaseTables(): Promise<RawTable[]> {
+  let metadata: TableMetadata[] = [];
+  try {
+    metadata = await listTables();
+  } catch {
+    return [];
+  }
+
+  const tables: RawTable[] = [];
+  for (const entry of metadata) {
+    const table = await buildRawTableFromDatabase(entry);
+    if (table) tables.push(table);
+  }
+  return tables;
+}
+
+function mergeRawTables(fileTables: RawTable[], databaseTables: RawTable[]): RawTable[] {
+  const combined = new Map<string, RawTable>();
+  for (const table of fileTables) {
+    combined.set(table.slug, table);
+  }
+  for (const table of databaseTables) {
+    combined.set(table.slug, table);
+  }
+  return Array.from(combined.values());
+}
+
+async function buildRawTableFromDatabase(entry: TableMetadata): Promise<RawTable | null> {
+  const tableName = entry.table_name;
+  if (!tableName) return null;
+
+  let offset = 0;
+  let totalRows = 0;
+  let columns: ColumnSpec<TableRow>[] | null = null;
+  const records: GenericRow[] = [];
+
+  try {
+    do {
+      const { columns: chunkColumns, rows, totalRows: reportedTotal } = await getTableData(tableName, {
+        limit: DATABASE_ROW_BATCH_SIZE,
+        offset
+      });
+
+      if (!columns || !columns.length) {
+        columns = chunkColumns;
+      }
+
+      const columnsToUse = columns ?? chunkColumns;
+      if (!columnsToUse || !columnsToUse.length) {
+        totalRows = reportedTotal;
+        break;
+      }
+
+      for (const row of rows) {
+        const record: GenericRow = {};
+        for (const column of columnsToUse) {
+          const key = String(column.key);
+          const label = typeof column.name === "string" ? column.name : String(column.name);
+          record[label] = (row as Record<string, unknown>)[key];
+        }
+        records.push(record);
+      }
+
+      offset += rows.length;
+      totalRows = reportedTotal;
+    } while (offset < totalRows);
+  } catch {
+    return null;
+  }
+
+  const sourceFile = entry.source_file ? path.basename(entry.source_file) : `${entry.display_name}.json`;
+  const { tableName: parsedName, viewName } = parseTableAndView(sourceFile);
+
+  return {
+    name: parsedName,
+    slug: slugify(parsedName),
+    fileName: sourceFile,
+    viewName,
+    records
+  };
 }
 
 function parseTableAndView(fileName: string): { tableName: string; viewName: string | null } {
