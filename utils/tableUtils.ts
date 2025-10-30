@@ -3116,12 +3116,20 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
 
   /* copy / paste */
   React.useEffect(() => {
+    const shouldBypass = (eventTarget: EventTarget | null) => {
+      if (typeof document === "undefined") return false;
+      const candidate = eventTarget instanceof Element ? eventTarget : (document.activeElement as Element | null);
+      return isTextInputLikeElement(candidate);
+    };
+
     function onCopy(e: ClipboardEvent) {
+      if (shouldBypass(e.target)) return;
       if (!selection) return;
       e.clipboardData?.setData("text/plain", matrixToTsv(selectionToMatrix(selection)));
       e.preventDefault();
     }
     function onPaste(e: ClipboardEvent) {
+      if (shouldBypass(e.target)) return;
       if (!activeCell) return;
       const text = e.clipboardData?.getData("text/plain");
       if (!text) return;
@@ -3132,6 +3140,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       e.preventDefault();
     }
     function onKey(e: KeyboardEvent) {
+      if (shouldBypass(e.target)) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
         e.preventDefault();
         setSearchOpen(true);
@@ -4052,6 +4061,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           onKeyDown: handleKeyDown,
           onCompositionStart: handleCompositionStart,
           onCompositionEnd: handleCompositionEnd,
+          "data-grid-text-input": "true",
           className: "flex-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
           placeholder: "Search options"
         }),
@@ -4267,6 +4277,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           onKeyDown: handleKeyDown,
           onCompositionStart: handleCompositionStart,
           onCompositionEnd: handleCompositionEnd,
+          "data-grid-text-input": "true",
           className: "flex-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
           placeholder: "Find an option"
         }),
@@ -4336,7 +4347,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const commonProps: any = {
       ref: (el: any) => (editorRef.current = el),
       onBlur: commitEdit,
-      onKeyDown: handleEditorKeyDown
+      onKeyDown: handleEditorKeyDown,
+      "data-grid-text-input": "true"
     };
 
     switch (col.type) {
@@ -7185,6 +7197,31 @@ function uniqueColumnKey(cols: ColumnSpec[], base: string) {
   const keys = new Set(cols.map((c) => String(c.key)));
   while (keys.has(k)) { i += 1; k = `${base}_${i}`; }
   return k;
+}
+
+function isTextInputLikeElement(element: Element | null): boolean {
+  if (typeof window === "undefined" || !element) return false;
+  let current: Element | null = element;
+  while (current) {
+    if (!(current instanceof window.HTMLElement)) break;
+    const { HTMLInputElement, HTMLTextAreaElement } = window;
+    if (typeof HTMLTextAreaElement !== "undefined" && current instanceof HTMLTextAreaElement) {
+      if (!current.readOnly && !current.disabled) return true;
+    }
+    if (typeof HTMLInputElement !== "undefined" && current instanceof HTMLInputElement) {
+      const type = (current.type || "text").toLowerCase();
+      const nonTextTypes = new Set(["button", "submit", "reset", "checkbox", "radio", "file", "image", "range", "color"]);
+      if (!nonTextTypes.has(type) && !current.readOnly && !current.disabled) {
+        return true;
+      }
+    }
+    if (current.isContentEditable) return true;
+    const role = current.getAttribute("role");
+    if (role && ["textbox", "searchbox", "combobox"].includes(role)) return true;
+    if (current.dataset?.gridTextInput === "true") return true;
+    current = current.parentElement;
+  }
+  return false;
 }
 
 
