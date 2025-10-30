@@ -1372,6 +1372,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     );
   });
   const latestRowsRef = React.useRef(rows);
+  const pendingColumnCommitRef = React.useRef<ColumnSpec<T>[] | null>(null);
   const availableViews = React.useMemo(
     () => VIEW_DEFINITIONS.map((def) => ({ ...def, instanceId: def.id, displayName: def.name })),
     []
@@ -1568,6 +1569,12 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   }, [columns, colWidths.length, minColumnWidth]);
   React.useEffect(() => { colWidthsRef.current = colWidths; }, [colWidths]);
   React.useEffect(() => { rowHeightsRef.current = rowHeights; }, [rowHeights]);
+  React.useEffect(() => {
+    if (!pendingColumnCommitRef.current) return;
+    const nextColumns = pendingColumnCommitRef.current;
+    pendingColumnCommitRef.current = null;
+    commit(latestRowsRef.current, nextColumns);
+  }, [columns, commit]);
 
   /* selection & editing */
   const [selection, setSelection] = React.useState<Selection>(null);
@@ -1695,7 +1702,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const tableContainerRef = React.useRef<HTMLDivElement | null>(null);
   const colWidthsRef = React.useRef(colWidths);
   const rowHeightsRef = React.useRef(rowHeights);
-  const pendingColumnCommitRef = React.useRef<ColumnSpec<T>[] | null>(null);
   const lastSelectDropdownElementRef = React.useRef<HTMLElement | null>(null);
   const lastRecordDropdownElementRef = React.useRef<HTMLElement | null>(null);
 
