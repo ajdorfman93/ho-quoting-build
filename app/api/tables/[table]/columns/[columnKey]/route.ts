@@ -1,13 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { deleteColumn, updateColumn } from "@/utils/tableService";
 
 export async function PATCH(
-  request: Request,
-  { params }: { params: { table: string; columnKey: string } }
+  request: NextRequest,
+  context: { params: Promise<{ table: string; columnKey: string }> }
 ) {
   try {
+    const { table, columnKey } = await context.params;
     const payload = await request.json();
-    const column = await updateColumn(params.table, params.columnKey, {
+    const column = await updateColumn(table, columnKey, {
       name: payload?.name,
       type: payload?.type,
       config: payload?.config,
@@ -17,7 +18,7 @@ export async function PATCH(
     return NextResponse.json({ column });
   } catch (error) {
     console.error(
-      `Failed to update column ${params.columnKey} on ${params.table}`,
+      "Failed to update column",
       error
     );
     return NextResponse.json(
@@ -28,15 +29,16 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
-  { params }: { params: { table: string; columnKey: string } }
+  _request: NextRequest,
+  context: { params: Promise<{ table: string; columnKey: string }> }
 ) {
   try {
-    await deleteColumn(params.table, params.columnKey);
+    const { table, columnKey } = await context.params;
+    await deleteColumn(table, columnKey);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error(
-      `Failed to delete column ${params.columnKey} from ${params.table}`,
+      "Failed to delete column",
       error
     );
     return NextResponse.json(

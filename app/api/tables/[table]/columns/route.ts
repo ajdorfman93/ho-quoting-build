@@ -1,13 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createColumn } from "@/utils/tableService";
 
 export async function POST(
-  request: Request,
-  { params }: { params: { table: string } }
+  request: NextRequest,
+  context: { params: Promise<{ table: string }> }
 ) {
   try {
+    const { table } = await context.params;
     const payload = await request.json();
-    const column = await createColumn(params.table, {
+    const column = await createColumn(table, {
       name: payload?.name,
       type: payload?.type,
       config: payload?.config ?? {},
@@ -18,7 +19,7 @@ export async function POST(
 
     return NextResponse.json({ column });
   } catch (error) {
-    console.error(`Failed to create column on ${params.table}`, error);
+    console.error("Failed to create column", error);
     return NextResponse.json(
       { error: "Failed to create column" },
       { status: 500 }

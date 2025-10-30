@@ -1,14 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { subscribeToTable } from "@/utils/realtime";
 
 const encoder = new TextEncoder();
 
 export async function GET(
-  request: Request,
-  { params }: { params: { table: string } }
+  request: NextRequest,
+  context: { params: Promise<{ table: string }> }
 ) {
   try {
-    const { table } = params;
+    const { table } = await context.params;
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         const send = (data: unknown) => {
