@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import type { PoolClient } from "pg";
 import type { ColumnSpec } from "./tableUtils";
+import projectTags from "@/config/projectTags.json";
 import { query, withTransaction } from "./db";
 import { emitTableChange } from "./realtime";
 import { ColumnMetadata, TableMetadata, toColumnKey } from "./schema";
@@ -8,6 +9,7 @@ import { ColumnMetadata, TableMetadata, toColumnKey } from "./schema";
 export type TableRow = Record<string, unknown> & { id: string };
 
 const SAFE_IDENTIFIER = /^[a-zA-Z_][0-9a-zA-Z_]*$/;
+const DEFAULT_PROJECT_TAG = projectTags.defaultApp;
 
 function assertSafeIdentifier(identifier: string): string {
   if (!SAFE_IDENTIFIER.test(identifier)) {
@@ -134,9 +136,69 @@ async function fetchColumnMetadata(
   return mapColumnMetadataRows(rows);
 }
 
+let ensureMetadataReadyPromise: Promise<void> | null = null;
+
+async function ensureMetadataReady() {
+  if (ensureMetadataReadyPromise) {
+    return ensureMetadataReadyPromise;
+  }
+
+  ensureMetadataReadyPromise = (async () => {
+    try {
+      await query(`
+        CREATE TABLE IF NOT EXISTS table_metadata (
+          table_name TEXT PRIMARY KEY,
+          display_name TEXT NOT NULL,
+          source_file TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+      `);
+
+      await query(`
+        ALTER TABLE table_metadata
+          ADD COLUMN IF NOT EXISTS project_tag TEXT NOT NULL DEFAULT '${DEFAULT_PROJECT_TAG}';
+      `);
+    } catch (error) {
+      console.error("Failed to ensure project_tag column on table_metadata", error);
+      ensureMetadataReadyPromise = null;
+      throw error;
+    }
+
+    try {
+      await query(
+        `
+          UPDATE table_metadata
+          SET project_tag = $1
+          WHERE project_tag IS NULL OR project_tag = '';
+        `,
+        [DEFAULT_PROJECT_TAG]
+      );
+    } catch (error) {
+      console.error("Failed to backfill project_tag on table_metadata", error);
+      ensureMetadataReadyPromise = null;
+      throw error;
+    }
+
+    try {
+      await query(`
+        CREATE INDEX IF NOT EXISTS idx_table_metadata_project_tag
+          ON table_metadata (project_tag);
+      `);
+    } catch (error) {
+      console.error("Failed to ensure table_metadata project_tag index", error);
+      ensureMetadataReadyPromise = null;
+      throw error;
+    }
+  })();
+
+  return ensureMetadataReadyPromise;
+}
+
 export async function listTables(options?: {
   projectTag?: string;
 }): Promise<TableMetadata[]> {
+  await ensureMetadataReady();
   const projectTag = options?.projectTag ?? null;
   const baseQuery = `
     SELECT table_name, display_name, source_file, project_tag, created_at, updated_at
@@ -165,6 +227,7 @@ export async function getTableData(
   rows: TableRow[];
   totalRows: number;
 }> {
+  await ensureMetadataReady();
   const safeTable = assertSafeIdentifier(tableName);
   const limit = Math.max(1, Math.min(options?.limit ?? 100, 500));
   const offset = Math.max(0, options?.offset ?? 0);
