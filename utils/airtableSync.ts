@@ -358,9 +358,25 @@ async function ensureTableColumns(
     if (!column) continue;
 
     if (!existingColumns.has(column.key)) {
-      await client.query(
-        `ALTER TABLE "${tableName}" ADD COLUMN "${column.key}" TEXT;`
-      );
+      try {
+        await client.query(
+          `ALTER TABLE "${tableName}" ADD COLUMN "${column.key}" TEXT;`
+        );
+        existingColumns.add(column.key);
+      } catch (error) {
+        if (
+          !(
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            (error as { code?: string }).code === "42701"
+          )
+        ) {
+          throw error;
+        }
+        // Column already exists; proceed without failing the sync.
+        existingColumns.add(column.key);
+      }
     }
 
     await client.query(
@@ -424,9 +440,25 @@ async function replaceTableRows(
   await client.query(`DELETE FROM "${tableName}";`);
   if (!records.length) return;
 
-  const columnList = columnOrder
-    .map((fieldName) => columnMap.get(fieldName)?.key)
-    .filter((key): key is string => Boolean(key));
+  const fieldSequence: Array<{
+    fieldId: string;
+    column: { key: string; displayName: string };
+  }> = [];
+  const seenColumns = new Set<string>();
+
+  for (const fieldId of columnOrder) {
+    const column = columnMap.get(fieldId);
+    if (!column || seenColumns.has(column.key)) {
+      continue;
+    }
+    seenColumns.add(column.key);
+    fieldSequence.push({
+      fieldId,
+      column: { key: column.key, displayName: column.displayName },
+    });
+  }
+
+  const columnList = fieldSequence.map(({ column }) => column.key);
 
   const columnsSql = ["id", ...columnList.map((column) => `"${column}"`)].join(
     ", "
@@ -440,17 +472,12 @@ async function replaceTableRows(
 
     slice.forEach((record, sliceIndex) => {
       const rowValues: Array<string | null> = [randomUUID()];
-      for (const fieldName of columnOrder) {
-        const column = columnMap.get(fieldName);
-        if (!column) {
-          rowValues.push(null);
-          continue;
-        }
+      for (const { column } of fieldSequence) {
         const raw = record.fields?.[column.displayName];
         rowValues.push(sanitizeValue(raw));
       }
 
-      const offset = sliceIndex * (columnList.length + 1);
+      const offset = sliceIndex * (fieldSequence.length + 1);
       const placeholderRow = rowValues
         .map((_, idx) => `$${offset + idx + 1}`)
         .join(", ");
@@ -602,7 +629,7 @@ export async function syncAirtableBase(options?: {
       const usedColumnKeys = new Set<string>();
       table.fields.forEach((field, index) => {
         const key = toColumnKey(field.name, usedColumnKeys);
-        columnMap.set(field.name, {
+        columnMap.set(field.id, {
           key,
           fieldId: field.id,
           type: mapFieldTypeToColumnType(field.type),
@@ -611,7 +638,7 @@ export async function syncAirtableBase(options?: {
         });
       });
 
-      const columnOrder = table.fields.map((field) => field.name);
+      const columnOrder = table.fields.map((field) => field.id);
 
       await upsertTableMetadata(client, {
         tableName: slug,
@@ -656,4 +683,5 @@ export async function syncAirtableBase(options?: {
 
   return { baseId, projectTag, tables: summary };
 }
+
 
