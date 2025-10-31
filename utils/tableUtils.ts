@@ -6601,7 +6601,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const currentTypeLabel = ALL_TYPES.find((opt) => opt.value === draftType)?.label ?? String(draftType);
     const typeIcon = renderColumnIcon(draftType);
     const typeOptions = ALL_TYPES.map((opt) => h("option", { key: opt.value, value: opt.value }, opt.label));
-    let formulaValidation: { isValid: boolean; errors: string[] } | null = null;
+    let formulaValidation: { isValid: boolean; errors: string[] } | undefined;
 
     const renderToggle = (label: string, checked: boolean, onChange: (next: boolean) => void, description?: string) =>
       h("label", {
