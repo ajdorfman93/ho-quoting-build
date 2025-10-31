@@ -6,6 +6,7 @@ import {
   renderInteractiveTable,
   type ColumnSpec,
   type InteractiveTableProps,
+  type LinkedTableOption,
   formatCountValue,
 } from "@/utils/tableUtils";
 import type { TableMetadata } from "@/utils/schema";
@@ -20,6 +21,7 @@ export interface InteractiveGridProps<T extends Record<string, unknown>> {
   initialColumns: ColumnSpec<T>[];
   users?: Array<{ id: string; name: string; email?: string; avatarUrl?: string }>;
   renderDetails?: (row: T, rowIndex: number) => React.ReactNode;
+  linkedTableOptions?: LinkedTableOption[];
   classNames?: InteractiveTableProps<T>["classNames"];
   onStateChange?: (next: InteractiveGridState<T>) => void;
   hasMoreRows?: boolean;
@@ -240,6 +242,7 @@ export function InteractiveGrid<T extends Record<string, unknown>>({
   initialColumns,
   users,
   renderDetails,
+  linkedTableOptions,
   classNames,
   onStateChange,
   hasMoreRows,
@@ -267,10 +270,7 @@ export function InteractiveGrid<T extends Record<string, unknown>>({
   return renderInteractiveTable<T>({
     rows: state.rows,
     columns: state.columns,
-    linkedTableOptions: tables.map((table) => ({
-      tableName: table.table_name,
-      displayName: table.display_name,
-    })),
+    linkedTableOptions,
     onChange: handleChange,
     users,
     renderDetails,
@@ -306,6 +306,14 @@ export default function InteractiveGridDemo({
   const tableTabsContainerRef = React.useRef<HTMLDivElement | null>(null);
   const tableTabsSortableRef = React.useRef<ReturnType<typeof Sortable.create> | null>(null);
   const latestTablesRef = React.useRef<TableMetadata[]>(tables);
+  const linkedTableOptions = React.useMemo(
+    () =>
+      tables.map((table) => ({
+        tableName: table.table_name,
+        displayName: table.display_name,
+      })),
+    [tables]
+  );
 
   const replaceState = React.useCallback((next: GridState) => {
     const snapshot = cloneState(next);
@@ -850,6 +858,7 @@ export default function InteractiveGridDemo({
           key={activeTable ?? "grid"}
           initialRows={gridState.rows}
           initialColumns={gridState.columns}
+          linkedTableOptions={linkedTableOptions}
           onStateChange={handleStateChange}
           hasMoreRows={gridState.rows.length < totalRows}
           loadingMoreRows={loadingMore}
