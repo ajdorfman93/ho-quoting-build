@@ -330,6 +330,7 @@ async function ensureTableColumns(
       key: string;
       fieldId: string;
       type: string;
+      originalType: string;
       displayName: string;
       position: number;
     }
@@ -391,28 +392,41 @@ async function ensureTableColumns(
           is_nullable,
           updated_at
         )
-        VALUES ($1, $2, $3, 'singleLineText', $4, $5, TRUE, NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW())
         ON CONFLICT (table_name, column_name)
         DO UPDATE SET
           display_name = EXCLUDED.display_name,
+          data_type = EXCLUDED.data_type,
           position = EXCLUDED.position,
           width = EXCLUDED.width,
           updated_at = NOW();
       `,
-      [tableName, column.key, column.displayName, column.position, COLUMN_WIDTH]
+      [
+        tableName,
+        column.key,
+        column.displayName,
+        column.type,
+        column.position,
+        COLUMN_WIDTH,
+      ]
     );
+
+    const typeSettings = JSON.stringify({
+      airtableFieldType: column.originalType,
+      mappedType: column.type,
+    });
 
     await client.query(
       `
         INSERT INTO column_type_settings (table_name, column_name, column_type, settings, updated_at)
-        VALUES ($1, $2, $3, '{}'::jsonb, NOW())
+        VALUES ($1, $2, $3, $4::jsonb, NOW())
         ON CONFLICT (table_name, column_name)
         DO UPDATE SET
           column_type = EXCLUDED.column_type,
           settings = EXCLUDED.settings,
           updated_at = NOW();
       `,
-      [tableName, column.key, column.type]
+      [tableName, column.key, column.type, typeSettings]
     );
   }
 
@@ -433,7 +447,13 @@ async function replaceTableRows(
   columnOrder: string[],
   columnMap: Map<
     string,
-    { key: string; fieldId: string; type: string; displayName: string }
+    {
+      key: string;
+      fieldId: string;
+      type: string;
+      originalType: string;
+      displayName: string;
+    }
   >,
   records: AirtableRecord[]
 ) {
@@ -525,17 +545,23 @@ async function pruneMissingTables(
 function mapFieldTypeToColumnType(fieldType: string): string {
   switch (fieldType) {
     case "singleLineText":
-    case "multilineText":
     case "text":
       return "singleLineText";
+    case "multilineText":
     case "richText":
       return "longText";
+    case "multipleAttachments":
+    case "singleAttachment":
+      return "attachment";
     case "checkbox":
       return "checkbox";
     case "multipleSelects":
       return "multipleSelect";
     case "singleSelect":
       return "singleSelect";
+    case "singleCollaborator":
+    case "multipleCollaborators":
+      return "user";
     case "email":
       return "email";
     case "phoneNumber":
@@ -569,11 +595,16 @@ function mapFieldTypeToColumnType(fieldType: string): string {
       return "createdBy";
     case "lastModifiedBy":
       return "lastModifiedBy";
+    case "singleRecordLink":
     case "multipleRecordLinks":
       return "linkToRecord";
     case "number":
     case "autoNumber":
       return "number";
+    case "barcode":
+    case "button":
+    case "externalSyncSource":
+      return "singleLineText";
     default:
       return "singleLineText";
   }
@@ -621,6 +652,7 @@ export async function syncAirtableBase(options?: {
           key: string;
           fieldId: string;
           type: string;
+          originalType: string;
           displayName: string;
           position: number;
         }
@@ -633,6 +665,7 @@ export async function syncAirtableBase(options?: {
           key,
           fieldId: field.id,
           type: mapFieldTypeToColumnType(field.type),
+          originalType: field.type,
           displayName: field.name,
           position: index + 1,
         });

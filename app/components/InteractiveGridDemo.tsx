@@ -295,6 +295,7 @@ export default function InteractiveGridDemo({
   const [loading, setLoading] = React.useState(false);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [syncing, setSyncing] = React.useState(false);
+  const [airtableSyncing, setAirtableSyncing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const previousStateRef = React.useRef<GridState | null>(null);
@@ -605,25 +606,31 @@ export default function InteractiveGridDemo({
     }, 500);
   }, [activeTable, loading, refreshTable]);
 
+  const fetchTablesList = React.useCallback(async () => {
+    const params = projectTag
+      ? `?projectTag=${encodeURIComponent(projectTag)}`
+      : "";
+    const response = await fetch(`/api/tables${params}`);
+    if (!response.ok) {
+      const message = await response
+        .json()
+        .catch(() => ({ error: "Failed to load tables" }));
+      throw new Error(message?.error ?? response.statusText);
+    }
+    const data = await response.json();
+    const list: TableMetadata[] = data.tables ?? [];
+    setTables(list);
+    latestTablesRef.current = list;
+    return list;
+  }, [projectTag]);
+
   React.useEffect(() => {
     let cancelled = false;
     async function bootstrap() {
       try {
         setLoading(true);
-        const params = projectTag
-          ? `?projectTag=${encodeURIComponent(projectTag)}`
-          : "";
-        const response = await fetch(`/api/tables${params}`);
-        if (!response.ok) {
-          const message = await response
-            .json()
-            .catch(() => ({ error: "Failed to load tables" }));
-          throw new Error(message?.error ?? response.statusText);
-        }
-        const data = await response.json();
+        const list = await fetchTablesList();
         if (cancelled) return;
-        const list: TableMetadata[] = data.tables ?? [];
-        setTables(list);
         if (list.length > 0) {
           await loadTable(list[0].table_name, { showSpinner: false });
         }
@@ -641,7 +648,7 @@ export default function InteractiveGridDemo({
     return () => {
       cancelled = true;
     };
-  }, [loadTable, projectTag]);
+  }, [fetchTablesList, loadTable]);
 
   React.useEffect(() => {
     if (!activeTable) return;
@@ -710,6 +717,65 @@ export default function InteractiveGridDemo({
   React.useEffect(() => {
     latestTablesRef.current = tables;
   }, [tables]);
+
+  const handleSyncWithAirtable = React.useCallback(async () => {
+    if (airtableSyncing) return;
+    setAirtableSyncing(true);
+    try {
+      const params = new URLSearchParams();
+      if (projectTag) {
+        params.set("projectTag", projectTag);
+      }
+      const response = await fetch(
+        `/api/airtable/sync${params.size ? `?${params.toString()}` : ""}`,
+        {
+          method: "POST",
+        }
+      );
+      if (!response.ok) {
+        const message = await response
+          .json()
+          .catch(() => ({ error: "Failed to sync with Airtable" }));
+        throw new Error(message?.error ?? response.statusText);
+      }
+
+      const list = await fetchTablesList();
+      let nextTableName = activeTable ?? null;
+      if (nextTableName) {
+        const stillExists = list.some(
+          (table) => table.table_name === nextTableName
+        );
+        if (!stillExists) {
+          nextTableName = list.length > 0 ? list[0].table_name : null;
+        }
+      } else if (list.length > 0) {
+        nextTableName = list[0].table_name;
+      }
+
+      if (nextTableName) {
+        await loadTable(nextTableName, { showSpinner: true });
+      } else {
+        setActiveTable(null);
+        setGridState(null);
+        setTotalRows(0);
+      }
+    } catch (err) {
+      console.error(err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to sync with Airtable"
+      );
+    } finally {
+      setAirtableSyncing(false);
+    }
+  }, [
+    activeTable,
+    airtableSyncing,
+    fetchTablesList,
+    loadTable,
+    projectTag,
+  ]);
 
   React.useEffect(() => {
     if (tableSelectorVariant !== "tabs") {
@@ -840,15 +906,32 @@ export default function InteractiveGridDemo({
             </select>
           </div>
         )}
-        <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
-          {loading && <span>Loading…</span>}
-          {syncing && !loading && <span>Syncing changes…</span>}
-          {!loading && !syncing && gridState && (
-            <span>
-              Showing {formatCountValue(gridState.rows.length)} of{" "}
-              {formatCountValue(totalRows)} rows
-            </span>
-          )}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleSyncWithAirtable}
+            disabled={airtableSyncing || loading}
+            className={`inline-flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+              airtableSyncing || loading
+                ? "cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-400 dark:border-slate-700/60 dark:bg-slate-800/60 dark:text-slate-500"
+                : "border-blue-500 bg-blue-600 text-white shadow-sm hover:bg-blue-500 dark:border-blue-400 dark:bg-blue-500 dark:hover:bg-blue-400"
+            }`}
+          >
+            {airtableSyncing ? "Syncing..." : "Sync with Airtable"}
+          </button>
+          <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
+            {airtableSyncing && <span>Syncing with Airtable…</span>}
+            {!airtableSyncing && loading && <span>Loading…</span>}
+            {!airtableSyncing && syncing && !loading && (
+              <span>Syncing changes…</span>
+            )}
+            {!airtableSyncing && !loading && !syncing && gridState && (
+              <span>
+                Showing {formatCountValue(gridState.rows.length)} of{" "}
+                {formatCountValue(totalRows)} rows
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
