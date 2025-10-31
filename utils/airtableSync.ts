@@ -69,22 +69,10 @@ async function ensureFetch(): Promise<void> {
       .then((mod) => {
         const globalScope = globalThis as typeof globalThis & {
           fetch?: UndiciModule["fetch"];
-          Headers?: UndiciModule["Headers"];
-          Request?: UndiciModule["Request"];
-          Response?: UndiciModule["Response"];
         };
 
         if (typeof globalScope.fetch !== "function") {
-          globalScope.fetch = mod.fetch as typeof globalScope.fetch;
-        }
-        if (!globalScope.Headers && mod.Headers) {
-          globalScope.Headers = mod.Headers;
-        }
-        if (!globalScope.Request && mod.Request) {
-          globalScope.Request = mod.Request;
-        }
-        if (!globalScope.Response && mod.Response) {
-          globalScope.Response = mod.Response;
+          globalScope.fetch = mod.fetch;
         }
       })
       .catch((error) => {
