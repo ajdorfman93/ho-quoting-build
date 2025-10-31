@@ -4,6 +4,7 @@ export type TableMetadata = {
   table_name: string;
   display_name: string;
   source_file: string | null;
+  project_tag: string;
   created_at: string;
   updated_at: string;
 };

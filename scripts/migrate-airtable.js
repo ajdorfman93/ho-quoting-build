@@ -10,6 +10,9 @@ const dotenv = require("dotenv");
 
 const ROOT_DIR = path.resolve(__dirname, "..");
 const DATA_DIR = path.join(ROOT_DIR, "airtable", "json");
+const projectTags = require("../config/projectTags.json");
+const DEFAULT_PROJECT_TAG = projectTags.defaultApp;
+const AIRTABLE_PROJECT_TAG = projectTags.airtable;
 
 dotenv.config({ path: path.join(ROOT_DIR, ".env.local") });
 
@@ -52,9 +55,20 @@ async function ensureMetaTables(client) {
       table_name TEXT PRIMARY KEY,
       display_name TEXT NOT NULL,
       source_file TEXT,
+      project_tag TEXT NOT NULL DEFAULT '${DEFAULT_PROJECT_TAG}',
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
+  `);
+
+  await client.query(`
+    ALTER TABLE table_metadata
+      ADD COLUMN IF NOT EXISTS project_tag TEXT NOT NULL DEFAULT '${DEFAULT_PROJECT_TAG}';
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_table_metadata_project_tag
+      ON table_metadata (project_tag);
   `);
 
   await client.query(`
@@ -149,14 +163,15 @@ async function migrateSingleTable(client, filePath) {
   // Ensure metadata entries
   await client.query(
     `
-      INSERT INTO table_metadata (table_name, display_name, source_file, created_at, updated_at)
-      VALUES ($1, $2, $3, NOW(), NOW())
+      INSERT INTO table_metadata (table_name, display_name, source_file, project_tag, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, NOW(), NOW())
       ON CONFLICT (table_name)
       DO UPDATE SET display_name = EXCLUDED.display_name,
                     source_file = EXCLUDED.source_file,
+                    project_tag = EXCLUDED.project_tag,
                     updated_at = NOW();
     `,
-    [tableName, displayName, path.relative(ROOT_DIR, filePath)]
+    [tableName, displayName, path.relative(ROOT_DIR, filePath), AIRTABLE_PROJECT_TAG]
   );
 
   await client.query(`

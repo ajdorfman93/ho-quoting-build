@@ -2467,6 +2467,7 @@ const ALL_TYPES: Array<{ value: ColumnType; label: string }> = [
 
 type Selection = { r0: number; c0: number; r1: number; c1: number } | null;
 const ROW_NUMBER_COLUMN_WIDTH = 52;
+const RESIZE_SNAP_THRESHOLD_PX = 5;
 
 export function renderInteractiveTable<T extends Record<string, any> = any>(
   props: InteractiveTableProps<T>
@@ -2717,8 +2718,14 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       });
     }
   }, [columns, colWidths.length, minColumnWidth]);
-  React.useEffect(() => { colWidthsRef.current = colWidths; }, [colWidths]);
-  React.useEffect(() => { rowHeightsRef.current = rowHeights; }, [rowHeights]);
+  React.useEffect(() => {
+    colWidthsRef.current = colWidths;
+    columnOffsetsRef.current = buildColumnOffsets(colWidths, minColumnWidth);
+  }, [colWidths, minColumnWidth]);
+  React.useEffect(() => {
+    rowHeightsRef.current = rowHeights;
+    rowOffsetsRef.current = buildRowOffsets(rowHeights);
+  }, [rowHeights]);
   React.useEffect(() => {
     if (!pendingColumnCommitRef.current) return;
     const nextColumns = pendingColumnCommitRef.current;
@@ -2852,6 +2859,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const tableContainerRef = React.useRef<HTMLDivElement | null>(null);
   const colWidthsRef = React.useRef(colWidths);
   const rowHeightsRef = React.useRef(rowHeights);
+  const columnOffsetsRef = React.useRef(buildColumnOffsets(colWidths, minColumnWidth));
+  const rowOffsetsRef = React.useRef(buildRowOffsets(rowHeights));
   const lastSelectDropdownElementRef = React.useRef<HTMLElement | null>(null);
   const lastRecordDropdownElementRef = React.useRef<HTMLElement | null>(null);
 
@@ -3120,29 +3129,47 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const container = tableContainerRef.current;
     if (!container) return;
     const rect = container.getBoundingClientRect();
-    const relativeX = clientX - rect.left;
-    const left = Math.max(0, Math.min(container.scrollWidth, container.scrollLeft + relativeX));
+    const offsets = columnOffsetsRef.current;
+    const nextOffset = offsets[index + 1] ?? offsets[offsets.length - 1] ?? 0;
+    const edge = Math.max(0, Math.min(container.scrollWidth, ROW_NUMBER_COLUMN_WIDTH + nextOffset));
+    const displayEdge = edge - container.scrollLeft;
+    if (!active) {
+      const pointerX = clientX - rect.left;
+      if (Math.abs(pointerX - displayEdge) > RESIZE_SNAP_THRESHOLD_PX) {
+        setColumnResizeGuide((prev) => (prev && prev.active ? prev : null));
+        return;
+      }
+    }
     let cursor = columnResizeGuide?.cursor ?? container.scrollTop;
     if (typeof clientY === "number") {
       const relativeY = clientY - rect.top;
       cursor = Math.max(0, Math.min(container.scrollHeight, container.scrollTop + relativeY));
     }
-    setColumnResizeGuide({ index, left, active, cursor });
+    setColumnResizeGuide({ index, left: edge, active, cursor });
   }, [columnResizeGuide]);
 
   const updateRowGuidePosition = React.useCallback((index: number, clientY: number, clientX: number | null, active: boolean) => {
     const container = tableContainerRef.current;
     if (!container) return;
     const rect = container.getBoundingClientRect();
-    const relativeY = clientY - rect.top;
-    const top = Math.max(0, Math.min(container.scrollHeight, container.scrollTop + relativeY));
+    const offsets = rowOffsetsRef.current;
+    const nextOffset = offsets[index + 1] ?? offsets[offsets.length - 1] ?? 0;
+    const edge = Math.max(0, Math.min(container.scrollHeight, headerHeight + nextOffset));
+    const displayEdge = edge - container.scrollTop;
+    if (!active) {
+      const pointerY = clientY - rect.top;
+      if (Math.abs(pointerY - displayEdge) > RESIZE_SNAP_THRESHOLD_PX) {
+        setRowResizeGuide((prev) => (prev && prev.active ? prev : null));
+        return;
+      }
+    }
     let cursor = rowResizeGuide?.cursor ?? container.scrollLeft;
     if (typeof clientX === "number") {
       const relativeX = clientX - rect.left;
       cursor = Math.max(0, Math.min(container.scrollWidth, container.scrollLeft + relativeX));
     }
-    setRowResizeGuide({ index, top, active, cursor });
-  }, [rowResizeGuide]);
+    setRowResizeGuide({ index, top: edge, active, cursor });
+  }, [headerHeight, rowResizeGuide]);
 
   const headerMenuState = headerMenu.menu;
   const closeHeaderMenu = headerMenu.close;
@@ -3506,6 +3533,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   function startColResize(idx: number, e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    columnSortableRef.current?.option("disabled", true);
     const startX = e.clientX;
     const startW = colWidths[idx];
     setColumnResizeHover(idx);
@@ -3516,6 +3544,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         const next = w.slice();
         next[idx] = clamp(startW + dx, minColumnWidth, 800);
         colWidthsRef.current = next;
+        columnOffsetsRef.current = buildColumnOffsets(next, minColumnWidth);
         return next;
       });
       updateColumnGuidePosition(idx, ev.clientX, ev.clientY, true);
@@ -3523,6 +3552,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     function onUp() {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      columnSortableRef.current?.option("disabled", false);
       // persist column width on spec
       const nextCols = deepClone(columns);
       nextCols[idx].width = colWidthsRef.current[idx];
@@ -3538,6 +3568,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   /* Resize rows */
   function startRowResize(idx: number, e: React.MouseEvent) {
     e.preventDefault();
+    rowSortableRef.current?.option("disabled", true);
     const startY = e.clientY;
     const startH = rowHeights[idx];
     setRowResizeHover(idx);
@@ -3548,6 +3579,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         const next = h.slice();
         next[idx] = clamp(startH + dy, minRowHeight, 400);
         rowHeightsRef.current = next;
+        rowOffsetsRef.current = buildRowOffsets(next);
         return next;
       });
       updateRowGuidePosition(idx, ev.clientY, ev.clientX, true);
@@ -3555,6 +3587,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     function onUp() {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      rowSortableRef.current?.option("disabled", false);
       setRowResizeGuide(null);
       setRowResizeHover(null);
     }
@@ -5005,14 +5038,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   }, [visibleRowIndexes, rowHeights, minRowHeight]);
   const totalVisibleRowHeight = visibleRowOffsets[visibleRowOffsets.length - 1] ?? 0;
 
-  const columnOffsets = React.useMemo(() => {
-    const offsets: number[] = new Array(colWidths.length + 1);
-    offsets[0] = 0;
-    for (let i = 0; i < colWidths.length; i++) {
-      offsets[i + 1] = offsets[i] + (colWidths[i] ?? minColumnWidth);
-    }
-    return offsets;
-  }, [colWidths, minColumnWidth]);
+  const columnOffsets = React.useMemo(() => buildColumnOffsets(colWidths, minColumnWidth), [colWidths, minColumnWidth]);
   const totalColumnWidth = columnOffsets[columnOffsets.length - 1] ?? 0;
 
   const overscanPx = Math.max(0, virtualizationOverscan ?? 0);
@@ -5069,8 +5095,22 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       selectAllCheckboxRef.current.indeterminate = selectAllIndeterminate;
     }
   }, [selectAllIndeterminate]);
-  const columnHandleTop = columnResizeGuide ? Math.max(0, Math.min(resizeGuideContainerHeight - 25, (columnResizeGuide.cursor ?? viewport.scrollTop) - 12)) : 0;
-  const rowHandleLeft = rowResizeGuide ? Math.max(0, Math.min(resizeGuideContainerWidth - 25, (rowResizeGuide.cursor ?? viewport.scrollLeft) - 12)) : 0;
+  const columnGuideLeft = columnResizeGuide ? columnResizeGuide.left - viewport.scrollLeft : null;
+  const safeColumnGuideLeft = columnGuideLeft != null
+    ? Math.max(0, Math.min(resizeGuideContainerWidth, columnGuideLeft))
+    : null;
+  const columnCursorOffset = columnResizeGuide ? columnResizeGuide.cursor - viewport.scrollTop : null;
+  const columnHandleTop = columnCursorOffset != null
+    ? Math.max(0, Math.min(resizeGuideContainerHeight - 25, columnCursorOffset - 12))
+    : 0;
+  const rowGuideTop = rowResizeGuide ? rowResizeGuide.top - viewport.scrollTop : null;
+  const safeRowGuideTop = rowGuideTop != null
+    ? Math.max(0, Math.min(resizeGuideContainerHeight, rowGuideTop))
+    : null;
+  const rowCursorOffset = rowResizeGuide ? rowResizeGuide.cursor - viewport.scrollLeft : null;
+  const rowHandleLeft = rowCursorOffset != null
+    ? Math.max(0, Math.min(resizeGuideContainerWidth - 25, rowCursorOffset - 12))
+    : 0;
 
   /* Row & column ids for React keys */
   const rowKey = (row: T, idx: number) => String(getRowId?.(row, idx) ?? idx);
@@ -5604,30 +5644,30 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   /* ---- render grid ---- */
 
   // Header row
-  const columnResizeGuideLine = columnResizeGuide ? h(React.Fragment, null,
+  const columnResizeGuideLine = columnResizeGuide && safeColumnGuideLeft != null ? h(React.Fragment, null,
     h("div", {
       className: mergeClasses(
         "pointer-events-none absolute top-0 bottom-0 w-[2.5px]",
         columnResizeGuide.active ? "bg-blue-500/90" : "bg-blue-400/70"
       ),
-      style: { left: `${columnResizeGuide.left - 1.25}px` }
+      style: { left: `${safeColumnGuideLeft - 1.25}px` }
     }),
     h("div", {
       className: "pointer-events-none absolute rounded-full bg-blue-500",
-      style: { left: `${columnResizeGuide.left - 2}px`, top: `${columnHandleTop}px`, width: "4px", height: "25px" }
+      style: { left: `${safeColumnGuideLeft - 2}px`, top: `${columnHandleTop}px`, width: "4px", height: "25px" }
     })
   ) : null;
-  const rowResizeGuideLine = rowResizeGuide ? h(React.Fragment, null,
+  const rowResizeGuideLine = rowResizeGuide && safeRowGuideTop != null ? h(React.Fragment, null,
     h("div", {
       className: mergeClasses(
         "pointer-events-none absolute left-0 right-0 h-[2.5px]",
         rowResizeGuide.active ? "bg-blue-500/90" : "bg-blue-400/70"
       ),
-      style: { top: `${rowResizeGuide.top - 1.25}px` }
+      style: { top: `${safeRowGuideTop - 1.25}px` }
     }),
     h("div", {
       className: "pointer-events-none absolute rounded-full bg-blue-500",
-      style: { top: `${rowResizeGuide.top - 2}px`, left: `${rowHandleLeft}px`, width: "25px", height: "4px" }
+      style: { top: `${safeRowGuideTop - 2}px`, left: `${rowHandleLeft}px`, width: "25px", height: "4px" }
     })
   ) : null;
 
@@ -8435,6 +8475,28 @@ function sum(arr: number[], start: number, end: number) {
   let s = 0;
   for (let i = start; i < end; i++) s += arr[i] || 0;
   return s;
+}
+
+function buildColumnOffsets(widths: number[], minWidth: number) {
+  const offsets: number[] = new Array(widths.length + 1);
+  offsets[0] = 0;
+  for (let i = 0; i < widths.length; i += 1) {
+    const width = widths[i];
+    const value = Number.isFinite(width) ? (width as number) : minWidth;
+    offsets[i + 1] = offsets[i] + (value ?? minWidth);
+  }
+  return offsets;
+}
+
+function buildRowOffsets(heights: number[]) {
+  const offsets: number[] = new Array(heights.length + 1);
+  offsets[0] = 0;
+  for (let i = 0; i < heights.length; i += 1) {
+    const height = heights[i];
+    const value = Number.isFinite(height) ? (height as number) : 0;
+    offsets[i + 1] = offsets[i] + value;
+  }
+  return offsets;
 }
 
 function lowerBound(arr: number[], value: number) {

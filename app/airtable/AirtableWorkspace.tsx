@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import InteractiveGridDemo from "../components/InteractiveGridDemo";
+import projectTags from "@/config/projectTags.json";
 
 export default function AirtableWorkspace() {
   return (
@@ -54,7 +55,10 @@ export default function AirtableWorkspace() {
             </div>
           </aside>
           <div className="rounded-3xl border border-slate-700/60 bg-[#0c172e]/80 p-6 shadow-[0_26px_70px_rgba(1,5,22,0.55)]">
-            <InteractiveGridDemo tableSelectorVariant="tabs" />
+            <InteractiveGridDemo
+              projectTag={projectTags.airtable}
+              tableSelectorVariant="tabs"
+            />
           </div>
         </div>
       </section>

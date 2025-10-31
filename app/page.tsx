@@ -1,6 +1,7 @@
 "use client";
 
 import InteractiveGridDemo from "./components/InteractiveGridDemo";
+import projectTags from "@/config/projectTags.json";
 
 export default function Home() {
   return (
@@ -20,7 +21,7 @@ export default function Home() {
           </p>
         </header>
         <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-neutral-700 dark:bg-neutral-950/80">
-          <InteractiveGridDemo />
+          <InteractiveGridDemo projectTag={projectTags.defaultApp} />
         </div>
       </section>
     </main>

@@ -49,6 +49,7 @@ type GridDiff = {
 };
 
 interface InteractiveGridDemoProps {
+  projectTag?: string;
   tableSelectorVariant?: "dropdown" | "tabs";
 }
 
@@ -283,6 +284,7 @@ export function InteractiveGrid<T extends Record<string, unknown>>({
 }
 
 export default function InteractiveGridDemo({
+  projectTag,
   tableSelectorVariant = "dropdown",
 }: InteractiveGridDemoProps = {}) {
   const tableLabelId = React.useId();
@@ -608,7 +610,10 @@ export default function InteractiveGridDemo({
     async function bootstrap() {
       try {
         setLoading(true);
-        const response = await fetch("/api/tables");
+        const params = projectTag
+          ? `?projectTag=${encodeURIComponent(projectTag)}`
+          : "";
+        const response = await fetch(`/api/tables${params}`);
         if (!response.ok) {
           const message = await response
             .json()
@@ -636,7 +641,7 @@ export default function InteractiveGridDemo({
     return () => {
       cancelled = true;
     };
-  }, [loadTable]);
+  }, [loadTable, projectTag]);
 
   React.useEffect(() => {
     if (!activeTable) return;

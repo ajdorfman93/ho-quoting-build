@@ -134,9 +134,24 @@ async function fetchColumnMetadata(
   return mapColumnMetadataRows(rows);
 }
 
-export async function listTables(): Promise<TableMetadata[]> {
+export async function listTables(options?: {
+  projectTag?: string;
+}): Promise<TableMetadata[]> {
+  const projectTag = options?.projectTag ?? null;
+  const baseQuery = `
+    SELECT table_name, display_name, source_file, project_tag, created_at, updated_at
+    FROM table_metadata
+  `;
+  if (projectTag) {
+    const { rows } = await query<TableMetadata>(
+      `${baseQuery} WHERE project_tag = $1 ORDER BY display_name ASC;`,
+      [projectTag]
+    );
+    return rows;
+  }
+
   const { rows } = await query<TableMetadata>(
-    `SELECT table_name, display_name, source_file, created_at, updated_at FROM table_metadata ORDER BY display_name ASC;`
+    `${baseQuery} ORDER BY display_name ASC;`
   );
   return rows;
 }
@@ -157,7 +172,7 @@ export async function getTableData(
   const [tableResult, columnRows, rowsResult, countResult] = await Promise.all([
     query<TableMetadata>(
       `
-        SELECT table_name, display_name, source_file, created_at, updated_at
+        SELECT table_name, display_name, source_file, project_tag, created_at, updated_at
         FROM table_metadata
         WHERE table_name = $1;
       `,
