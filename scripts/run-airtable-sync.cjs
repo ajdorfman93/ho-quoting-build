@@ -34,6 +34,7 @@ async function main() {
   });
 
   console.log(JSON.stringify(result, null, 2));
+  exit(0);
 }
 
 main().catch((error) => {
