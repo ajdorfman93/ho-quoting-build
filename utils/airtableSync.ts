@@ -67,12 +67,10 @@ async function ensureFetch(): Promise<void> {
   if (!fetchReady) {
     fetchReady = import("undici")
       .then((mod) => {
-        const globalScope = globalThis as typeof globalThis & {
-          fetch?: UndiciModule["fetch"];
-        };
-
-        if (typeof globalScope.fetch !== "function") {
-          globalScope.fetch = mod.fetch;
+        const globalScope = globalThis as unknown as Record<string, unknown>;
+        const maybeFetch = globalScope["fetch"];
+        if (typeof maybeFetch !== "function") {
+          globalScope["fetch"] = mod.fetch as unknown;
         }
       })
       .catch((error) => {
