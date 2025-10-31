@@ -221,8 +221,28 @@
     54.  npm install sortablejs was run to install sortablejs package for drag and drop functionality. Update in table utils the drag and drop function to reorder table tabs, columns, and rows using sortablejs for better performance and reliability. the dropdown for table selection should remain unchanged.
     55.  fix in tableUtils.ts the issue where a column type single select or multiple select after typing in the input anything and 'No options found' or if no match was found in the existing options list when editing a cell. a plus button should appear to allow the user to create a new option by clicking a plus button next to the input field. this will add the new option to the list and select it.
     56.  add in tableUtils from https://github.com/SortableJS/react-sortablejs MultiDrag, and make the whole thing more animated and smooth. include multi-drag functionality for rows and columns in the table component using React-SortableJS. this allows users to select multiple rows or columns and drag them together to reorder. ensure that the multi-drag functionality is intuitive and provides visual feedback during the drag operation. show tabs and columns swap animation. now everything just jumps to the new position. make it smooth animated transition to the new position.
-    57.  fix in tableUtils.ts the issue where column type single select or multiple select cell editor dropdown should show the plus button usable to add a new option when no existing options match the user's input. now it only appears when there is no match found. but there could be partial matches. so always show the plus button to add a new option when typing in the input field unless there is an exact match in the existing options. 
-    58.  fix in tableUtils.ts the issue for column type single select or multiple select cell editor dropdown should always show the plus button. but disable the plus button when there is an exact match in the existing options. so the user can always add a new option unless it already exists. when disabled, show a tooltip on hover explaining that the option already exists.
-    59.  fix in tableUtils.ts the issue for column type single select or multiple select cell editor dropdown doesn't allow the user to backspace to delete their input.
-    now when the user types in the input field, they cannot backspace to delete their input. fix this issue to allow backspacing and deleting input.
-    60.  add in tableUtils.ts for column type single select or multiple select cell editor dropdown a minus button next to each existing option to allow the user to delete that option from the list. when an option is deleted, it should be removed from all records that had that option selected. show a confirmation modal before deleting an option to prevent accidental deletions.
+    57.  Unified requirements (Single-Select & Multi-Select)
+            Add (“+”) button behavior
+            Always render the Add button while the user is typing.
+                Disable Add only when there’s an exact (trimmed, case-insensitive) match with an existing option.
+                When disabled, show a tooltip: “This option already exists.”
+            Matching rules
+                Exact match disables Add.
+                Partial matches do not disable Add. (The button still shows and is enabled.)
+            Backspace & editing
+            Input must be fully editable: user can backspace/delete freely.
+            Avoid preventDefault() on Backspace in any key handler bound to the editor input.
+            Respect IME composition (don’t run filtering/matching until compositionend).
+            Delete (“−”) per option
+            Show a Delete button next to each existing option.
+            On click, show a confirmation modal:
+            “Delete option ‘X’ from this field? It will be removed from all records that use it.”
+            On confirm:
+            Remove the option from the column’s option set.
+            Cascade across records:
+            Single-select: if record has that option, set to null (or column default if you have one).
+            Multi-select: remove that value from the array (drop empty arrays to []).
+            Consider permission checks, undo/restore if your app supports it, and log analytics.
+    58.  fix the Formula Field Configuration editor has no input for custom formulas. add a text area input for entering custom formulas in the Formula Field Configuration editor in tableUtils.ts. and support basic formula syntax highlighting and validation. 
+    59.  add in tableUtils.ts support for processing formulas in the Formula column type. implement a basic formula parser and evaluator that can handle functions and operations used in column formulas. ensure that formulas are recalculated automatically when dependent fields are updated.
+    find all formulas to support: https://support.microsoft.com/en-us/office/excel-functions-alphabetical-b3944572-255d-4efb-bb96-c6d90033e188
