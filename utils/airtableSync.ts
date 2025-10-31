@@ -2,7 +2,7 @@
 
 import { randomUUID } from "crypto";
 import type { PoolClient } from "pg";
-import projectTags from "../config/projectTags.json";
+import projectTags from "../config/projectTags.json" assert { type: "json" };
 import { ensureExtensions } from "./db";
 import { withTransaction } from "./db";
 import { emitTableChange } from "./realtime";
@@ -40,7 +40,11 @@ export type AirtableSyncResult = {
 };
 
 const AIRTABLE_API_BASE = "https://api.airtable.com/v0";
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID ?? "appIBydxpXuSdssZW";
+const DEFAULT_AIRTABLE_BASE_ID = "appIBydxpXuSdssZW";
+const AIRTABLE_BASE_ID =
+  process.env.AIRTABLE_BASE_ID ??
+  process.env.BASE_ID ??
+  DEFAULT_AIRTABLE_BASE_ID;
 const AIRTABLE_TOKEN =
   process.env.AIRTABLE_ACCESS_TOKEN ??
   process.env.AIRTABLE_PAT ??
@@ -50,6 +54,85 @@ const AIRTABLE_TOKEN =
 
 const COLUMN_WIDTH = 220;
 const DEFAULT_TABLE_PROJECT_TAG = projectTags.airtable;
+
+type UndiciModule = typeof import("undici");
+
+let fetchReady: Promise<void> | null = null;
+
+async function ensureFetch(): Promise<void> {
+  if (typeof fetch === "function") {
+    return;
+  }
+
+  if (!fetchReady) {
+    fetchReady = import("undici")
+      .then((mod) => {
+        const globalScope = globalThis as typeof globalThis & {
+          fetch?: UndiciModule["fetch"];
+          Headers?: UndiciModule["Headers"];
+          Request?: UndiciModule["Request"];
+          Response?: UndiciModule["Response"];
+        };
+
+        if (typeof globalScope.fetch !== "function") {
+          globalScope.fetch = mod.fetch as typeof globalScope.fetch;
+        }
+        if (!globalScope.Headers && mod.Headers) {
+          globalScope.Headers = mod.Headers;
+        }
+        if (!globalScope.Request && mod.Request) {
+          globalScope.Request = mod.Request;
+        }
+        if (!globalScope.Response && mod.Response) {
+          globalScope.Response = mod.Response;
+        }
+      })
+      .catch((error) => {
+        fetchReady = null;
+        throw new Error(
+          `Global fetch is not available and failed to load undici: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      });
+  }
+
+  await fetchReady;
+}
+
+async function fetchJson<T>(input: string | URL, token: string): Promise<T> {
+  await ensureFetch();
+
+  const response = await fetch(input, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+  });
+
+  const body = await response.text();
+  const target = input instanceof URL ? input.toString() : String(input);
+
+  if (!response.ok) {
+    throw new Error(
+      `HTTP ${response.status} ${response.statusText}\nURL: ${target}\nBody: ${
+        body || "<empty>"
+      }`
+    );
+  }
+
+  if (!body) {
+    return {} as T;
+  }
+
+  try {
+    return JSON.parse(body) as T;
+  } catch {
+    throw new Error(
+      `Failed to parse JSON from Airtable.\nURL: ${target}\nBody: ${body}`
+    );
+  }
+}
 
 function assertToken(): string {
   if (!AIRTABLE_TOKEN) {
@@ -133,26 +216,24 @@ async function fetchAirtableTables(
   baseId: string,
   token: string
 ): Promise<AirtableTable[]> {
-  const response = await fetch(
-    `${AIRTABLE_API_BASE}/meta/bases/${baseId}/tables`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    }
-  );
+  const url = `${AIRTABLE_API_BASE}/meta/bases/${encodeURIComponent(
+    baseId
+  )}/tables`;
+  const payload = await fetchJson<{ tables?: AirtableTable[] }>(url, token);
 
-  if (!response.ok) {
-    const message = await response.text();
+  const maybeTables = (payload as { tables?: unknown }).tables;
+
+  if (!Array.isArray(maybeTables)) {
     throw new Error(
-      `Failed to load Airtable metadata (${response.status}): ${message}`
+      `Unexpected response when loading Airtable metadata.\nURL: ${url}\nPayload: ${JSON.stringify(
+        payload,
+        null,
+        2
+      )}`
     );
   }
 
-  const payload = (await response.json()) as { tables: AirtableTable[] };
-  return payload.tables ?? [];
+  return maybeTables as AirtableTable[];
 }
 
 async function fetchAirtableRecords(
@@ -165,31 +246,34 @@ async function fetchAirtableRecords(
   const records: AirtableRecord[] = [];
 
   do {
-    const url = new URL(`${AIRTABLE_API_BASE}/${baseId}/${tableId}`);
+    const url = new URL(
+      `${AIRTABLE_API_BASE}/${encodeURIComponent(
+        baseId
+      )}/${encodeURIComponent(tableId)}`
+    );
     url.searchParams.set("pageSize", "100");
     if (offset) {
       url.searchParams.set("offset", offset);
     }
 
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    });
+    const payload = await fetchJson<{
+      records?: AirtableRecord[];
+      offset?: string;
+    }>(url, token);
 
-    if (!response.ok) {
-      const message = await response.text();
+    if (
+      payload &&
+      Object.prototype.hasOwnProperty.call(payload, "records") &&
+      !Array.isArray(payload.records)
+    ) {
       throw new Error(
-        `Failed to load records for ${tableId} (${response.status}): ${message}`
+        `Unexpected records payload for table ${tableId}.\nURL: ${url.toString()}\nPayload: ${JSON.stringify(
+          payload,
+          null,
+          2
+        )}`
       );
     }
-
-    const payload = (await response.json()) as {
-      records: AirtableRecord[];
-      offset?: string;
-    };
 
     if (payload.records?.length) {
       records.push(...payload.records);
@@ -199,7 +283,7 @@ async function fetchAirtableRecords(
     if (logger) {
       logger(
         `Fetched ${records.length} records for table ${tableId}${
-          offset ? "…" : ""
+          offset ? "..." : ""
         }`
       );
     }
@@ -207,7 +291,6 @@ async function fetchAirtableRecords(
 
   return records;
 }
-
 function sanitizeValue(value: unknown): string | null {
   if (value === null || value === undefined) return null;
   if (Array.isArray(value)) {
@@ -585,3 +668,4 @@ export async function syncAirtableBase(options?: {
 
   return { baseId, projectTag, tables: summary };
 }
+
