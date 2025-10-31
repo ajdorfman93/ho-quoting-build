@@ -3001,7 +3001,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       dragClass: SORTABLE_DRAG_CLASS,
       fallbackTolerance: 4,
       draggable: "[data-header-cell='true']",
-      handle: "[data-header-cell='true']",
+      handle: "[data-col-drag-handle='true']",
       filter:
         "[data-resize-handle='true'], [data-header-menu-trigger='true'], input, textarea, select, button, [contenteditable='true']",
       onEnd: () => {
@@ -5854,6 +5854,16 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
               }, h(FaChevronDown, { className: "h-3.5 w-3.5" }))
             );
           })(),
+      // column drag handle (separate from resize handle to avoid conflicts)
+      h("div", {
+        key: `col-drag-handle-${c}`,
+        className: "absolute left-1 top-1/2 -translate-y-1/2 h-4 w-3 cursor-grab rounded",
+        title: "Drag to reorder column",
+        "data-col-drag-handle": "true",
+        onMouseDown: (e: React.MouseEvent) => {
+          e.stopPropagation();
+        }
+      }),
       // header resizer
       h("div", {
         className: mergeClasses(
