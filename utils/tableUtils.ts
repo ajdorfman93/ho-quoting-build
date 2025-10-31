@@ -624,6 +624,11 @@ export interface ColumnSpec<T extends Record<string, any> = any> {
   readOnly?: boolean; // formula/rollup/lookup and system fields default to true
 }
 
+export type LinkedTableOption = {
+  tableName: string;
+  displayName: string;
+};
+
 /* -----------------------------------------------------------
  * Formula utilities (tokenizer, highlighting, validation)
  * ---------------------------------------------------------*/
@@ -1710,6 +1715,8 @@ export interface InteractiveTableProps<T extends Record<string, any> = any> {
   rows: T[];
   /** Columns (can be re-ordered/renamed) */
   columns: ColumnSpec<T>[];
+  /** Tables available for linked-record configuration */
+  linkedTableOptions?: LinkedTableOption[];
   /** Unique row id */
   getRowId?: (row: T, idx: number) => string | number;
   /** Called on any data structure change (rows/columns) */
@@ -2471,6 +2478,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   {
     rows: initialRows,
     columns: initialColumns,
+    linkedTableOptions = [],
     getRowId,
     onChange,
     renderDetails,
@@ -7103,14 +7111,24 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     };
 
     const buildLinkToRecordContent = () => {
+      const linkedTables = Array.isArray(linkedTableOptions)
+        ? linkedTableOptions.filter(
+            (table): table is LinkedTableOption =>
+              Boolean(table) && typeof table.tableName === "string"
+          )
+        : [];
       const defaultViews = [
         { id: "", name: "All views" },
         { id: "default", name: "Default view" },
         { id: "doors-staging", name: "Doors Staging" }
       ];
       const existing = draftConfig.linkToRecord ?? {};
+      const normalizedTarget =
+        typeof existing.targetTable === "string" && existing.targetTable.trim()
+          ? existing.targetTable.trim()
+          : "";
       const linkConfig = {
-        targetTable: existing.targetTable ?? "File Uploads",
+        targetTable: normalizedTarget || "File Uploads",
         multiple: existing.multiple ?? true,
         limitToViewId: existing.limitToViewId ?? null,
         filter: existing.filter ?? null,
@@ -7118,13 +7136,48 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         allowCreate: existing.allowCreate ?? true,
         views: Array.isArray(existing.views) && existing.views.length ? existing.views : defaultViews
       };
+      const optionMap = new Map<string, { tableName: string; displayName: string }>();
+      for (const table of linkedTables) {
+        const key = table.tableName.trim();
+        if (!key) continue;
+        const label =
+          typeof table.displayName === "string" && table.displayName.trim()
+            ? table.displayName.trim()
+            : key;
+        if (!optionMap.has(key)) {
+          optionMap.set(key, { tableName: key, displayName: label });
+        }
+      }
+      for (const col of columns) {
+        const candidate = col.config?.linkToRecord?.targetTable;
+        if (typeof candidate !== "string") continue;
+        const key = candidate.trim();
+        if (!key || optionMap.has(key)) continue;
+        optionMap.set(key, { tableName: key, displayName: key });
+      }
+      if (linkConfig.targetTable && !optionMap.has(linkConfig.targetTable)) {
+        const key = linkConfig.targetTable;
+        optionMap.set(key, { tableName: key, displayName: key });
+      }
+      if (!optionMap.size) {
+        optionMap.set("File Uploads", { tableName: "File Uploads", displayName: "File Uploads" });
+      }
+      const tableOptions = Array.from(optionMap.values()).sort((a, b) =>
+        a.displayName.localeCompare(b.displayName)
+      );
+      const selectedTarget =
+        tableOptions.find((option) => option.tableName === linkConfig.targetTable)?.tableName ??
+        tableOptions[0]?.tableName ??
+        linkConfig.targetTable ??
+        "File Uploads";
       const setLinkConfig = (partial: Partial<typeof linkConfig>) => {
         updateFieldConfigDraft((config) => {
           const next = { ...(config.linkToRecord ?? {}) };
           const ensuredViews = Array.isArray(next.views) && next.views.length ? next.views : linkConfig.views;
           Object.assign(next, partial);
           if (typeof partial.targetTable === "string") {
-            next.targetTable = partial.targetTable;
+            const trimmed = partial.targetTable.trim();
+            next.targetTable = trimmed || selectedTarget;
           }
           if (!next.views || !next.views.length) {
             next.views = ensuredViews;
@@ -7152,49 +7205,24 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           setLinkConfig({ filter: { summary: trimmed } });
         }
       };
-      const targetTableSuggestions = Array.from(
-        new Set(
-          [
-            typeof linkConfig.targetTable === "string" ? linkConfig.targetTable.trim() : "",
-            ...columns
-              .map((col) => {
-                const candidate = col.config?.linkToRecord?.targetTable;
-                return typeof candidate === "string" ? candidate.trim() : "";
-              }),
-            "Projects",
-            "Hardware Items",
-            "Hardware Sets",
-            "Submittals",
-            "File Uploads"
-          ].filter((value): value is string => Boolean(value))
-        )
-      );
-      const targetTableDatalistId = `link-target-table-options-${columnIndex}`;
       return h("div", { className: "space-y-4" },
         h("div", { className: "space-y-2" },
           h("label", { className: "flex flex-col gap-1 text-sm" },
             h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Target table"),
-            h("input", {
-              type: "text",
-              list: targetTableSuggestions.length ? targetTableDatalistId : undefined,
-              placeholder: "Select a table",
-              value: linkConfig.targetTable,
-              onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
-                setLinkConfig({ targetTable: event.currentTarget.value });
-              },
-              onBlur: (event: React.FocusEvent<HTMLInputElement>) => {
-                const trimmed = event.currentTarget.value.trim();
-                setLinkConfig({ targetTable: trimmed || "File Uploads" });
-              },
-              className: "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-            })
-          ),
-          targetTableSuggestions.length
-            ? h("datalist", { id: targetTableDatalistId },
-                ...targetTableSuggestions.map((name) => h("option", { key: name, value: name }))
+            h("select", {
+              className: "rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100",
+              value: selectedTarget,
+              onChange: (event: React.ChangeEvent<HTMLSelectElement>) => {
+                const value = event.currentTarget.value;
+                setLinkConfig({ targetTable: value || selectedTarget });
+              }
+            },
+              ...tableOptions.map((option) =>
+                h("option", { key: option.tableName, value: option.tableName }, option.displayName)
               )
-            : null,
-          h("p", { className: "text-xs text-zinc-500 dark:text-neutral-400" }, "Type a table name or pick from suggestions.")
+            )
+          ),
+          h("p", { className: "text-xs text-zinc-500 dark:text-neutral-400" }, "Loaded from Neon metadata; table display names stay in sync automatically.")
         ),
         renderToggle("Allow linking to multiple records", Boolean(linkConfig.multiple), (next) => setLinkConfig({ multiple: next })),
         h("label", { className: "flex flex-col gap-1 text-sm" },

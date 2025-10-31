@@ -57,7 +57,7 @@ function cloneState(state: GridState): GridState {
     rows: state.rows.map((row) => ({ ...row })),
     columns: state.columns.map((column) => ({
       ...column,
-      config: column.config ? { ...column.config } : undefined,
+      config: column.config ? JSON.parse(JSON.stringify(column.config)) : undefined,
     })),
   };
 }
@@ -267,6 +267,10 @@ export function InteractiveGrid<T extends Record<string, unknown>>({
   return renderInteractiveTable<T>({
     rows: state.rows,
     columns: state.columns,
+    linkedTableOptions: tables.map((table) => ({
+      tableName: table.table_name,
+      displayName: table.display_name,
+    })),
     onChange: handleChange,
     users,
     renderDetails,
@@ -333,7 +337,7 @@ export default function InteractiveGridDemo({
           columns: (data.columns ?? []).map(
             (column: ColumnSpec<TableRow>) => ({
               ...column,
-              config: column.config ? { ...column.config } : undefined,
+              config: column.config ? JSON.parse(JSON.stringify(column.config)) : undefined,
             })
           ),
         };
@@ -374,6 +378,10 @@ export default function InteractiveGridDemo({
 
   const applyColumnChanges = React.useCallback(
     async (tableName: string, diff: GridDiff) => {
+      const serializeConfig = (
+        config: ColumnSpec<TableRow>["config"] | undefined
+      ) => (config ? JSON.parse(JSON.stringify(config)) : {});
+
       for (const key of diff.removedColumnKeys) {
         await sendJSON(
           `/api/tables/${tableName}/columns/${encodeURIComponent(key)}`,
@@ -388,7 +396,7 @@ export default function InteractiveGridDemo({
           body: JSON.stringify({
             name: column.name ?? "New column",
             type: column.type,
-            config: column.config ?? {},
+            config: serializeConfig(column.config),
             width: column.width ?? 220,
             position: Math.max(1, diff.columnOrder.indexOf(column.key) + 1),
             clientKey: column.key,
@@ -404,7 +412,7 @@ export default function InteractiveGridDemo({
             body: JSON.stringify({
               name: column.name,
               type: column.type,
-              config: column.config ?? {},
+              config: serializeConfig(column.config),
               width: column.width ?? 220,
             }),
           }
@@ -560,7 +568,7 @@ export default function InteractiveGridDemo({
         columns: (data.columns ?? gridState.columns).map(
           (column: ColumnSpec<TableRow>) => ({
             ...column,
-            config: column.config ? { ...column.config } : undefined,
+            config: column.config ? JSON.parse(JSON.stringify(column.config)) : undefined,
           })
         ),
       };
