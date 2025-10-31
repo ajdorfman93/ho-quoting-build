@@ -5099,7 +5099,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const safeColumnGuideLeft = columnGuideLeft != null
     ? Math.max(0, Math.min(resizeGuideContainerWidth, columnGuideLeft))
     : null;
-  const columnCursorOffset = columnResizeGuide ? columnResizeGuide.cursor - viewport.scrollTop : null;
+  const columnCursorOffset =
+    columnResizeGuide?.cursor != null
+      ? columnResizeGuide.cursor - viewport.scrollTop
+      : null;
   const columnHandleTop = columnCursorOffset != null
     ? Math.max(0, Math.min(resizeGuideContainerHeight - 25, columnCursorOffset - 12))
     : 0;
@@ -5107,7 +5110,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const safeRowGuideTop = rowGuideTop != null
     ? Math.max(0, Math.min(resizeGuideContainerHeight, rowGuideTop))
     : null;
-  const rowCursorOffset = rowResizeGuide ? rowResizeGuide.cursor - viewport.scrollLeft : null;
+  const rowCursorOffset =
+    rowResizeGuide?.cursor != null
+      ? rowResizeGuide.cursor - viewport.scrollLeft
+      : null;
   const rowHandleLeft = rowCursorOffset != null
     ? Math.max(0, Math.min(resizeGuideContainerWidth - 25, rowCursorOffset - 12))
     : 0;

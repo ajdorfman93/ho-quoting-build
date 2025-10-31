@@ -368,7 +368,7 @@ async function replaceTableRows(
     const placeholders: string[] = [];
 
     slice.forEach((record, sliceIndex) => {
-      const rowValues = [randomUUID()];
+      const rowValues: Array<string | null> = [randomUUID()];
       for (const fieldName of columnOrder) {
         const column = columnMap.get(fieldName);
         if (!column) {
