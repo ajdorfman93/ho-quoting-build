@@ -94,6 +94,7 @@ async function fetchJson<T>(input: string | URL, token: string): Promise<T> {
   const response = await fetch(input, {
     headers: {
       Authorization: `Bearer ${token}`,
+      Accept: "application/json",
     },
     cache: "no-store",
   });
