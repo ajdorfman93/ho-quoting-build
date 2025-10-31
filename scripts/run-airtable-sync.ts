@@ -1,16 +1,25 @@
-"use strict";
+#!/usr/bin/env node
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { syncAirtableBase } = require("../utils/airtableSync");
+import { argv, exit } from "node:process";
+import { syncAirtableBase } from "../utils/airtableSync.ts";
 
 async function main() {
+  const baseIdArg =
+    argv.find((value) => value.startsWith("--baseId="))?.split("=")[1] ?? null;
+  const projectTagArg =
+    argv
+      .find((value) => value.startsWith("--projectTag="))
+      ?.split("=")[1] ?? null;
+
   const result = await syncAirtableBase({
-    baseId: "appIBydxpXuSdssZW",
+    baseId: baseIdArg ?? undefined,
+    projectTag: projectTagArg ?? undefined,
   });
+
   console.log(JSON.stringify(result, null, 2));
 }
 
 main().catch((error) => {
   console.error(error);
-  process.exitCode = 1;
+  exit(1);
 });
