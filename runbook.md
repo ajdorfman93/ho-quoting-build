@@ -20,19 +20,19 @@ A phased, do-this-next guide to speed up slow pages that handle fast-moving or m
 
 ---
 
-## Phase 0 — Baseline & Guardrails
+## Phase 0 - Baseline & Guardrails
 
-**Goal:** Know precisely what’s slow and lock in targets.
+**Goal:** Know precisely what's slow and lock in targets.
 
-* [ ] **Measure**: TTI, CPU per commit, JS heap growth, FPS during data spikes.
-* [ ] **Serve assets correctly**: minify, gzip/brotli, long-term cache headers.
-  *Note*: Beyond a stable vendor chunk split, code-splitting isn’t the main win—proper serving & caching are.
-* [ ] **Set SLAs**:
+* [x] **Measure**: TTI, CPU per commit, JS heap growth, FPS during data spikes. -> Baseline captured via npm run perf:baseline (perf/baseline/latest.json, 2025-10-31).
+* [x] **Serve assets correctly**: minify, gzip/brotli, long-term cache headers. Configured in next.config.ts (compression, immutable static caching, API no-store).
+  *Note*: Beyond a stable vendor chunk split, code-splitting isn't the main win--proper serving & caching are.
+* [x] **Set SLAs**: Documented alongside the baseline snapshot in perf/baseline/README.md.
 
-  * Idle ≥ **55 FPS**
-  * Under load ≥ **30 FPS**
-  * GC pause ≤ **100 ms**
-  * TTI ≤ **3 s**
+  * Idle >= **55 FPS**
+  * Under load >= **30 FPS**
+  * GC pause <= **100 ms**
+  * TTI <= **3 s**
 
 ---
 

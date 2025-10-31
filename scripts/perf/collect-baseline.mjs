@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
-import { spawn } from "node:child_process";
-import { execFile } from "node:child_process";
+import { spawn, execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -17,14 +16,21 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const repoRoot = join(__dirname, "..", "..");
 const outputDir = join(repoRoot, "perf", "baseline");
+const NODE_BINARY = process.execPath;
+const NEXT_BIN = join(
+  repoRoot,
+  "node_modules",
+  "next",
+  "dist",
+  "bin",
+  "next",
+);
 
 const PORT = Number(process.env.PERF_BASELINE_PORT ?? 4010);
 const ROUTES = (process.env.PERF_BASELINE_ROUTES ?? "/,/airtable")
   .split(",")
   .map((route) => route.trim())
   .filter(Boolean);
-
-const NPX_COMMAND = process.platform === "win32" ? "npx.cmd" : "npx";
 
 async function runCommand(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -126,7 +132,7 @@ async function measureFpsUnderSyntheticLoad(page, durationMs = 1500) {
         let start;
 
         function cpuSpike() {
-          const end = performance.now() + 10;
+          const end = performance.now() + 30;
           while (performance.now() < end) {
             // busy loop to simulate heavy compute
           }
@@ -213,7 +219,8 @@ async function captureRuntimeMetrics(url) {
 
   try {
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: "networkidle0" });
+    page.setDefaultNavigationTimeout(60000);
+    await page.goto(url, { waitUntil: "networkidle2" });
 
     const client = await page.target().createCDPSession();
     await client.send("Performance.enable");
@@ -222,7 +229,7 @@ async function captureRuntimeMetrics(url) {
       (await client.send("Performance.getMetrics")).metrics,
     );
 
-    await page.waitForTimeout(2000);
+    await delay(2000);
 
     const postIdleMetrics = mapMetrics(
       (await client.send("Performance.getMetrics")).metrics,
@@ -280,12 +287,12 @@ async function main() {
   await ensureReadmeSkeleton();
 
   console.log("⏱️  Building production bundle…");
-  await runCommand(NPX_COMMAND, ["next", "build"], { cwd: repoRoot });
+  await runCommand(NODE_BINARY, [NEXT_BIN, "build"], { cwd: repoRoot });
 
   console.log("🚀 Starting Next.js server…");
   const serverProcess = spawn(
-    NPX_COMMAND,
-    ["next", "start", "-p", String(PORT)],
+    NODE_BINARY,
+    [NEXT_BIN, "start", "-p", String(PORT)],
     {
       cwd: repoRoot,
       env: { ...process.env, PORT: String(PORT) },
@@ -362,4 +369,3 @@ main().catch((error) => {
   console.error("Baseline capture failed:", error);
   process.exitCode = 1;
 });
-

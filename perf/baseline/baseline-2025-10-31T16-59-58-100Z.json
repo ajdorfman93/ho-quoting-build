@@ -1,0 +1,77 @@
+{
+  "capturedAt": "2025-10-31T16:59:58.100Z",
+  "port": 4010,
+  "git": {
+    "commit": "db908bef0d2f98430e4303299dccb5cc926813c6",
+    "branch": "main"
+  },
+  "routes": {
+    "/": {
+      "url": "http://localhost:4010/",
+      "lighthouse": {
+        "lighthouseVersion": "12.8.2",
+        "fetchTime": "2025-10-31T17:00:00.281Z",
+        "performanceScore": 0.94,
+        "ttiMs": 3004.70275,
+        "tbtMs": 131,
+        "lcpMs": 2867.7369999999996,
+        "cls": 0.005220964523313855,
+        "serverResponseTimeMs": 2.995,
+        "mainThreadBreakdownMs": {
+          "scriptEvaluation": 411.20000000000374,
+          "styleLayout": 175.352,
+          "other": 72.89599999999997,
+          "paintCompositeRender": 61.69599999999978,
+          "scriptParseCompile": 30.608,
+          "parseHTML": 7.668
+        }
+      },
+      "runtime": {
+        "sampleWindowSeconds": 3.304926000000023,
+        "frames": 1,
+        "droppedFrames": null,
+        "avgFpsSinceNavigation": 0.30257863564872345,
+        "heapBaselineBytes": 8802500,
+        "heapAfterIdleBytes": 8802500,
+        "heapGrowthBytes": 0,
+        "heapTotalBytes": 14610432,
+        "fpsIdle": 60.662622491833865,
+        "fpsSyntheticLoad": 60.662622491833865
+      }
+    },
+    "/airtable": {
+      "url": "http://localhost:4010/airtable",
+      "lighthouse": {
+        "lighthouseVersion": "12.8.2",
+        "fetchTime": "2025-10-31T17:00:13.870Z",
+        "performanceScore": 0.8,
+        "ttiMs": 3314.0206,
+        "tbtMs": 184,
+        "lcpMs": 3314.0206,
+        "cls": 0.19608862299167773,
+        "serverResponseTimeMs": 10.696,
+        "mainThreadBreakdownMs": {
+          "scriptEvaluation": 411.68800000000425,
+          "styleLayout": 169.22799999999995,
+          "other": 79.56400000000008,
+          "paintCompositeRender": 68.83200000000032,
+          "scriptParseCompile": 27.74,
+          "parseHTML": 3.5480000000000005
+        }
+      },
+      "runtime": {
+        "sampleWindowSeconds": 3.4664640000000873,
+        "frames": 1,
+        "droppedFrames": null,
+        "avgFpsSinceNavigation": 0.2884784033528041,
+        "heapBaselineBytes": 8544580,
+        "heapAfterIdleBytes": 8544580,
+        "heapGrowthBytes": 0,
+        "heapTotalBytes": 14680064,
+        "fpsIdle": 60.662622491833865,
+        "fpsSyntheticLoad": 60.662622491833865
+      }
+    }
+  },
+  "notes": "FPS synthetic load uses a CPU-bound loop to emulate heavy client updates."
+}
