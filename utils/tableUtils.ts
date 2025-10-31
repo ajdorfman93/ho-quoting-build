@@ -358,7 +358,9 @@ function normalizeFieldConfig(type: ColumnType, config: ColumnSpec["config"] | u
     }
     case "linkToRecord": {
       const linkToRecord = { ...(base.linkToRecord ?? {}) };
-      linkToRecord.targetTable = linkToRecord.targetTable ?? "File Uploads";
+      const targetTable =
+        typeof linkToRecord.targetTable === "string" ? linkToRecord.targetTable.trim() : "";
+      linkToRecord.targetTable = targetTable || "File Uploads";
       linkToRecord.multiple = linkToRecord.multiple ?? true;
       linkToRecord.limitToViewId = linkToRecord.limitToViewId ?? null;
       const legacyFilterEnabled = (linkToRecord as any).filterEnabled;
@@ -7121,6 +7123,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           const next = { ...(config.linkToRecord ?? {}) };
           const ensuredViews = Array.isArray(next.views) && next.views.length ? next.views : linkConfig.views;
           Object.assign(next, partial);
+          if (typeof partial.targetTable === "string") {
+            next.targetTable = partial.targetTable;
+          }
           if (!next.views || !next.views.length) {
             next.views = ensuredViews;
           }
@@ -7147,10 +7152,49 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           setLinkConfig({ filter: { summary: trimmed } });
         }
       };
+      const targetTableSuggestions = Array.from(
+        new Set(
+          [
+            typeof linkConfig.targetTable === "string" ? linkConfig.targetTable.trim() : "",
+            ...columns
+              .map((col) => {
+                const candidate = col.config?.linkToRecord?.targetTable;
+                return typeof candidate === "string" ? candidate.trim() : "";
+              }),
+            "Projects",
+            "Hardware Items",
+            "Hardware Sets",
+            "Submittals",
+            "File Uploads"
+          ].filter((value): value is string => Boolean(value))
+        )
+      );
+      const targetTableDatalistId = `link-target-table-options-${columnIndex}`;
       return h("div", { className: "space-y-4" },
-        h("div", { className: "space-y-1 rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-neutral-700" },
-          h("div", { className: "text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-neutral-300" }, "Link to"),
-          h("div", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, linkConfig.targetTable)
+        h("div", { className: "space-y-2" },
+          h("label", { className: "flex flex-col gap-1 text-sm" },
+            h("span", { className: "font-medium text-zinc-700 dark:text-neutral-100" }, "Target table"),
+            h("input", {
+              type: "text",
+              list: targetTableSuggestions.length ? targetTableDatalistId : undefined,
+              placeholder: "Select a table",
+              value: linkConfig.targetTable,
+              onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+                setLinkConfig({ targetTable: event.currentTarget.value });
+              },
+              onBlur: (event: React.FocusEvent<HTMLInputElement>) => {
+                const trimmed = event.currentTarget.value.trim();
+                setLinkConfig({ targetTable: trimmed || "File Uploads" });
+              },
+              className: "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            })
+          ),
+          targetTableSuggestions.length
+            ? h("datalist", { id: targetTableDatalistId },
+                ...targetTableSuggestions.map((name) => h("option", { key: name, value: name }))
+              )
+            : null,
+          h("p", { className: "text-xs text-zinc-500 dark:text-neutral-400" }, "Type a table name or pick from suggestions.")
         ),
         renderToggle("Allow linking to multiple records", Boolean(linkConfig.multiple), (next) => setLinkConfig({ multiple: next })),
         h("label", { className: "flex flex-col gap-1 text-sm" },
