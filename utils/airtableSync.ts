@@ -280,6 +280,7 @@ async function fetchAirtableRecords(
 
   return records;
 }
+
 function sanitizeValue(value: unknown): string | null {
   if (value === null || value === undefined) return null;
   if (Array.isArray(value)) {
