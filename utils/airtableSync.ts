@@ -2,7 +2,7 @@
 
 import { randomUUID } from "crypto";
 import type { PoolClient } from "pg";
-import projectTags from "@/config/projectTags.json";
+import projectTags from "../config/projectTags.json";
 import { ensureExtensions } from "./db";
 import { withTransaction } from "./db";
 import { emitTableChange } from "./realtime";
