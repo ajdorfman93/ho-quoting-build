@@ -1337,7 +1337,7 @@ function resolveFieldValue<T extends Record<string, any>>(
   const normalized = normalizeFieldName(fieldName);
   let entry = scope.columnLookup.byName.get(normalized);
   if (!entry) {
-    entry = scope.columnLookup.byKey.get(fieldName) ?? scope.columnLookup.byKey.get(normalized) ?? null;
+    entry = scope.columnLookup.byKey.get(fieldName) ?? scope.columnLookup.byKey.get(normalized);
   }
   if (!entry) {
     throw new Error(`Unknown field reference '{${fieldName}}'.`);
