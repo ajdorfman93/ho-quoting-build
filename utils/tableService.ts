@@ -55,6 +55,116 @@ function normalizeValue(input: unknown): string | null {
   return String(input);
 }
 
+function safeParseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function coerceArrayValue(input: unknown): unknown[] {
+  if (Array.isArray(input)) {
+    return input;
+  }
+  if (input === null || input === undefined) {
+    return [];
+  }
+  if (typeof input === "string") {
+    const trimmed = input.trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      const parsed = safeParseJson(trimmed);
+      if (Array.isArray(parsed)) return parsed;
+      if (parsed && typeof parsed === "object") return [parsed];
+      return parsed ? [parsed] : [];
+    }
+    return trimmed
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+  }
+  return [input];
+}
+
+function deserializeCellValue(
+  column: ColumnSpec<TableRow>,
+  raw: unknown
+): unknown {
+  if (raw === null || raw === undefined) {
+    return null;
+  }
+
+  switch (column.type) {
+    case "checkbox": {
+      if (typeof raw === "boolean") return raw;
+      if (typeof raw === "number") return raw !== 0;
+      if (typeof raw === "string") {
+        return /^(true|1|yes|y|on)$/i.test(raw.trim());
+      }
+      return Boolean(raw);
+    }
+    case "number":
+    case "currency":
+    case "percent":
+    case "rating":
+    case "duration": {
+      if (typeof raw === "number") return raw;
+      if (typeof raw === "string") {
+        const normalized = Number(raw.replace(/,/g, "").trim());
+        return Number.isFinite(normalized) ? normalized : raw;
+      }
+      return raw;
+    }
+    case "multipleSelect":
+    case "singleSelect":
+    case "attachment":
+    case "user":
+    case "linkToRecord":
+    case "lookup":
+    case "rollup": {
+      if (typeof raw === "string") {
+        const trimmed = raw.trim();
+        if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+          const parsed = safeParseJson(trimmed);
+          if (Array.isArray(parsed) || typeof parsed === "object") {
+            return parsed;
+          }
+        }
+      }
+      if (column.type === "singleSelect") {
+        return raw;
+      }
+      return coerceArrayValue(raw);
+    }
+    default: {
+      if (typeof raw === "string") {
+        const trimmed = raw.trim();
+        if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+          const parsed = safeParseJson(trimmed);
+          if (parsed && typeof parsed === "object") {
+            return parsed;
+          }
+        }
+      }
+      return raw;
+    }
+  }
+}
+
+function deserializeRow(
+  row: TableRow,
+  columns: ColumnSpec<TableRow>[]
+): TableRow {
+  const result: TableRow = { ...row, id: row.id };
+  for (const column of columns) {
+    const key = String(column.key);
+    if (key === "id") continue;
+    result[key] = deserializeCellValue(column, row[key]);
+  }
+  return result;
+}
+
 type ColumnMetadataQueryRow = {
   table_name: string;
   column_name: string;
@@ -293,10 +403,12 @@ export async function getTableData(
     return normalized;
   });
 
+  const parsedRows = tableRows.map((row) => deserializeRow(row, columnSpecs));
+
   return {
     table: metadata,
     columns: columnSpecs,
-    rows: tableRows,
+    rows: parsedRows,
     totalRows: Number(countResult.rows[0]?.count ?? "0"),
   };
 }

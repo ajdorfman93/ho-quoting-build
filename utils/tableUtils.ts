@@ -556,10 +556,13 @@ export interface ColumnSpec<T extends Record<string, any> = any> {
       allowNegative?: boolean;
       defaultPercent?: number;
     };
+    duration?: {
+      units?: unknown;
+    };
     rating?: { max?: number; icon?: "star" | "heart" | "circle" };
     date?: { format?: string }; // display format only
-    multipleSelect?: { options: SelectOption[] };
-    singleSelect?: { options: SelectOption[] };
+    multipleSelect?: { options: SelectOption[]; allowCustom?: boolean };
+    singleSelect?: { options: SelectOption[]; allowCustom?: boolean };
     checkbox?: { style?: "checkbox" | "toggle" };
     singleLineText?: {
       placeholder?: string;
@@ -596,6 +599,11 @@ export interface ColumnSpec<T extends Record<string, any> = any> {
     };
     linkToRecord?: {
       targetTable?: string;
+      targetTableId?: string | null;
+      targetTableName?: string | null;
+      targetPrimaryFieldId?: string | null;
+      targetPrimaryFieldName?: string | null;
+      linkedFieldId?: string | null;
       multiple?: boolean;
       limitToViewId?: string | null;
       filter?: Record<string, unknown> | null;
@@ -1960,6 +1968,34 @@ function stringifyValue(value: unknown): string {
   }
 }
 
+function safeJsonParse(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function normalizeArrayInput(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (value === null || value === undefined) return [];
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      const parsed = safeJsonParse(trimmed);
+      if (Array.isArray(parsed)) return parsed;
+      if (parsed && typeof parsed === "object") return [parsed];
+      return parsed ? [parsed] : [];
+    }
+    return trimmed
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+  }
+  return [value];
+}
+
 function displayValue<T extends Record<string, any>>(value: unknown, column: ColumnSpec<T>): React.ReactNode {
   switch (column.type) {
     case "checkbox":
@@ -1992,7 +2028,7 @@ function displayValue<T extends Record<string, any>>(value: unknown, column: Col
       return Number.isFinite(num) ? formatDuration(num) : "";
     }
     case "multipleSelect": {
-      const options = Array.isArray(value) ? value : [];
+      const options = normalizeArrayInput(value);
       if (!options.length) return "";
       const pills = options
         .map((opt) => resolveOptionMeta(column, opt))
@@ -2057,8 +2093,10 @@ function displayValue<T extends Record<string, any>>(value: unknown, column: Col
     }
     case "user": {
       if (!value) return "";
-      if (Array.isArray(value)) {
-        const names = value.map((v) => {
+      const entries = normalizeArrayInput(value);
+      if (!entries.length) return "";
+      if (Array.isArray(entries)) {
+        const names = entries.map((v) => {
           if (typeof v === "string") return v;
           if (v && typeof v === "object") {
             const maybeUser = v as { name?: string; email?: string; id?: string };
@@ -2075,7 +2113,7 @@ function displayValue<T extends Record<string, any>>(value: unknown, column: Col
       return stringifyValue(value);
     }
     case "linkToRecord": {
-      const entries = Array.isArray(value) ? value : value ? [value] : [];
+      const entries = normalizeArrayInput(value);
       if (!entries.length) return "";
       const records = column.config?.linkToRecord?.records ?? [];
       const recordMap = new Map(records.map((record) => [record.id, record]));

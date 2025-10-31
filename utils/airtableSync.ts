@@ -14,6 +14,8 @@ type AirtableField = {
   id: string;
   name: string;
   type: string;
+  description?: string | null;
+  options?: Record<string, unknown> | null;
 };
 
 type AirtableTable = {
@@ -39,6 +41,12 @@ export type AirtableSyncResult = {
   }>;
 };
 
+type LinkedRecordOption = {
+  id: string;
+  title: string;
+  meta?: Record<string, string>;
+};
+
 const AIRTABLE_API_BASE = "https://api.airtable.com/v0";
 const DEFAULT_AIRTABLE_BASE_ID = "appIBydxpXuSdssZW";
 const AIRTABLE_BASE_ID =
@@ -58,6 +66,197 @@ const DEFAULT_TABLE_PROJECT_TAG = projectTags.airtable;
 type UndiciModule = typeof import("undici");
 
 let fetchReady: Promise<void> | null = null;
+
+function toDisplayString(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => toDisplayString(item)).filter(Boolean).join(", ");
+  }
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (typeof record.name === "string") return record.name;
+    if (typeof record.title === "string") return record.title;
+    if (typeof record.text === "string") return record.text;
+    try {
+      return JSON.stringify(record);
+    } catch {
+      return String(record);
+    }
+  }
+  return String(value);
+}
+
+function buildRecordMeta(
+  table: AirtableTable,
+  record: AirtableRecord,
+  primaryFieldId?: string
+): Record<string, string> | undefined {
+  const meta: Record<string, string> = {};
+  for (const field of table.fields) {
+    if (field.id === primaryFieldId) continue;
+    const raw = record.fields?.[field.name];
+    const text = toDisplayString(raw);
+    if (!text) continue;
+    meta[field.name] = text;
+    if (Object.keys(meta).length >= 3) {
+      break;
+    }
+  }
+  return Object.keys(meta).length ? meta : undefined;
+}
+
+function buildColumnConfigForField(
+  field: AirtableField,
+  table: AirtableTable,
+  tableInfoById: Map<
+    string,
+    { table: AirtableTable; slug: string; primaryFieldName?: string }
+  >,
+  recordSummariesByTableId: Map<string, LinkedRecordOption[]>
+): Record<string, unknown> | undefined {
+  const config: Record<string, unknown> = {};
+  const options = field.options ?? {};
+
+  switch (field.type) {
+    case "singleSelect": {
+      const choices = Array.isArray((options as any).choices)
+        ? ((options as any).choices as Array<{ id?: string; name?: string; color?: string }>)
+        : [];
+      if (choices.length) {
+        config.singleSelect = {
+          options: choices.map((choice, idx) => ({
+            id: choice.id ?? choice.name ?? `option_${idx + 1}`,
+            label: choice.name ?? choice.id ?? `Option ${idx + 1}`,
+            color: choice.color ?? undefined,
+          })),
+          allowCustom: Boolean((options as any).allowCustomValues),
+        };
+      }
+      break;
+    }
+    case "multipleSelects": {
+      const choices = Array.isArray((options as any).choices)
+        ? ((options as any).choices as Array<{ id?: string; name?: string; color?: string }>)
+        : [];
+      if (choices.length) {
+        config.multipleSelect = {
+          options: choices.map((choice, idx) => ({
+            id: choice.id ?? choice.name ?? `option_${idx + 1}`,
+            label: choice.name ?? choice.id ?? `Option ${idx + 1}`,
+            color: choice.color ?? undefined,
+          })),
+          allowCustom: Boolean((options as any).allowCustomValues),
+        };
+      }
+      break;
+    }
+    case "date":
+    case "dateTime": {
+      const dateFormat = (options as any).dateFormat;
+      const formatName =
+        typeof dateFormat?.name === "string" ? dateFormat.name : undefined;
+      if (formatName) {
+        config.date = { format: formatName };
+      }
+      break;
+    }
+    case "currency": {
+      const precision =
+        typeof (options as any).precision === "number"
+          ? (options as any).precision
+          : undefined;
+      const symbol =
+        typeof (options as any).symbol === "string"
+          ? (options as any).symbol
+          : undefined;
+      config.currency = {
+        currency: (options as any).currency ?? symbol ?? undefined,
+        decimals: precision,
+      };
+      break;
+    }
+    case "percent": {
+      const precision =
+        typeof (options as any).precision === "number"
+          ? (options as any).precision
+          : undefined;
+      if (typeof precision === "number") {
+        config.percent = { decimals: precision };
+      }
+      break;
+    }
+    case "duration": {
+      const durationOptions = options as Record<string, unknown>;
+      const units = Array.isArray(durationOptions?.durationUnits)
+        ? durationOptions.durationUnits
+        : undefined;
+      config.duration = {
+        units,
+      };
+      break;
+    }
+    case "multipleRecordLinks":
+    case "singleRecordLink": {
+      const linkOptions = options as {
+        linkedTableId?: string;
+        relationship?: string;
+        inverseLinkFieldId?: string;
+        allowRecordCreation?: boolean;
+        recordLinkViewId?: string;
+        recordLinkViewIdList?: string[];
+      };
+      const linkedTableId =
+        typeof linkOptions.linkedTableId === "string"
+          ? linkOptions.linkedTableId
+          : null;
+      const targetInfo = linkedTableId
+        ? tableInfoById.get(linkedTableId)
+        : undefined;
+      const records =
+        (linkedTableId
+          ? recordSummariesByTableId.get(linkedTableId)
+          : undefined) ?? [];
+
+      config.linkToRecord = {
+        targetTable: targetInfo?.slug ?? null,
+        targetTableId: linkedTableId,
+        targetTableName: targetInfo?.table.name ?? null,
+        targetPrimaryFieldId: targetInfo?.table.primaryFieldId ?? null,
+        targetPrimaryFieldName: targetInfo?.primaryFieldName ?? null,
+        multiple: field.type === "multipleRecordLinks",
+        allowCreate:
+          typeof linkOptions.allowRecordCreation === "boolean"
+            ? linkOptions.allowRecordCreation
+            : true,
+        linkedFieldId:
+          typeof linkOptions.inverseLinkFieldId === "string"
+            ? linkOptions.inverseLinkFieldId
+            : null,
+        views: Array.isArray(linkOptions.recordLinkViewIdList)
+          ? linkOptions.recordLinkViewIdList
+              .map((id) =>
+                typeof id === "string" ? { id, name: id } : null
+              )
+              .filter(
+                (entry): entry is { id: string; name: string } =>
+                  entry !== null
+              )
+          : [],
+        records,
+      };
+      break;
+    }
+    default:
+      break;
+  }
+
+  return Object.keys(config).length ? config : undefined;
+}
+
 
 async function ensureFetch(): Promise<void> {
   if (typeof fetch === "function") {
@@ -333,6 +532,8 @@ async function ensureTableColumns(
       originalType: string;
       displayName: string;
       position: number;
+      options?: Record<string, unknown> | null;
+      config?: Record<string, unknown>;
     }
   >
 ) {
@@ -387,16 +588,18 @@ async function ensureTableColumns(
           column_name,
           display_name,
           data_type,
+          config,
           position,
           width,
           is_nullable,
           updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW())
+        VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, TRUE, NOW())
         ON CONFLICT (table_name, column_name)
         DO UPDATE SET
           display_name = EXCLUDED.display_name,
           data_type = EXCLUDED.data_type,
+          config = EXCLUDED.config,
           position = EXCLUDED.position,
           width = EXCLUDED.width,
           updated_at = NOW();
@@ -406,6 +609,7 @@ async function ensureTableColumns(
         column.key,
         column.displayName,
         column.type,
+        JSON.stringify(column.config ?? {}),
         column.position,
         COLUMN_WIDTH,
       ]
@@ -414,6 +618,7 @@ async function ensureTableColumns(
     const typeSettings = JSON.stringify({
       airtableFieldType: column.originalType,
       mappedType: column.type,
+      airtableOptions: column.options ?? null,
     });
 
     await client.query(
@@ -629,12 +834,50 @@ export async function syncAirtableBase(options?: {
     return { baseId, projectTag, tables: [] };
   }
 
+  const tableInfoById = new Map<
+    string,
+    { table: AirtableTable; slug: string; primaryFieldName?: string }
+  >();
+  tables.forEach((table) => {
+    const slug = toSlug(table.name);
+    const primaryField =
+      table.fields.find((field) => field.id === table.primaryFieldId) ?? null;
+    tableInfoById.set(table.id, {
+      table,
+      slug,
+      primaryFieldName: primaryField?.name ?? undefined,
+    });
+  });
+
   const tableRecords = await Promise.all(
     tables.map(async (table) => {
       const records = await fetchAirtableRecords(baseId, table.id, token, logger);
       return { table, records };
     })
   );
+
+  const recordSummariesByTableId = new Map<string, LinkedRecordOption[]>();
+  for (const entry of tableRecords) {
+    const { table, records } = entry;
+    const primaryFieldName =
+      tableInfoById.get(table.id)?.primaryFieldName ??
+      table.fields.find((field) => field.id === table.primaryFieldId)?.name ??
+      null;
+    const summaries = records.map((record) => {
+      const rawTitle = primaryFieldName
+        ? record.fields?.[primaryFieldName]
+        : undefined;
+      const titleCandidate = toDisplayString(rawTitle);
+      const title = titleCandidate || record.id;
+      const meta = buildRecordMeta(table, record, table.primaryFieldId);
+      return {
+        id: record.id,
+        title,
+        ...(meta ? { meta } : {}),
+      } as LinkedRecordOption;
+    });
+    recordSummariesByTableId.set(table.id, summaries);
+  }
 
   const summary: AirtableSyncResult["tables"] = [];
 
@@ -645,7 +888,8 @@ export async function syncAirtableBase(options?: {
 
     for (const entry of tableRecords) {
       const { table, records } = entry;
-      const slug = toSlug(table.name);
+      const tableInfo = tableInfoById.get(table.id);
+      const slug = tableInfo?.slug ?? toSlug(table.name);
       const columnMap = new Map<
         string,
         {
@@ -655,12 +899,20 @@ export async function syncAirtableBase(options?: {
           originalType: string;
           displayName: string;
           position: number;
+          options?: Record<string, unknown> | null;
+          config?: Record<string, unknown>;
         }
       >();
 
       const usedColumnKeys = new Set<string>();
       table.fields.forEach((field, index) => {
         const key = toColumnKey(field.name, usedColumnKeys);
+        const config = buildColumnConfigForField(
+          field,
+          table,
+          tableInfoById,
+          recordSummariesByTableId
+        );
         columnMap.set(field.id, {
           key,
           fieldId: field.id,
@@ -668,6 +920,10 @@ export async function syncAirtableBase(options?: {
           originalType: field.type,
           displayName: field.name,
           position: index + 1,
+          options: field.options
+            ? (field.options as Record<string, unknown>)
+            : null,
+          config,
         });
       });
 
