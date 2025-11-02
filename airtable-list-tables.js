@@ -15,11 +15,11 @@
  *   npm i undici
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
+import fs from "node:fs";
+import path from "node:path";
 
 // --- Load env from .env.local or .env if present (optional) ---
-(() => {
+(async () => {
   try {
     const dotenvLocal = path.resolve(process.cwd(), ".env.local");
     const dotenvFile = path.resolve(process.cwd(), ".env");
@@ -27,8 +27,8 @@ const path = require("node:path");
     const hasEnv = fs.existsSync(dotenvFile);
 
     if (hasLocal || hasEnv) {
-      // require dotenv only if a file exists; keeps it optional
-      const dotenv = require("dotenv");
+      // Dynamic import dotenv only if a file exists; keeps it optional
+      const { default: dotenv } = await import("dotenv");
       const chosen = hasLocal ? dotenvLocal : dotenvFile;
       const result = dotenv.config({ path: chosen });
       if (result.error) {
@@ -46,7 +46,7 @@ const path = require("node:path");
 (async () => {
   if (typeof fetch !== "function") {
     try {
-      const { fetch: undiciFetch } = require("undici");
+      const { fetch: undiciFetch } = await import("undici");
       global.fetch = undiciFetch;
       console.log("Using undici fetch polyfill.");
     } catch (_e) {
