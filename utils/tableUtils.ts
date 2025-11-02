@@ -3002,7 +3002,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       fallbackTolerance: 4,
       draggable: "[data-header-cell='true']",
       handle: "[data-col-drag-handle='true']",
-      preventOnFilter: true,
       filter:
         "[data-resize-handle='true'], [data-header-menu-trigger='true'], input, textarea, select, button, [contenteditable='true']",
       onEnd: () => {
@@ -5806,7 +5805,6 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           const target = event.target as HTMLElement | null;
           if (target?.closest("[data-header-menu-trigger='true']")) return;
           if (target?.closest("[data-resize-handle='true']")) return;
-          if (target?.closest("[data-col-drag-handle='true']")) return;
           selectColumnByIndex(c);
         },
         title: displayName
@@ -5859,16 +5857,13 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       // column drag handle (separate from resize handle to avoid conflicts)
       h("div", {
         key: `col-drag-handle-${c}`,
-        className: "absolute left-1 top-1/2 flex h-4 w-3 -translate-y-1/2 items-center justify-center rounded text-zinc-400 transition-colors hover:text-zinc-600 dark:text-neutral-400 dark:hover:text-neutral-200 cursor-grab",
+        className: "absolute left-1 top-1/2 -translate-y-1/2 h-4 w-3 cursor-grab rounded",
         title: "Drag to reorder column",
         "data-col-drag-handle": "true",
-        role: "button",
-        tabIndex: -1,
         onMouseDown: (e: React.MouseEvent) => {
-          if (e.button !== 0) return;
-          e.preventDefault();
+          e.stopPropagation();
         }
-      }, h(FaGripVertical, { className: "h-3 w-3 pointer-events-none" })),
+      }),
       // header resizer
       h("div", {
         className: mergeClasses(
@@ -5878,12 +5873,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         ),
         draggable: false,
         "data-resize-handle": "true",
-        onMouseDown: (e: React.MouseEvent) => {
-          if ("nativeEvent" in e && typeof e.nativeEvent.stopImmediatePropagation === "function") {
-            e.nativeEvent.stopImmediatePropagation();
-          }
-          startColResize(c, e);
-        },
+        onMouseDown: (e: React.MouseEvent) => startColResize(c, e),
         onMouseEnter: (e: React.MouseEvent) => {
           setColumnResizeHover(c);
           updateColumnGuidePosition(c, e.clientX, e.clientY, false);
