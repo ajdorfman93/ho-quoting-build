@@ -369,7 +369,7 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
               cols={layoutColumnSpan}
               rowHeight={headerHeight}
               margin={[0, 0]}
-            containerPadding={[0, 0]}
+              containerPadding={[0, 0]}
             isBounded
             compactType={null}
             preventCollision
