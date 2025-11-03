@@ -301,7 +301,7 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
 
   const cellLayouts = React.useMemo<Layout[]>(() => cellItems.map((item) => item.layout), [cellItems]);
 
-  const handleColumnDrag = React.useCallback((nextLayout: Layout[]) => {
+  const handleColumnDragStop = React.useCallback((nextLayout: Layout[]) => {
     const sorted = [...nextLayout].sort((a, b) => a.x - b.x);
     const nextOrder = sorted.map((item) => item.i);
     setColumnState((previous) => {
@@ -313,7 +313,7 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
     });
   }, []);
 
-  const handleColumnResize = React.useCallback(
+  const handleColumnResizeStop = React.useCallback(
     (_layout: Layout[], oldItem: Layout, newItem: Layout) => {
       const nextWidth = Math.max(minColumnUnits, Math.min(maxColumnUnits, newItem.w));
       if (nextWidth === oldItem.w) return;
@@ -328,7 +328,7 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
     [maxColumnUnits, minColumnUnits]
   );
 
-  const handleRowDrag = React.useCallback((nextLayout: Layout[]) => {
+  const handleRowDragStop = React.useCallback((nextLayout: Layout[]) => {
     const sorted = [...nextLayout].sort((a, b) => a.y - b.y);
     const nextOrder = sorted.map((item) => item.i);
     setRowState((previous) => {
@@ -340,7 +340,7 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
     });
   }, []);
 
-  const handleRowResize = React.useCallback(
+  const handleRowResizeStop = React.useCallback(
     (_layout: Layout[], oldItem: Layout, newItem: Layout) => {
       const nextHeight = Math.max(minRowUnits, Math.min(maxRowUnits, newItem.h));
       if (nextHeight === oldItem.h) return;
@@ -387,10 +387,8 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
             preventCollision
             draggableHandle=".column-drag-handle"
             resizeHandles={["e", "w"]}
-            onDrag={handleColumnDrag}
-            onDragStop={handleColumnDrag}
-            onResize={handleColumnResize}
-            onResizeStop={handleColumnResize}
+            onDragStop={handleColumnDragStop}
+            onResizeStop={handleColumnResizeStop}
           >
             {orderedColumns.map(({ id: columnId, column }) => {
               return (
@@ -429,10 +427,8 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
             preventCollision
             draggableHandle=".row-drag-handle"
             resizeHandles={["s"]}
-            onDrag={handleRowDrag}
-            onDragStop={handleRowDrag}
-            onResize={handleRowResize}
-            onResizeStop={handleRowResize}
+            onDragStop={handleRowDragStop}
+            onResizeStop={handleRowResizeStop}
           >
             {rowState.order.map((rowId, position) => {
               const rowHeightUnits = rowState.heights[rowId] ?? DEFAULT_ROW_HEIGHT_UNITS;
