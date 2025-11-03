@@ -50,6 +50,13 @@ interface RowSizingState {
   heights: Record<string, number>;
 }
 
+interface CellRenderItem {
+  id: string;
+  layout: Layout;
+  value: unknown;
+  isLastColumn: boolean;
+}
+
 function ensureOrder(baseOrder: string[], incomingIds: string[]): string[] {
   const known = new Set(incomingIds);
   const preserved = baseOrder.filter((id) => known.has(id));
