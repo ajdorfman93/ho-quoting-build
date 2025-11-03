@@ -28,6 +28,7 @@ export interface InteractiveGridProps<T extends Record<string, unknown>> {
   loadingMoreRows?: boolean;
   onLoadMoreRows?: () => void | Promise<void>;
   virtualizationOverscan?: number;
+  renderTable?: (props: InteractiveTableProps<T>) => React.ReactElement;
 }
 
 type TableRow = Record<string, unknown> & { id: string };
@@ -51,6 +52,7 @@ type GridDiff = {
 interface InteractiveGridDemoProps {
   projectTag?: string;
   tableSelectorVariant?: "dropdown" | "tabs";
+  renderTable?: (props: InteractiveTableProps<TableRow>) => React.ReactElement;
 }
 
 const PAGE_SIZE = 100;
@@ -250,6 +252,7 @@ export function InteractiveGrid<T extends Record<string, unknown>>({
   loadingMoreRows,
   onLoadMoreRows,
   virtualizationOverscan,
+  renderTable,
 }: InteractiveGridProps<T>) {
   const [state, setState] = React.useState<InteractiveGridState<T>>(() => ({
     rows: initialRows,
@@ -268,7 +271,9 @@ export function InteractiveGrid<T extends Record<string, unknown>>({
     [onStateChange]
   );
 
-  return renderInteractiveTable<T>({
+  const tableRenderer = renderTable ?? renderInteractiveTable;
+
+  return tableRenderer<T>({
     rows: state.rows,
     columns: state.columns,
     linkedTableOptions,
@@ -286,6 +291,7 @@ export function InteractiveGrid<T extends Record<string, unknown>>({
 export default function InteractiveGridDemo({
   projectTag,
   tableSelectorVariant = "dropdown",
+  renderTable,
 }: InteractiveGridDemoProps = {}) {
   const tableLabelId = React.useId();
   const [tables, setTables] = React.useState<TableMetadata[]>([]);
@@ -951,6 +957,7 @@ export default function InteractiveGridDemo({
           hasMoreRows={gridState.rows.length < totalRows}
           loadingMoreRows={loadingMore}
           onLoadMoreRows={handleLoadMoreRows}
+          renderTable={renderTable}
         />
       ) : (
         <div className="rounded-2xl border border-dashed border-zinc-200 bg-white px-6 py-12 text-center text-sm text-zinc-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-zinc-300">
