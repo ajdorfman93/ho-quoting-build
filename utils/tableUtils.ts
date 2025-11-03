@@ -3596,6 +3596,9 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   function startColResize(idx: number, e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if ("nativeEvent" in e && e.nativeEvent && typeof (e.nativeEvent as any).stopImmediatePropagation === "function") {
+      (e.nativeEvent as any).stopImmediatePropagation();
+    }
     columnSortableRef.current?.option("disabled", true);
     const startX = e.clientX;
     const startW = colWidths[idx];
@@ -3631,6 +3634,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   /* Resize rows */
   function startRowResize(idx: number, e: React.MouseEvent) {
     e.preventDefault();
+    e.stopPropagation();
+    if ("nativeEvent" in e && e.nativeEvent && typeof (e.nativeEvent as any).stopImmediatePropagation === "function") {
+      (e.nativeEvent as any).stopImmediatePropagation();
+    }
     rowSortableRef.current?.option("disabled", true);
     const startY = e.clientY;
     const startH = rowHeights[idx];
