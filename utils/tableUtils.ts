@@ -178,6 +178,9 @@ const ROW_HEIGHT_PRESETS = {
   extraTall: 104
 } as const;
 
+const MAX_COLUMN_WIDTH = Number.POSITIVE_INFINITY;
+const MAX_ROW_HEIGHT = Number.POSITIVE_INFINITY;
+
 type RowHeightPreset = keyof typeof ROW_HEIGHT_PRESETS;
 const ROW_COLOR_PALETTE = ["#22d3ee", "#fb7185", "#f97316", "#22c55e", "#818cf8", "#facc15", "#14b8a6", "#f472b6"] as const;
 const SORTABLE_ANIMATION_MS = 220;
