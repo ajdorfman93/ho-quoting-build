@@ -23,6 +23,7 @@ declare module "react-grid-layout" {
   }
 
   export interface ReactGridLayoutProps {
+    children?: React.ReactNode;
     width?: number;
     className?: string;
     style?: React.CSSProperties;
@@ -63,4 +64,3 @@ declare module "react-grid-layout" {
 
   export function WidthProvider<P extends ReactGridLayoutProps>(component: React.ComponentType<P>): React.ComponentType<P>;
 }
-
