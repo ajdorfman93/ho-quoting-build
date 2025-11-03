@@ -208,7 +208,6 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
   const totalColumnUnits = columnLayouts.reduce((sum, item) => sum + item.w, 0) || 1;
   const layoutColumnSpan = Math.max(totalColumnUnits, columnLayouts.length || 1);
 
-  const totalRowHeightPx = rowLayouts.reduce((sum, item) => sum + item.h * ROW_UNIT_HEIGHT, 0);
   const orderedColumns = columnState.order
     .map((id) => {
       const index = columns.findIndex((col, idx) => columnIdFor(col, idx) === id);
