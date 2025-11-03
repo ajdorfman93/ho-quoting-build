@@ -3601,7 +3601,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     }
     columnSortableRef.current?.option("disabled", true);
     const startX = e.clientX;
-    const startW = colWidths[idx];
+    const rawStartW = colWidths[idx];
+    const startW = Number.isFinite(rawStartW) ? (rawStartW as number) : minColumnWidth;
     setColumnResizeHover(idx);
     updateColumnGuidePosition(idx, e.clientX, e.clientY, true);
     function onMove(ev: MouseEvent) {
@@ -3640,7 +3641,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     }
     rowSortableRef.current?.option("disabled", true);
     const startY = e.clientY;
-    const startH = rowHeights[idx];
+    const rawStartH = rowHeights[idx];
+    const startH = Number.isFinite(rawStartH) ? (rawStartH as number) : minRowHeight;
     setRowResizeHover(idx);
     updateRowGuidePosition(idx, e.clientY, e.clientX, true);
     function onMove(ev: MouseEvent) {
