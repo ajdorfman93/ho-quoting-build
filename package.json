@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@ajdorfman93/react-sortablejs": "^6.1.9",
-    "@ajdorfman93/sortablejs": "^1.15.8",
+    "@ajdorfman93/sortablejs": "^1.16.1",
     "csv-parse": "^6.1.0",
     "csv-parser": "^3.2.0",
     "next": "16.0.1",
