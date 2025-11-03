@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "es5",
+    "esModuleInterop": true,
+    "jsx": "react",
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "lib": ["es2015", "DOM"]
+  },
+  "include": ["src"]
+}
