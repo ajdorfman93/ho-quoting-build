@@ -55,6 +55,11 @@ interface CellRenderItem {
   layout: Layout;
   value: unknown;
   isLastColumn: boolean;
+  rowId: string;
+  columnId: string;
+  columnKey: string;
+  rowIndex: number;
+  columnIndex: number;
 }
 
 function ensureOrder(baseOrder: string[], incomingIds: string[]): string[] {
@@ -252,9 +257,9 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
     const items: CellRenderItem[] = [];
     const columnCount = orderedColumns.length;
 
-    for (const { id: rowId, row } of orderedRows) {
+    orderedRows.forEach(({ id: rowId, row }, rowIndex) => {
       const rowLayout = rowLayoutLookup.get(rowId);
-      if (!rowLayout) continue;
+      if (!rowLayout) return;
 
       orderedColumns.forEach(({ id: columnId, column }, columnIndex) => {
         const columnLayout = columnLayoutLookup.get(columnId);
@@ -262,6 +267,8 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
 
         const cellId = `${rowId}::${columnId}`;
         const rowRecord = row as Record<string, unknown>;
+        const rawColumnKey = column.key;
+        const columnKey = rawColumnKey !== undefined && rawColumnKey !== null ? String(rawColumnKey) : columnId;
         const cellLayout: Layout = {
           i: cellId,
           x: columnLayout.x,
@@ -278,11 +285,16 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
         items.push({
           id: cellId,
           layout: cellLayout,
-          value: rowRecord[String(column.key)] ?? null,
-          isLastColumn: columnIndex === columnCount - 1
+          value: rowRecord[String(rawColumnKey)] ?? null,
+          isLastColumn: columnIndex === columnCount - 1,
+          rowId,
+          columnId,
+          columnKey,
+          rowIndex,
+          columnIndex
         });
       });
-    }
+    });
 
     return items;
   }, [orderedColumns, orderedRows, columnLayoutLookup, rowLayoutLookup]);
@@ -467,7 +479,16 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
                 .join(" ");
 
               return (
-                <div key={cell.id} className={className}>
+                <div
+                  key={cell.id}
+                  data-row-id={cell.rowId}
+                  data-column-id={cell.columnId}
+                  data-column-key={cell.columnKey}
+                  role="gridcell"
+                  aria-rowindex={cell.rowIndex + 1}
+                  aria-colindex={cell.columnIndex + 1}
+                  className={className}
+                >
                   <span className="truncate">{normalizeCellValue(cell.value)}</span>
                 </div>
               );
