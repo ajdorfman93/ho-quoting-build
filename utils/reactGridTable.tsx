@@ -285,7 +285,7 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
         items.push({
           id: cellId,
           layout: cellLayout,
-          value: rowRecord[String(rawColumnKey)] ?? null,
+          value: rowRecord[columnKey] ?? null,
           isLastColumn: columnIndex === columnCount - 1,
           rowId,
           columnId,
