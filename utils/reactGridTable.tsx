@@ -39,6 +39,43 @@ const ROW_UNIT_HEIGHT = 10; // px per row layout unit
 const DEFAULT_ROW_HEIGHT_UNITS = 5;
 const MIN_ROW_HEIGHT_UNITS = 3;
 const MAX_ROW_HEIGHT_UNITS = 12;
+const GUIDE_LINE_THICKNESS = 2.5;
+const GUIDE_BAR_THICKNESS = 5;
+const GUIDE_BAR_LENGTH = 25;
+
+type ResizeAxis = "n" | "s" | "e" | "w" | "nw" | "ne" | "sw" | "se";
+type ColumnResizeAxis = "e" | "w";
+type RowResizeAxis = "s";
+
+interface ResizeGuideBaseState {
+  position: number;
+  pointerOffset: number;
+  tableWidth: number;
+  tableHeight: number;
+}
+
+type ResizeGuideState =
+  | ({ kind: "column" } & ResizeGuideBaseState)
+  | ({ kind: "row" } & ResizeGuideBaseState);
+
+function clampValue(value: number, min: number, max: number) {
+  if (Number.isNaN(value)) return min;
+  if (Number.isFinite(max)) {
+    return Math.max(min, Math.min(max, value));
+  }
+  return Math.max(min, value);
+}
+
+function resolveClientPoint(event?: MouseEvent | TouchEvent | null) {
+  if (!event) return null;
+  if (typeof TouchEvent !== "undefined" && event instanceof TouchEvent) {
+    const touch = event.touches[0] ?? event.changedTouches[0];
+    if (touch) {
+      return { clientX: touch.clientX, clientY: touch.clientY };
+    }
+  }
+  return { clientX: (event as MouseEvent).clientX, clientY: (event as MouseEvent).clientY };
+}
 
 interface ColumnSizingState {
   order: string[];
@@ -161,6 +198,12 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
     []
   );
 
+  const tableRef = React.useRef<HTMLDivElement>(null);
+  const isResizingRef = React.useRef(false);
+  const activeColumnAxisRef = React.useRef<ColumnResizeAxis | null>(null);
+  const activeRowAxisRef = React.useRef<RowResizeAxis | null>(null);
+  const [resizeGuide, setResizeGuide] = React.useState<ResizeGuideState | null>(null);
+
   const initialColumnState = React.useMemo<ColumnSizingState>(() => {
     const order = columns.map(columnIdFor);
     const widths = order.reduce<Record<string, number>>((acc, id) => {
@@ -253,6 +296,82 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
     return map;
   }, [rowLayouts]);
 
+  const updateColumnGuideFromClientPoint = React.useCallback((clientX: number, clientY: number) => {
+    const tableElement = tableRef.current;
+    if (!tableElement) return;
+    const rect = tableElement.getBoundingClientRect();
+    setResizeGuide({
+      kind: "column",
+      position: clientX - rect.left,
+      pointerOffset: clientY - rect.top,
+      tableWidth: rect.width,
+      tableHeight: rect.height
+    });
+  }, []);
+
+  const updateRowGuideFromClientPoint = React.useCallback((clientX: number, clientY: number) => {
+    const tableElement = tableRef.current;
+    if (!tableElement) return;
+    const rect = tableElement.getBoundingClientRect();
+    setResizeGuide({
+      kind: "row",
+      position: clientY - rect.top,
+      pointerOffset: clientX - rect.left,
+      tableWidth: rect.width,
+      tableHeight: rect.height
+    });
+  }, []);
+
+  const clearGuideIfIdle = React.useCallback((kind: ResizeGuideState["kind"]) => {
+    if (isResizingRef.current) return;
+    setResizeGuide((current) => {
+      if (!current || current.kind !== kind) return current;
+      return null;
+    });
+  }, []);
+
+  const updateColumnGuideFromElement = React.useCallback(
+    (element: HTMLElement, event?: MouseEvent | TouchEvent | null) => {
+      const tableElement = tableRef.current;
+      if (!tableElement) return;
+      const tableRect = tableElement.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+      const axis = activeColumnAxisRef.current ?? "e";
+      const linePosition = axis === "w" ? elementRect.left - tableRect.left : elementRect.right - tableRect.left;
+      const point = resolveClientPoint(event);
+      const pointerY = point ? point.clientY - tableRect.top : elementRect.top - tableRect.top + elementRect.height / 2;
+      setResizeGuide({
+        kind: "column",
+        position: linePosition,
+        pointerOffset: pointerY,
+        tableWidth: tableRect.width,
+        tableHeight: tableRect.height
+      });
+    },
+    []
+  );
+
+  const updateRowGuideFromElement = React.useCallback(
+    (element: HTMLElement, event?: MouseEvent | TouchEvent | null) => {
+      const tableElement = tableRef.current;
+      if (!tableElement) return;
+      const tableRect = tableElement.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+      const axis = activeRowAxisRef.current ?? "s";
+      const linePosition = axis === "s" ? elementRect.bottom - tableRect.top : elementRect.top - tableRect.top;
+      const point = resolveClientPoint(event);
+      const pointerX = point ? point.clientX - tableRect.left : elementRect.left - tableRect.left + elementRect.width / 2;
+      setResizeGuide({
+        kind: "row",
+        position: linePosition,
+        pointerOffset: pointerX,
+        tableWidth: tableRect.width,
+        tableHeight: tableRect.height
+      });
+    },
+    []
+  );
+
   const cellItems = React.useMemo<CellRenderItem[]>(() => {
     const items: CellRenderItem[] = [];
     const columnCount = orderedColumns.length;
@@ -313,9 +432,55 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
     });
   }, []);
 
+  const handleColumnResizeStart = React.useCallback(
+    (
+      _layout: Layout[],
+      _oldItem: Layout,
+      _newItem: Layout,
+      _placeholder?: Layout,
+      event?: MouseEvent | TouchEvent | null,
+      element?: HTMLElement | null
+    ) => {
+      isResizingRef.current = true;
+      if (element instanceof HTMLElement) {
+        updateColumnGuideFromElement(element, event ?? null);
+      }
+    },
+    [updateColumnGuideFromElement]
+  );
+
+  const handleColumnResize = React.useCallback(
+    (
+      _layout: Layout[],
+      _oldItem: Layout,
+      _newItem: Layout,
+      _placeholder?: Layout,
+      event?: MouseEvent | TouchEvent | null,
+      element?: HTMLElement | null
+    ) => {
+      if (element instanceof HTMLElement) {
+        updateColumnGuideFromElement(element, event ?? null);
+      }
+    },
+    [updateColumnGuideFromElement]
+  );
+
   const handleColumnResizeStop = React.useCallback(
-    (_layout: Layout[], oldItem: Layout, newItem: Layout) => {
+    (
+      _layout: Layout[],
+      oldItem: Layout,
+      newItem: Layout,
+      _placeholder?: Layout,
+      _event?: MouseEvent | TouchEvent | null,
+      element?: HTMLElement | null
+    ) => {
       const nextWidth = Math.max(minColumnUnits, Math.min(maxColumnUnits, newItem.w));
+      if (element instanceof HTMLElement) {
+        updateColumnGuideFromElement(element, null);
+      }
+      isResizingRef.current = false;
+      activeColumnAxisRef.current = null;
+      clearGuideIfIdle("column");
       if (nextWidth === oldItem.w) return;
       setColumnState((previous) => {
         if (previous.widths[newItem.i] === nextWidth) return previous;
@@ -325,7 +490,7 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
         };
       });
     },
-    [maxColumnUnits, minColumnUnits]
+    [clearGuideIfIdle, maxColumnUnits, minColumnUnits, updateColumnGuideFromElement]
   );
 
   const handleRowDragStop = React.useCallback((nextLayout: Layout[]) => {
@@ -340,9 +505,55 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
     });
   }, []);
 
+  const handleRowResizeStart = React.useCallback(
+    (
+      _layout: Layout[],
+      _oldItem: Layout,
+      _newItem: Layout,
+      _placeholder?: Layout,
+      event?: MouseEvent | TouchEvent | null,
+      element?: HTMLElement | null
+    ) => {
+      isResizingRef.current = true;
+      if (element instanceof HTMLElement) {
+        updateRowGuideFromElement(element, event ?? null);
+      }
+    },
+    [updateRowGuideFromElement]
+  );
+
+  const handleRowResize = React.useCallback(
+    (
+      _layout: Layout[],
+      _oldItem: Layout,
+      _newItem: Layout,
+      _placeholder?: Layout,
+      event?: MouseEvent | TouchEvent | null,
+      element?: HTMLElement | null
+    ) => {
+      if (element instanceof HTMLElement) {
+        updateRowGuideFromElement(element, event ?? null);
+      }
+    },
+    [updateRowGuideFromElement]
+  );
+
   const handleRowResizeStop = React.useCallback(
-    (_layout: Layout[], oldItem: Layout, newItem: Layout) => {
+    (
+      _layout: Layout[],
+      oldItem: Layout,
+      newItem: Layout,
+      _placeholder?: Layout,
+      _event?: MouseEvent | TouchEvent | null,
+      element?: HTMLElement | null
+    ) => {
       const nextHeight = Math.max(minRowUnits, Math.min(maxRowUnits, newItem.h));
+      if (element instanceof HTMLElement) {
+        updateRowGuideFromElement(element, null);
+      }
+      isResizingRef.current = false;
+      activeRowAxisRef.current = null;
+      clearGuideIfIdle("row");
       if (nextHeight === oldItem.h) return;
       setRowState((previous) => {
         if (previous.heights[newItem.i] === nextHeight) return previous;
@@ -352,7 +563,67 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
         };
       });
     },
-    [maxRowUnits, minRowUnits]
+    [clearGuideIfIdle, maxRowUnits, minRowUnits, updateRowGuideFromElement]
+  );
+
+  const renderColumnResizeHandle = React.useCallback(
+    (axis: ResizeAxis, ref: React.Ref<HTMLSpanElement>) => {
+      if (axis !== "e" && axis !== "w") {
+        return <span ref={ref} />;
+      }
+      const handleAxis = axis as ColumnResizeAxis;
+      return (
+        <span
+          ref={ref}
+          role="presentation"
+          data-axis={handleAxis}
+          className={`grid-resize-handle grid-resize-handle-column grid-resize-handle-${handleAxis}`}
+          onPointerEnter={(event) => updateColumnGuideFromClientPoint(event.clientX, event.clientY)}
+          onPointerMove={(event) => updateColumnGuideFromClientPoint(event.clientX, event.clientY)}
+          onPointerLeave={() => clearGuideIfIdle("column")}
+          onPointerDown={(event) => {
+            activeColumnAxisRef.current = handleAxis;
+            updateColumnGuideFromClientPoint(event.clientX, event.clientY);
+          }}
+          onPointerUp={() => {
+            if (isResizingRef.current) return;
+            activeColumnAxisRef.current = null;
+            clearGuideIfIdle("column");
+          }}
+        />
+      );
+    },
+    [clearGuideIfIdle, updateColumnGuideFromClientPoint]
+  );
+
+  const renderRowResizeHandle = React.useCallback(
+    (axis: ResizeAxis, ref: React.Ref<HTMLSpanElement>) => {
+      if (axis !== "s") {
+        return <span ref={ref} />;
+      }
+      const handleAxis = axis as RowResizeAxis;
+      return (
+        <span
+          ref={ref}
+          role="presentation"
+          data-axis={handleAxis}
+          className={`grid-resize-handle grid-resize-handle-row grid-resize-handle-${handleAxis}`}
+          onPointerEnter={(event) => updateRowGuideFromClientPoint(event.clientX, event.clientY)}
+          onPointerMove={(event) => updateRowGuideFromClientPoint(event.clientX, event.clientY)}
+          onPointerLeave={() => clearGuideIfIdle("row")}
+          onPointerDown={(event) => {
+            activeRowAxisRef.current = handleAxis;
+            updateRowGuideFromClientPoint(event.clientX, event.clientY);
+          }}
+          onPointerUp={() => {
+            if (isResizingRef.current) return;
+            activeRowAxisRef.current = null;
+            clearGuideIfIdle("row");
+          }}
+        />
+      );
+    },
+    [clearGuideIfIdle, updateRowGuideFromClientPoint]
   );
 
   React.useEffect(() => {
@@ -365,8 +636,65 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
     });
   }, [columnState, rowState, onLayoutChange]);
 
+  const resizeOverlay = React.useMemo(() => {
+    if (!resizeGuide) return null;
+    const lineColor = "rgba(37, 99, 235, 0.55)";
+    const barColor = "rgba(37, 99, 235, 0.85)";
+
+    if (resizeGuide.kind === "column") {
+      const lineStyle: React.CSSProperties = {
+        left: resizeGuide.position,
+        top: 0,
+        width: GUIDE_LINE_THICKNESS,
+        height: resizeGuide.tableHeight,
+        transform: `translateX(-${GUIDE_LINE_THICKNESS / 2}px)`
+      };
+      const barStyle: React.CSSProperties = {
+        left: resizeGuide.position,
+        top: clampValue(resizeGuide.pointerOffset - GUIDE_BAR_LENGTH / 2, 0, resizeGuide.tableHeight - GUIDE_BAR_LENGTH),
+        width: GUIDE_BAR_THICKNESS,
+        height: GUIDE_BAR_LENGTH,
+        transform: `translateX(-${GUIDE_BAR_THICKNESS / 2}px)`
+      };
+      return (
+        <div className="grid-resize-overlay pointer-events-none absolute inset-0 z-30">
+          <div className="grid-resize-guide-line" style={{ ...lineStyle, backgroundColor: lineColor }} />
+          <div className="grid-resize-guide-bar" style={{ ...barStyle, backgroundColor: barColor }} />
+        </div>
+      );
+    }
+
+    const lineStyle: React.CSSProperties = {
+      top: resizeGuide.position,
+      left: 0,
+      height: GUIDE_LINE_THICKNESS,
+      width: resizeGuide.tableWidth,
+      transform: `translateY(-${GUIDE_LINE_THICKNESS / 2}px)`
+    };
+    const barStyle: React.CSSProperties = {
+      top: resizeGuide.position,
+      left: clampValue(resizeGuide.pointerOffset - GUIDE_BAR_LENGTH / 2, 0, resizeGuide.tableWidth - GUIDE_BAR_LENGTH),
+      width: GUIDE_BAR_LENGTH,
+      height: GUIDE_BAR_THICKNESS,
+      transform: `translateY(-${GUIDE_BAR_THICKNESS / 2}px)`
+    };
+
+    return (
+      <div className="grid-resize-overlay pointer-events-none absolute inset-0 z-30">
+        <div className="grid-resize-guide-line" style={{ ...lineStyle, backgroundColor: lineColor }} />
+        <div className="grid-resize-guide-bar" style={{ ...barStyle, backgroundColor: barColor }} />
+      </div>
+    );
+  }, [resizeGuide]);
+
   return (
-    <div className={["basic-react-grid-table flex h-full flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-neutral-700 dark:bg-neutral-900", className].filter(Boolean).join(" ")}>
+    <div
+      ref={tableRef}
+      className={["basic-react-grid-table relative flex h-full flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-neutral-700 dark:bg-neutral-900", className]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {resizeOverlay}
       <div className="flex items-stretch border-b border-zinc-200 bg-zinc-100/60 dark:border-neutral-700 dark:bg-neutral-900/60">
         <div
           className="flex items-center justify-center border-r border-zinc-200 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:border-neutral-700 dark:text-neutral-400"
@@ -382,14 +710,16 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
               rowHeight={headerHeight}
               margin={[0, 0]}
               containerPadding={[0, 0]}
-            isBounded
-            compactType={null}
-            preventCollision
-            draggableHandle=".column-drag-handle"
-            resizeHandles={["e", "w"]}
-            onDragStop={handleColumnDragStop}
-            onResizeStop={handleColumnResizeStop}
-          >
+              compactType={null}
+              preventCollision
+              draggableHandle=".column-drag-handle"
+              resizeHandles={["e", "w"]}
+              resizeHandle={renderColumnResizeHandle}
+              onDragStop={handleColumnDragStop}
+              onResizeStart={handleColumnResizeStart}
+              onResize={handleColumnResize}
+              onResizeStop={handleColumnResizeStop}
+            >
             {orderedColumns.map(({ id: columnId, column }) => {
               return (
                 <div
@@ -427,7 +757,10 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
             preventCollision
             draggableHandle=".row-drag-handle"
             resizeHandles={["s"]}
+            resizeHandle={renderRowResizeHandle}
             onDragStop={handleRowDragStop}
+            onResizeStart={handleRowResizeStart}
+            onResize={handleRowResize}
             onResizeStop={handleRowResizeStop}
           >
             {rowState.order.map((rowId, position) => {
