@@ -369,14 +369,16 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
               cols={layoutColumnSpan}
               rowHeight={headerHeight}
               margin={[0, 0]}
-              containerPadding={[0, 0]}
-              isBounded
-              compactType={null}
-              preventCollision
-              draggableHandle=".column-drag-handle"
+            containerPadding={[0, 0]}
+            isBounded
+            compactType={null}
+            preventCollision
+            draggableHandle=".column-drag-handle"
             resizeHandles={["e", "w"]}
-            onDragStop={handleColumnDragStop}
-            onResizeStop={handleColumnResizeStop}
+            onDrag={handleColumnDrag}
+            onDragStop={handleColumnDrag}
+            onResize={handleColumnResize}
+            onResizeStop={handleColumnResize}
           >
             {orderedColumns.map(({ id: columnId, column }) => {
               return (
@@ -415,8 +417,10 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
             preventCollision
             draggableHandle=".row-drag-handle"
             resizeHandles={["s"]}
-            onDragStop={handleRowDragStop}
-            onResizeStop={handleRowResizeStop}
+            onDrag={handleRowDrag}
+            onDragStop={handleRowDrag}
+            onResize={handleRowResize}
+            onResizeStop={handleRowResize}
           >
             {rowState.order.map((rowId, position) => {
               const rowHeightUnits = rowState.heights[rowId] ?? DEFAULT_ROW_HEIGHT_UNITS;
