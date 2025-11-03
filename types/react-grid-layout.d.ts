@@ -164,6 +164,11 @@ declare module "react-grid-layout" {
      */
     enforceUniformRowCss?: boolean;
     /**
+     * Enforces row resize gestures to scale every item in the targeted rowGroupId uniformly.
+     * Defaults to true so rows remain visually aligned.
+     */
+    uniformRowScaling?: boolean;
+    /**
      * Controls the styling for resize guide lines and handles on a per-axis basis.
      */
     resizeGuides?: Partial<Record<"row" | "column", ResizeVisualizationOptions>>;
