@@ -461,7 +461,6 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
             containerPadding={[0, 0]}
             isDraggable={false}
             isResizable={false}
-            isDroppable={false}
             compactType={null}
             preventCollision
             style={{ minWidth: orderedColumns.length ? "100%" : 0 }}
