@@ -300,10 +300,12 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
     const tableElement = tableRef.current;
     if (!tableElement) return;
     const rect = tableElement.getBoundingClientRect();
+    const linePosition = clampValue(clientX - rect.left, 0, rect.width);
+    const pointerOffset = clampValue(clientY - rect.top, 0, rect.height);
     setResizeGuide({
       kind: "column",
-      position: clientX - rect.left,
-      pointerOffset: clientY - rect.top,
+      position: linePosition,
+      pointerOffset,
       tableWidth: rect.width,
       tableHeight: rect.height
     });
@@ -313,10 +315,12 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
     const tableElement = tableRef.current;
     if (!tableElement) return;
     const rect = tableElement.getBoundingClientRect();
+    const linePosition = clampValue(clientY - rect.top, 0, rect.height);
+    const pointerOffset = clampValue(clientX - rect.left, 0, rect.width);
     setResizeGuide({
       kind: "row",
-      position: clientY - rect.top,
-      pointerOffset: clientX - rect.left,
+      position: linePosition,
+      pointerOffset,
       tableWidth: rect.width,
       tableHeight: rect.height
     });
@@ -337,9 +341,11 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
       const tableRect = tableElement.getBoundingClientRect();
       const elementRect = element.getBoundingClientRect();
       const axis = activeColumnAxisRef.current ?? "e";
-      const linePosition = axis === "w" ? elementRect.left - tableRect.left : elementRect.right - tableRect.left;
+      const rawPosition = axis === "w" ? elementRect.left - tableRect.left : elementRect.right - tableRect.left;
+      const linePosition = clampValue(rawPosition, 0, tableRect.width);
       const point = resolveClientPoint(event);
-      const pointerY = point ? point.clientY - tableRect.top : elementRect.top - tableRect.top + elementRect.height / 2;
+      const fallbackPointerY = elementRect.top - tableRect.top + elementRect.height / 2;
+      const pointerY = clampValue((point ? point.clientY - tableRect.top : fallbackPointerY), 0, tableRect.height);
       setResizeGuide({
         kind: "column",
         position: linePosition,
@@ -358,9 +364,11 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
       const tableRect = tableElement.getBoundingClientRect();
       const elementRect = element.getBoundingClientRect();
       const axis = activeRowAxisRef.current ?? "s";
-      const linePosition = axis === "s" ? elementRect.bottom - tableRect.top : elementRect.top - tableRect.top;
+      const rawPosition = axis === "s" ? elementRect.bottom - tableRect.top : elementRect.top - tableRect.top;
+      const linePosition = clampValue(rawPosition, 0, tableRect.height);
       const point = resolveClientPoint(event);
-      const pointerX = point ? point.clientX - tableRect.left : elementRect.left - tableRect.left + elementRect.width / 2;
+      const fallbackPointerX = elementRect.left - tableRect.left + elementRect.width / 2;
+      const pointerX = clampValue((point ? point.clientX - tableRect.left : fallbackPointerX), 0, tableRect.width);
       setResizeGuide({
         kind: "row",
         position: linePosition,
@@ -442,6 +450,9 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
       element?: HTMLElement | null
     ) => {
       isResizingRef.current = true;
+      if (!activeColumnAxisRef.current) {
+        activeColumnAxisRef.current = "e";
+      }
       if (element instanceof HTMLElement) {
         updateColumnGuideFromElement(element, event ?? null);
       }
@@ -515,6 +526,9 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
       element?: HTMLElement | null
     ) => {
       isResizingRef.current = true;
+      if (!activeRowAxisRef.current) {
+        activeRowAxisRef.current = "s";
+      }
       if (element instanceof HTMLElement) {
         updateRowGuideFromElement(element, event ?? null);
       }
