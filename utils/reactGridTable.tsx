@@ -206,11 +206,7 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
   );
 
   const totalColumnUnits = columnLayouts.reduce((sum, item) => sum + item.w, 0) || 1;
-  const columnWidthPercentages = columnState.order.map((columnId) => {
-    const layout = columnLayouts.find((item) => item.i === columnId);
-    const widthUnits = layout?.w ?? DEFAULT_COLUMN_WIDTH_UNITS;
-    return (widthUnits / totalColumnUnits) * 100;
-  });
+  const layoutColumnSpan = Math.max(totalColumnUnits, columnLayouts.length || 1);
 
   const totalRowHeightPx = rowLayouts.reduce((sum, item) => sum + item.h * ROW_UNIT_HEIGHT, 0);
   const orderedColumns = columnState.order
@@ -222,12 +218,69 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
     .filter((entry): entry is { id: string; column: ColumnSpec<T> } => Boolean(entry));
 
   const orderedRows = rowState.order
-    .map((id) => {
-      const index = rows.findIndex((row, idx) => rowIdFor(row, idx) === id);
-      if (index === -1) return null;
-      return { id, row: rows[index] };
-    })
-    .filter((entry): entry is { id: string; row: T } => Boolean(entry));
+      .map((id) => {
+        const index = rows.findIndex((row, idx) => rowIdFor(row, idx) === id);
+        if (index === -1) return null;
+        return { id, row: rows[index] };
+      })
+      .filter((entry): entry is { id: string; row: T } => Boolean(entry));
+
+  const columnLayoutLookup = React.useMemo(() => {
+    const map = new Map<string, Layout>();
+    for (const layout of columnLayouts) {
+      map.set(layout.i, layout);
+    }
+    return map;
+  }, [columnLayouts]);
+
+  const rowLayoutLookup = React.useMemo(() => {
+    const map = new Map<string, Layout>();
+    for (const layout of rowLayouts) {
+      map.set(layout.i, layout);
+    }
+    return map;
+  }, [rowLayouts]);
+
+  const cellItems = React.useMemo<CellRenderItem[]>(() => {
+    const items: CellRenderItem[] = [];
+    const columnCount = orderedColumns.length;
+
+    for (const { id: rowId, row } of orderedRows) {
+      const rowLayout = rowLayoutLookup.get(rowId);
+      if (!rowLayout) continue;
+
+      orderedColumns.forEach(({ id: columnId, column }, columnIndex) => {
+        const columnLayout = columnLayoutLookup.get(columnId);
+        if (!columnLayout) return;
+
+        const cellId = `${rowId}::${columnId}`;
+        const rowRecord = row as Record<string, unknown>;
+        const cellLayout: Layout = {
+          i: cellId,
+          x: columnLayout.x,
+          y: rowLayout.y,
+          w: columnLayout.w,
+          h: rowLayout.h,
+          minW: columnLayout.minW,
+          maxW: columnLayout.maxW,
+          minH: rowLayout.minH,
+          maxH: rowLayout.maxH,
+          static: true
+        };
+
+        items.push({
+          id: cellId,
+          layout: cellLayout,
+          value: rowRecord[String(column.key)] ?? null,
+          isLastColumn: columnIndex === columnCount - 1
+        });
+      });
+    }
+
+    return items;
+  }, [orderedColumns, orderedRows, columnLayoutLookup, rowLayoutLookup]);
+
+  const cellLayouts = React.useMemo<Layout[]>(() => cellItems.map((item) => item.layout), [cellItems]);
 
   const handleColumnDragStop = React.useCallback(
     (nextLayout: Layout[]) => {
@@ -281,11 +334,6 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
       rowHeights: { ...rowState.heights }
     });
   }, [columnState, rowState, onLayoutChange]);
-
-  const columnGridTemplate = React.useMemo(
-    () => columnWidthPercentages.map((pct) => `${pct}%`).join(" "),
-    [columnWidthPercentages]
-  );
 
   return (
     <div className={["basic-react-grid-table flex h-full flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-neutral-700 dark:bg-neutral-900", className].filter(Boolean).join(" ")}>
