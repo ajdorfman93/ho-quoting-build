@@ -9,6 +9,12 @@ declare module "react-grid-layout" {
     bivarianceHack: (...args: Args) => void;
   }["bivarianceHack"];
 
+  export type ResizeHandleAxis = "s" | "w" | "e" | "n" | "sw" | "nw" | "se" | "ne";
+
+  export type ResizeHandle =
+    | React.ReactElement
+    | ((resizeHandleAxis: ResizeHandleAxis, ref: React.Ref<HTMLElement>) => React.ReactElement);
+
   export interface UniformRowCssProperties {
     /**
      * Ensures row participants share a consistent height while width is driven by layout units.
@@ -79,7 +85,8 @@ declare module "react-grid-layout" {
     static?: boolean;
     isDraggable?: boolean;
     isResizable?: boolean;
-    resizeHandles?: Array<"s" | "w" | "e" | "n" | "sw" | "nw" | "se" | "ne">;
+    resizeHandles?: Array<ResizeHandleAxis>;
+    resizeHandle?: ResizeHandle;
     /**
      * Logical identifier grouping items that must share a uniform row configuration.
      */
@@ -158,7 +165,8 @@ declare module "react-grid-layout" {
     useCSSTransforms?: boolean;
     verticalCompact?: boolean;
     allowOverlap?: boolean;
-    resizeHandles?: Array<"s" | "w" | "e" | "n" | "sw" | "nw" | "se" | "ne">;
+    resizeHandles?: Array<ResizeHandleAxis>;
+    resizeHandle?: ResizeHandle;
     /**
      * When true, react-grid-layout expects every rowGroupId cohort to share identical rowCss values.
      */
@@ -174,6 +182,8 @@ declare module "react-grid-layout" {
     resizeGuides?: Partial<Record<"row" | "column", ResizeVisualizationOptions>>;
     onLayoutChange?: BivariantEventHandler<[Layout[]]>;
     onDragStop?: BivariantEventHandler<[Layout[], Layout, Layout, Layout, Event, HTMLElement]>;
+    onResizeStart?: BivariantEventHandler<[Layout[], Layout, Layout, Layout, Event, HTMLElement]>;
+    onResize?: BivariantEventHandler<[Layout[], Layout, Layout, Layout, Event, HTMLElement]>;
     onResizeStop?: BivariantEventHandler<[Layout[], Layout, Layout, Layout, Event, HTMLElement, UniformRowResizeEvent | undefined]>;
   }
 

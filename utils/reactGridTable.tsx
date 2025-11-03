@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import GridLayout, { WidthProvider, type Layout } from "react-grid-layout";
+import GridLayout, { WidthProvider, type Layout, type UniformRowResizeEvent } from "react-grid-layout";
 import type { ColumnSpec } from "./tableUtils";
 
 import "react-grid-layout/css/styles.css";
@@ -66,7 +66,7 @@ function clampValue(value: number, min: number, max: number) {
   return Math.max(min, value);
 }
 
-function resolveClientPoint(event?: MouseEvent | TouchEvent | null) {
+function resolveClientPoint(event?: Event | null) {
   if (!event) return null;
   if (typeof TouchEvent !== "undefined" && event instanceof TouchEvent) {
     const touch = event.touches[0] ?? event.changedTouches[0];
@@ -74,7 +74,23 @@ function resolveClientPoint(event?: MouseEvent | TouchEvent | null) {
       return { clientX: touch.clientX, clientY: touch.clientY };
     }
   }
-  return { clientX: (event as MouseEvent).clientX, clientY: (event as MouseEvent).clientY };
+  if (typeof PointerEvent !== "undefined" && event instanceof PointerEvent) {
+    return { clientX: event.clientX, clientY: event.clientY };
+  }
+  if (typeof MouseEvent !== "undefined" && event instanceof MouseEvent) {
+    return { clientX: event.clientX, clientY: event.clientY };
+  }
+  const candidate = event as { clientX?: number; clientY?: number; touches?: Array<{ clientX: number; clientY: number }>; changedTouches?: Array<{ clientX: number; clientY: number }> };
+  if (Array.isArray(candidate?.touches) && candidate.touches[0]) {
+    return { clientX: candidate.touches[0].clientX, clientY: candidate.touches[0].clientY };
+  }
+  if (Array.isArray(candidate?.changedTouches) && candidate.changedTouches[0]) {
+    return { clientX: candidate.changedTouches[0].clientX, clientY: candidate.changedTouches[0].clientY };
+  }
+  if (typeof candidate?.clientX === "number" && typeof candidate?.clientY === "number") {
+    return { clientX: candidate.clientX, clientY: candidate.clientY };
+  }
+  return null;
 }
 
 interface ColumnSizingState {
@@ -335,7 +351,7 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
   }, []);
 
   const updateColumnGuideFromElement = React.useCallback(
-    (element: HTMLElement, event?: MouseEvent | TouchEvent | null) => {
+    (element: HTMLElement, event?: Event | null) => {
       const tableElement = tableRef.current;
       if (!tableElement) return;
       const tableRect = tableElement.getBoundingClientRect();
@@ -358,7 +374,7 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
   );
 
   const updateRowGuideFromElement = React.useCallback(
-    (element: HTMLElement, event?: MouseEvent | TouchEvent | null) => {
+    (element: HTMLElement, event?: Event | null) => {
       const tableElement = tableRef.current;
       if (!tableElement) return;
       const tableRect = tableElement.getBoundingClientRect();
@@ -441,36 +457,22 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
   }, []);
 
   const handleColumnResizeStart = React.useCallback(
-    (
-      _layout: Layout[],
-      _oldItem: Layout,
-      _newItem: Layout,
-      _placeholder?: Layout,
-      event?: MouseEvent | TouchEvent | null,
-      element?: HTMLElement | null
-    ) => {
+    (_layout: Layout[], _oldItem: Layout, _newItem: Layout, _placeholder: Layout, event: Event, element: HTMLElement) => {
       isResizingRef.current = true;
       if (!activeColumnAxisRef.current) {
         activeColumnAxisRef.current = "e";
       }
       if (element instanceof HTMLElement) {
-        updateColumnGuideFromElement(element, event ?? null);
+        updateColumnGuideFromElement(element, event);
       }
     },
     [updateColumnGuideFromElement]
   );
 
   const handleColumnResize = React.useCallback(
-    (
-      _layout: Layout[],
-      _oldItem: Layout,
-      _newItem: Layout,
-      _placeholder?: Layout,
-      event?: MouseEvent | TouchEvent | null,
-      element?: HTMLElement | null
-    ) => {
+    (_layout: Layout[], _oldItem: Layout, _newItem: Layout, _placeholder: Layout, event: Event, element: HTMLElement) => {
       if (element instanceof HTMLElement) {
-        updateColumnGuideFromElement(element, event ?? null);
+        updateColumnGuideFromElement(element, event);
       }
     },
     [updateColumnGuideFromElement]
@@ -481,13 +483,14 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
       _layout: Layout[],
       oldItem: Layout,
       newItem: Layout,
-      _placeholder?: Layout,
-      _event?: MouseEvent | TouchEvent | null,
-      element?: HTMLElement | null
+      _placeholder: Layout,
+      event: Event,
+      element: HTMLElement,
+      _uniform?: UniformRowResizeEvent
     ) => {
       const nextWidth = Math.max(minColumnUnits, Math.min(maxColumnUnits, newItem.w));
       if (element instanceof HTMLElement) {
-        updateColumnGuideFromElement(element, null);
+        updateColumnGuideFromElement(element, event);
       }
       isResizingRef.current = false;
       activeColumnAxisRef.current = null;
@@ -517,36 +520,22 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
   }, []);
 
   const handleRowResizeStart = React.useCallback(
-    (
-      _layout: Layout[],
-      _oldItem: Layout,
-      _newItem: Layout,
-      _placeholder?: Layout,
-      event?: MouseEvent | TouchEvent | null,
-      element?: HTMLElement | null
-    ) => {
+    (_layout: Layout[], _oldItem: Layout, _newItem: Layout, _placeholder: Layout, event: Event, element: HTMLElement) => {
       isResizingRef.current = true;
       if (!activeRowAxisRef.current) {
         activeRowAxisRef.current = "s";
       }
       if (element instanceof HTMLElement) {
-        updateRowGuideFromElement(element, event ?? null);
+        updateRowGuideFromElement(element, event);
       }
     },
     [updateRowGuideFromElement]
   );
 
   const handleRowResize = React.useCallback(
-    (
-      _layout: Layout[],
-      _oldItem: Layout,
-      _newItem: Layout,
-      _placeholder?: Layout,
-      event?: MouseEvent | TouchEvent | null,
-      element?: HTMLElement | null
-    ) => {
+    (_layout: Layout[], _oldItem: Layout, _newItem: Layout, _placeholder: Layout, event: Event, element: HTMLElement) => {
       if (element instanceof HTMLElement) {
-        updateRowGuideFromElement(element, event ?? null);
+        updateRowGuideFromElement(element, event);
       }
     },
     [updateRowGuideFromElement]
@@ -557,13 +546,14 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
       _layout: Layout[],
       oldItem: Layout,
       newItem: Layout,
-      _placeholder?: Layout,
-      _event?: MouseEvent | TouchEvent | null,
-      element?: HTMLElement | null
+      _placeholder: Layout,
+      event: Event,
+      element: HTMLElement,
+      _uniform?: UniformRowResizeEvent
     ) => {
       const nextHeight = Math.max(minRowUnits, Math.min(maxRowUnits, newItem.h));
       if (element instanceof HTMLElement) {
-        updateRowGuideFromElement(element, null);
+        updateRowGuideFromElement(element, event);
       }
       isResizingRef.current = false;
       activeRowAxisRef.current = null;
