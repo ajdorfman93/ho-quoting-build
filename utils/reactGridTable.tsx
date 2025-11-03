@@ -470,12 +470,23 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
   );
 
   const handleColumnResize = React.useCallback(
-    (_layout: Layout[], _oldItem: Layout, _newItem: Layout, _placeholder: Layout, event: Event, element: HTMLElement) => {
+    (_layout: Layout[], _oldItem: Layout, newItem: Layout, _placeholder: Layout, event: Event, element: HTMLElement) => {
+      const axis = activeColumnAxisRef.current ?? "e";
+      if (axis === "e") {
+        const nextWidth = Math.max(minColumnUnits, Math.min(maxColumnUnits, newItem.w));
+        setColumnState((previous) => {
+          if (previous.widths[newItem.i] === nextWidth) return previous;
+          return {
+            order: previous.order,
+            widths: { ...previous.widths, [newItem.i]: nextWidth }
+          };
+        });
+      }
       if (element instanceof HTMLElement) {
         updateColumnGuideFromElement(element, event);
       }
     },
-    [updateColumnGuideFromElement]
+    [maxColumnUnits, minColumnUnits, updateColumnGuideFromElement]
   );
 
   const handleColumnResizeStop = React.useCallback(
@@ -533,12 +544,23 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
   );
 
   const handleRowResize = React.useCallback(
-    (_layout: Layout[], _oldItem: Layout, _newItem: Layout, _placeholder: Layout, event: Event, element: HTMLElement) => {
+    (_layout: Layout[], _oldItem: Layout, newItem: Layout, _placeholder: Layout, event: Event, element: HTMLElement) => {
+      const axis = activeRowAxisRef.current ?? "s";
+      if (axis === "s") {
+        const nextHeight = Math.max(minRowUnits, Math.min(maxRowUnits, newItem.h));
+        setRowState((previous) => {
+          if (previous.heights[newItem.i] === nextHeight) return previous;
+          return {
+            order: previous.order,
+            heights: { ...previous.heights, [newItem.i]: nextHeight }
+          };
+        });
+      }
       if (element instanceof HTMLElement) {
         updateRowGuideFromElement(element, event);
       }
     },
-    [updateRowGuideFromElement]
+    [maxRowUnits, minRowUnits, updateRowGuideFromElement]
   );
 
   const handleRowResizeStop = React.useCallback(
