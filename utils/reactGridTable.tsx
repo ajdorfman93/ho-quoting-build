@@ -64,6 +64,14 @@ function ensureOrder(baseOrder: string[], incomingIds: string[]): string[] {
   return [...preserved, ...additions];
 }
 
+function ordersMatch(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false;
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return false;
+  }
+  return true;
+}
+
 function formatPrimitive(value: Primitive): string {
   if (value === null || value === undefined) return "";
   if (value instanceof Date) return value.toISOString();
@@ -281,45 +289,56 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
 
   const cellLayouts = React.useMemo<Layout[]>(() => cellItems.map((item) => item.layout), [cellItems]);
 
-  const handleColumnDragStop = React.useCallback(
-    (nextLayout: Layout[]) => {
-      const sorted = [...nextLayout].sort((a, b) => a.x - b.x);
-      setColumnState((previous) => ({
-        order: sorted.map((item) => item.i),
-        widths: { ...previous.widths }
-      }));
-    },
-    []
-  );
+  const handleColumnDrag = React.useCallback((nextLayout: Layout[]) => {
+    const sorted = [...nextLayout].sort((a, b) => a.x - b.x);
+    const nextOrder = sorted.map((item) => item.i);
+    setColumnState((previous) => {
+      if (ordersMatch(previous.order, nextOrder)) return previous;
+      return {
+        order: nextOrder,
+        widths: previous.widths
+      };
+    });
+  }, []);
 
-  const handleColumnResizeStop = React.useCallback(
+  const handleColumnResize = React.useCallback(
     (_layout: Layout[], oldItem: Layout, newItem: Layout) => {
       const nextWidth = Math.max(minColumnUnits, Math.min(maxColumnUnits, newItem.w));
       if (nextWidth === oldItem.w) return;
-      setColumnState((previous) => ({
-        order: previous.order,
-        widths: { ...previous.widths, [newItem.i]: nextWidth }
-      }));
+      setColumnState((previous) => {
+        if (previous.widths[newItem.i] === nextWidth) return previous;
+        return {
+          order: previous.order,
+          widths: { ...previous.widths, [newItem.i]: nextWidth }
+        };
+      });
     },
     [maxColumnUnits, minColumnUnits]
   );
 
-  const handleRowDragStop = React.useCallback((nextLayout: Layout[]) => {
+  const handleRowDrag = React.useCallback((nextLayout: Layout[]) => {
     const sorted = [...nextLayout].sort((a, b) => a.y - b.y);
-    setRowState((previous) => ({
-      order: sorted.map((item) => item.i),
-      heights: { ...previous.heights }
-    }));
+    const nextOrder = sorted.map((item) => item.i);
+    setRowState((previous) => {
+      if (ordersMatch(previous.order, nextOrder)) return previous;
+      return {
+        order: nextOrder,
+        heights: previous.heights
+      };
+    });
   }, []);
 
-  const handleRowResizeStop = React.useCallback(
+  const handleRowResize = React.useCallback(
     (_layout: Layout[], oldItem: Layout, newItem: Layout) => {
       const nextHeight = Math.max(minRowUnits, Math.min(maxRowUnits, newItem.h));
       if (nextHeight === oldItem.h) return;
-      setRowState((previous) => ({
-        order: previous.order,
-        heights: { ...previous.heights, [newItem.i]: nextHeight }
-      }));
+      setRowState((previous) => {
+        if (previous.heights[newItem.i] === nextHeight) return previous;
+        return {
+          order: previous.order,
+          heights: { ...previous.heights, [newItem.i]: nextHeight }
+        };
+      });
     },
     [maxRowUnits, minRowUnits]
   );
