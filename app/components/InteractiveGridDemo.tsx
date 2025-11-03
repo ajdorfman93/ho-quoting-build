@@ -271,9 +271,13 @@ export function InteractiveGrid<T extends Record<string, unknown>>({
     [onStateChange]
   );
 
-  const tableRenderer = renderTable ?? renderInteractiveTable;
+  const defaultRenderer = React.useCallback(
+    (props: InteractiveTableProps<T>) => renderInteractiveTable<T>(props),
+    []
+  );
+  const tableRenderer = renderTable ?? defaultRenderer;
 
-  return tableRenderer<T>({
+  return tableRenderer({
     rows: state.rows,
     columns: state.columns,
     linkedTableOptions,
