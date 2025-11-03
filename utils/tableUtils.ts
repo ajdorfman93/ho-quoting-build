@@ -3026,7 +3026,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       dragClass: SORTABLE_DRAG_CLASS,
       fallbackTolerance: 4,
       draggable: "[data-header-cell='true']",
-      handle: "[data-header-cell='true']",
+      handle: "[data-header-drag-handle='true']",
       filter:
         "[data-resize-handle='true'], [data-header-menu-trigger='true'], input, textarea, select, button, [contenteditable='true']",
       onEnd: () => {
@@ -5863,7 +5863,10 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
                 offset: 6
               });
             };
-            return h("div", { className: "group flex w-full items-center gap-2 truncate" },
+            return h("div", {
+              className: "group flex w-full items-center gap-2 truncate",
+              "data-header-drag-handle": "true"
+            },
               icon,
               h("span", { className: "flex-1 truncate text-zinc-700 dark:text-zinc-200 font-medium" }, displayName),
               h("button", {
