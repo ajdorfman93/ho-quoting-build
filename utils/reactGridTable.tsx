@@ -344,18 +344,18 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
         >
           #
         </div>
-        <div className="flex-1">
-          <WidthAwareGridLayout
-            className="column-header-layout"
-            layout={columnLayouts}
-            cols={Math.max(totalColumnUnits, columnLayouts.length || 1)}
-            rowHeight={headerHeight}
-            margin={[8, 8]}
-            containerPadding={[0, 0]}
-            isBounded
-            compactType={null}
-            preventCollision
-            draggableHandle=".column-drag-handle"
+          <div className="flex-1">
+            <WidthAwareGridLayout
+              className="column-header-layout"
+              layout={columnLayouts}
+              cols={layoutColumnSpan}
+              rowHeight={headerHeight}
+              margin={[0, 0]}
+              containerPadding={[0, 0]}
+              isBounded
+              compactType={null}
+              preventCollision
+              draggableHandle=".column-drag-handle"
             resizeHandles={["e", "w"]}
             onDragStop={handleColumnDragStop}
             onResizeStop={handleColumnResizeStop}
@@ -389,8 +389,8 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
             layout={rowLayouts}
             cols={1}
             rowHeight={ROW_UNIT_HEIGHT}
-            margin={[0, 8]}
-            containerPadding={[0, 8]}
+            margin={[0, 0]}
+            containerPadding={[0, 0]}
             isResizable
             isDraggable
             compactType={null}
@@ -422,33 +422,36 @@ export function BasicReactGridTable<T extends Record<string, unknown>>({
         </div>
 
         <div className="flex-1 overflow-auto">
-          <div
-            className="grid border-collapse text-sm"
-            style={{
-              gridTemplateColumns: columnGridTemplate,
-              minWidth: orderedColumns.length ? "100%" : 0
-            }}
+          <WidthAwareGridLayout
+            className="cell-grid-layout text-sm"
+            layout={cellLayouts}
+            cols={layoutColumnSpan}
+            rowHeight={ROW_UNIT_HEIGHT}
+            margin={[0, 0]}
+            containerPadding={[0, 0]}
+            isDraggable={false}
+            isResizable={false}
+            isDroppable={false}
+            compactType={null}
+            preventCollision
+            style={{ minWidth: orderedColumns.length ? "100%" : 0 }}
           >
-            {orderedRows.map(({ id: rowId, row }) => {
-              const rowHeightUnits = rowState.heights[rowId] ?? DEFAULT_ROW_HEIGHT_UNITS;
-              const rowHeightPx = rowHeightUnits * ROW_UNIT_HEIGHT;
-              return orderedColumns.map(({ id: columnId, column }, colIdx) => {
-                const value = (row as Record<string, unknown>)[String(column.key)] ?? null;
-                return (
-                  <div
-                    key={`${rowId}-${columnId ?? colIdx}`}
-                    className="flex items-center border-b border-r border-zinc-200 px-3 py-2 text-zinc-700 last:border-r-0 dark:border-neutral-700 dark:text-neutral-200"
-                    style={{
-                      height: rowHeightPx
-                    }}
-                  >
-                    <span className="truncate">{normalizeCellValue(value)}</span>
-                  </div>
-                );
-              });
+            {cellItems.map((cell) => {
+              const className = [
+                "cell-item flex h-full items-center border-b border-r border-zinc-200 px-3 py-2 text-zinc-700 dark:border-neutral-700 dark:text-neutral-200",
+                cell.isLastColumn ? "border-r-0" : ""
+              ]
+                .filter(Boolean)
+                .join(" ");
+
+              return (
+                <div key={cell.id} className={className}>
+                  <span className="truncate">{normalizeCellValue(cell.value)}</span>
+                </div>
+              );
             })}
-          </div>
-          {totalRowHeightPx === 0 && (
+          </WidthAwareGridLayout>
+          {orderedRows.length === 0 && (
             <div className="p-6 text-center text-sm text-zinc-500 dark:text-neutral-400">
               No rows to display yet.
             </div>
