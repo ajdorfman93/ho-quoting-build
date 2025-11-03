@@ -178,8 +178,8 @@ const ROW_HEIGHT_PRESETS = {
   extraTall: 104
 } as const;
 
-const MAX_COLUMN_WIDTH = Number.POSITIVE_INFINITY;
-const MAX_ROW_HEIGHT = Number.POSITIVE_INFINITY;
+const MAX_COLUMN_WIDTH = 4096;
+const MAX_ROW_HEIGHT = 1024;
 
 type RowHeightPreset = keyof typeof ROW_HEIGHT_PRESETS;
 const ROW_COLOR_PALETTE = ["#22d3ee", "#fb7185", "#f97316", "#22c55e", "#818cf8", "#facc15", "#14b8a6", "#f472b6"] as const;
@@ -2750,7 +2750,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     () => rows.map(() => ROW_HEIGHT_PRESETS[rowHeightPreset])
   );
   const [colWidths, setColWidths] = React.useState<number[]>(
-    () => columns.map((c) => clamp(c.width ?? 160, minColumnWidth, 800))
+    () => columns.map((c) => clamp(c.width ?? 160, minColumnWidth, MAX_COLUMN_WIDTH))
   );
 
   React.useEffect(() => {
@@ -2776,7 +2776,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   React.useEffect(() => {
     if (colWidths.length !== columns.length) {
       setColWidths((prev) => {
-        const next = columns.map((_c, i) => clamp(prev[i] ?? 160, minColumnWidth, 800));
+        const next = columns.map((_c, i) => clamp(prev[i] ?? 160, minColumnWidth, MAX_COLUMN_WIDTH));
         return next;
       });
     }
@@ -3605,7 +3605,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       const dx = ev.clientX - startX;
       setColWidths((w) => {
         const next = w.slice();
-        next[idx] = clamp(startW + dx, minColumnWidth, 800);
+        next[idx] = clamp(startW + dx, minColumnWidth, MAX_COLUMN_WIDTH);
         colWidthsRef.current = next;
         columnOffsetsRef.current = buildColumnOffsets(next, minColumnWidth);
         return next;
@@ -3640,7 +3640,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       const dy = ev.clientY - startY;
       setRowHeights((h) => {
         const next = h.slice();
-        next[idx] = clamp(startH + dy, minRowHeight, 400);
+        next[idx] = clamp(startH + dy, minRowHeight, MAX_ROW_HEIGHT);
         rowHeightsRef.current = next;
         rowOffsetsRef.current = buildRowOffsets(next);
         return next;
@@ -3976,7 +3976,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     latestRowsRef.current = nextRows;
     setColWidths((prev) => {
       const next = prev.slice();
-      next.splice(safeIndex, 0, clamp(newColumn.width ?? 160, minColumnWidth, 800));
+      next.splice(safeIndex, 0, clamp(newColumn.width ?? 160, minColumnWidth, MAX_COLUMN_WIDTH));
       return next;
     });
     commit(nextRows, nextCols);
@@ -4052,7 +4052,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const key = String(col.key);
     const capturedValues = rows.map((row) => deepClone((row as any)[key]));
     const capturedStyles = rows.map((_row, rIdx) => getCellStyle(rIdx, idx));
-    const width = clamp(colWidths[idx] ?? col.width ?? 160, minColumnWidth, 800);
+    const width = clamp(colWidths[idx] ?? col.width ?? 160, minColumnWidth, MAX_COLUMN_WIDTH);
     setHiddenColumns((prev) => [...prev, {
       column: deepClone(col),
       index: idx,
@@ -4106,7 +4106,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
       latestRowsRef.current = nextRows;
       setColWidths((prevWidths) => {
         const next = prevWidths.slice();
-        next.splice(insertIndex, 0, clamp(entry.width, minColumnWidth, 800));
+        next.splice(insertIndex, 0, clamp(entry.width, minColumnWidth, MAX_COLUMN_WIDTH));
         return next;
       });
       commit(nextRows, nextCols);
@@ -4955,7 +4955,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         index: idx,
         values: rows.map((row) => deepClone((row as any)[key])),
         styles: rows.map((_row, rIdx) => getCellStyle(rIdx, idx)),
-        width: clamp(colWidths[idx] ?? col.width ?? 160, minColumnWidth, 800)
+        width: clamp(colWidths[idx] ?? col.width ?? 160, minColumnWidth, MAX_COLUMN_WIDTH)
       };
     });
     const nextRows = rows.map((row) => {
@@ -5005,7 +5005,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
           }
         }
       });
-      nextWidths.splice(insertIndex, 0, clamp(entry.width, minColumnWidth, 800));
+      nextWidths.splice(insertIndex, 0, clamp(entry.width, minColumnWidth, MAX_COLUMN_WIDTH));
     }
     setColumns(nextCols);
     setRows(nextRows);
@@ -5755,6 +5755,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         width: `${ROW_NUMBER_COLUMN_WIDTH}px`,
         minWidth: `${ROW_NUMBER_COLUMN_WIDTH}px`,
         maxWidth: `${ROW_NUMBER_COLUMN_WIDTH}px`,
+        flex: `0 0 ${ROW_NUMBER_COLUMN_WIDTH}px`,
         height: "100%"
       },
       role: "button",
@@ -5818,7 +5819,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         style: {
           width: `${colWidths[c]}px`,
           minWidth: `${colWidths[c]}px`,
-          maxWidth: `${colWidths[c]}px`
+          maxWidth: `${colWidths[c]}px`,
+          flex: `0 0 ${colWidths[c]}px`
         },
         onDoubleClick: () => setHeaderEditing(c),
         onContextMenu: (e: React.MouseEvent) => headerMenu.open(e, c),
@@ -5938,7 +5940,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
     const isRowEdgeActive = rowResizeHover === r || (rowResizeGuide && rowResizeGuide.index === r);
     const isRowResizing = !!(rowResizeGuide?.active && rowResizeGuide.index === r);
     const rowStyle: React.CSSProperties = {
-      height: `${rowHeights[r]}px`
+      height: `${rowHeights[r]}px`,
+      minHeight: `${rowHeights[r]}px`
     };
     if (rowAccentColor) {
       const accent = `${rowAccentColor}4D`;
@@ -5973,7 +5976,8 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         style: {
           width: `${ROW_NUMBER_COLUMN_WIDTH}px`,
           minWidth: `${ROW_NUMBER_COLUMN_WIDTH}px`,
-          maxWidth: `${ROW_NUMBER_COLUMN_WIDTH}px`
+          maxWidth: `${ROW_NUMBER_COLUMN_WIDTH}px`,
+          flex: `0 0 ${ROW_NUMBER_COLUMN_WIDTH}px`
         },
         role: "button",
         tabIndex: 0,
@@ -6017,6 +6021,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
         width: `${colWidths[c]}px`,
         minWidth: `${colWidths[c]}px`,
         maxWidth: `${colWidths[c]}px`,
+        flex: `0 0 ${colWidths[c]}px`,
         userSelect: "none",
         backgroundColor: undefined,
         color: undefined
