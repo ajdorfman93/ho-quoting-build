@@ -1,6 +1,70 @@
 declare module "react-grid-layout" {
   import * as React from "react";
 
+  export type CssDimension = number | string;
+
+  export type CssSpacing = CssDimension | [CssDimension, CssDimension];
+
+  type BivariantEventHandler<Args extends unknown[]> = {
+    bivarianceHack: (...args: Args) => void;
+  }["bivarianceHack"];
+
+  export interface UniformRowCssProperties {
+    /**
+     * Ensures row participants share a consistent height while width is driven by layout units.
+     */
+    height: CssDimension;
+    /**
+     * Padding applied uniformly to every cell within the row. Expressed as a CSS shorthand tuple.
+     */
+    padding: CssSpacing;
+    /**
+     * Margin applied uniformly to every cell within the row. Expressed as a CSS shorthand tuple.
+     */
+    margin: CssSpacing;
+  }
+
+  export interface ResizeHandleStyle {
+    /**
+     * Width of the draggable handle that follows the cursor. Defaults to 4px.
+     */
+    width?: CssDimension;
+    /**
+     * Height of the draggable handle that follows the cursor. Defaults to 25px.
+     */
+    height?: CssDimension;
+    /**
+     * Optional class name to augment handle styling.
+     */
+    className?: string;
+  }
+
+  export interface ResizeGuideStyle {
+    /**
+     * Thickness of the guide line rendered between cells. Defaults to 2.5px.
+     */
+    thickness?: CssDimension;
+    /**
+     * Optional class name to augment guide styling.
+     */
+    className?: string;
+  }
+
+  export interface ResizeVisualizationOptions {
+    /**
+     * Orientation the handle is allowed to travel in; maps to row (horizontal) or column (vertical) interactions.
+     */
+    axis: "horizontal" | "vertical";
+    /**
+     * Styling for the guide line that appears while resizing.
+     */
+    guide?: ResizeGuideStyle;
+    /**
+     * Styling for the draggable handle that shadows the cursor.
+     */
+    handle?: ResizeHandleStyle;
+  }
+
   export interface Layout {
     i: string;
     x: number;
@@ -16,10 +80,60 @@ declare module "react-grid-layout" {
     isDraggable?: boolean;
     isResizable?: boolean;
     resizeHandles?: Array<"s" | "w" | "e" | "n" | "sw" | "nw" | "se" | "ne">;
+    /**
+     * Logical identifier grouping items that must share a uniform row configuration.
+     */
+    rowGroupId?: string;
+    /**
+     * Uniform CSS properties shared across every grid item that participates in the rowGroupId.
+     * Width is intentionally omitted so column sizing continues to originate from the grid math.
+     */
+    rowCss?: Readonly<UniformRowCssProperties>;
+    /**
+     * Declares how the layout item should scale when participating in resize gestures.
+     * "row" enforces uniform row height adjustments, "column" enforces column width adjustments.
+     */
+    scalingAxis?: "row" | "column" | "both" | "none";
+    /**
+     * Customise the guide line and draggable handle shown during resize interactions for this item.
+     */
+    resizeVisualization?: ResizeVisualizationOptions;
   }
 
   export interface LayoutItem extends Layout {
     isBounded?: boolean;
+  }
+
+  export interface UniformRowLayoutItem<GroupId extends string, Y extends number, Height extends number, Padding extends CssSpacing, Margin extends CssSpacing>
+    extends Layout {
+    rowGroupId: GroupId;
+    y: Y;
+    h: Height;
+    rowCss: Readonly<{
+      height: CssDimension;
+      padding: Padding;
+      margin: Margin;
+    }>;
+    scalingAxis: "row";
+  }
+
+  export type UniformRowLayout<
+    GroupId extends string = string,
+    Y extends number = number,
+    Height extends number = number,
+    Padding extends CssSpacing = CssSpacing,
+    Margin extends CssSpacing = CssSpacing
+  > = ReadonlyArray<UniformRowLayoutItem<GroupId, Y, Height, Padding, Margin>>;
+
+  export interface UniformRowResizeEvent<
+    GroupId extends string = string,
+    Y extends number = number,
+    Height extends number = number,
+    Padding extends CssSpacing = CssSpacing,
+    Margin extends CssSpacing = CssSpacing
+  > {
+    layout: UniformRowLayout<GroupId, Y, Height, Padding, Margin>;
+    visualization?: ResizeVisualizationOptions;
   }
 
   export interface ReactGridLayoutProps {
@@ -45,9 +159,17 @@ declare module "react-grid-layout" {
     verticalCompact?: boolean;
     allowOverlap?: boolean;
     resizeHandles?: Array<"s" | "w" | "e" | "n" | "sw" | "nw" | "se" | "ne">;
-    onLayoutChange?: (layout: Layout[]) => void;
-    onDragStop?: (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: Event, element: HTMLElement) => void;
-    onResizeStop?: (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: Event, element: HTMLElement) => void;
+    /**
+     * When true, react-grid-layout expects every rowGroupId cohort to share identical rowCss values.
+     */
+    enforceUniformRowCss?: boolean;
+    /**
+     * Controls the styling for resize guide lines and handles on a per-axis basis.
+     */
+    resizeGuides?: Partial<Record<"row" | "column", ResizeVisualizationOptions>>;
+    onLayoutChange?: BivariantEventHandler<[Layout[]]>;
+    onDragStop?: BivariantEventHandler<[Layout[], Layout, Layout, Layout, Event, HTMLElement]>;
+    onResizeStop?: BivariantEventHandler<[Layout[], Layout, Layout, Layout, Event, HTMLElement, UniformRowResizeEvent | undefined]>;
   }
 
   export interface WidthProviderProps {
