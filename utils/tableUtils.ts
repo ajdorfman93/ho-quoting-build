@@ -5713,7 +5713,7 @@ function InteractiveTableImpl<T extends Record<string, any> = any>(
   const columnResizeGuideLine = columnResizeGuide && safeColumnGuideLeft != null ? h(React.Fragment, null,
     h("div", {
       className: mergeClasses(
-        "pointer-events-none absolute top-0 bottom-0 w-[2.5px]",
+        "pointer-events-none absolute top-0 bottom-0 w-[5px]",
         columnResizeGuide.active ? "bg-blue-500/90" : "bg-blue-400/70"
       ),
       style: { left: `${safeColumnGuideLeft - 1.25}px` }
