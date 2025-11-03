@@ -9,7 +9,7 @@ import "react-resizable/css/styles.css";
 
 const WidthAwareGridLayout = WidthProvider(GridLayout);
 
-type Primitive = string | number | boolean | null | undefined;
+type Primitive = string | number | boolean | null | undefined | Date;
 
 export interface BasicGridTableProps<T extends Record<string, unknown>> {
   rows: T[];
@@ -59,8 +59,8 @@ function ensureOrder(baseOrder: string[], incomingIds: string[]): string[] {
 
 function formatPrimitive(value: Primitive): string {
   if (value === null || value === undefined) return "";
-  if (typeof value === "boolean") return value ? "True" : "False";
   if (value instanceof Date) return value.toISOString();
+  if (typeof value === "boolean") return value ? "True" : "False";
   return String(value);
 }
 
